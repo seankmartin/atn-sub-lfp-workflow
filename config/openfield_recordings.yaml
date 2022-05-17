@@ -1,0 +1,14 @@
+recording_type:
+  [
+    CSR1-openfield,
+    CSR2-openfield,
+    CSR3-openfield,
+    CSR4-openfield,
+    CSR5-openfield,
+    CSR6-openfield,
+    LSR1-openfield,
+    LSR3-openfield,
+    LSR4-openfield,
+    LSR5-openfield,
+    LSR6-openfield,
+  ]

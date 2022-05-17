@@ -57,7 +57,7 @@ def setup_functions():
             The arguments to use for each function in functions
 
         """
-        args = [recording_container.base_dir, figures]
+        args = [recording_container.attrs["base_dir"], figures]
         kwargs = {}
         args2 = ["__dirname__", figures]
         arguments = {"powers": (args, kwargs), "per_animal_psd": (args2, kwargs)}
@@ -167,14 +167,12 @@ figs, fig_names = setup_figures()
 sort_fn = setup_sorting()
 load_all, to_load, select_recordings = setup_loading()
 params = {
-    "run": functions,
-    "args": args_func,
-    "save": save_list,
-    "names": output_names,
-    "figs": figs,
-    "fignames": fig_names,
-    "sorting": sort_fn,
+    "functions": functions,
+    "args_function": args_func,
+    "data_to_save": save_list,
+    "data_names": output_names,
+    "figures": figs,
+    "figure_names": fig_names,
     "load_all": load_all,
     "to_load": to_load,
-    "select_recordings": select_recordings,
 }

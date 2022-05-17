@@ -1,0 +1,19 @@
+clean_method: pick_zscore
+clean_kwargs:
+  pick_property: group
+  channels: [LFP]
+fmin: 1
+fmax: 100
+theta_min: 6
+theta_max: 12
+delta_min: 1.5
+delta_max: 4
+psd_scale: decibels
+image_format: png
+cfg_base_dir: D:\SubRet_recordings_imaging
+number_of_shuffles_sta: 5
+do_spectrogram_plot: False
+loader: neurochat
+loader_kwargs:
+  system: Axona
+  pos_extension: .pos

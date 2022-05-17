@@ -2,7 +2,6 @@ import re
 
 import numpy as np
 import simuran
-import snakemake
 from simuran.loaders.nc_loader import NCLoader
 
 
@@ -426,4 +425,4 @@ def clean_data(df, **kwargs):
 
 
 if __name__ == "__main__":
-    main(snakemake.config["data_directory"], snakemake.input[0])
+    main(snakemake.config["data_directory"], snakemake.output[0])

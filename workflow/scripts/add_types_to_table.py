@@ -1,13 +1,18 @@
 from pathlib import Path
 
 from skm_pyutils.py_config import read_python
-from skm_pyutils.py_path import (get_all_files_in_dir, get_dirs_matching_regex,
-                                 remove_empty_dirs_and_caches)
+from skm_pyutils.py_path import (
+    get_all_files_in_dir,
+    get_dirs_matching_regex,
+    remove_empty_dirs_and_caches,
+)
 from skm_pyutils.py_table import df_from_file, df_to_file, list_to_df
+
+here = Path(__file__).resolve().parent
 
 
 def main(dirname, path_to_csv, output_path):
-    fnames = get_all_files_in_dir("batch_params", ext=".py")
+    fnames = get_all_files_in_dir(here / "batch_params", ext=".py")
     df = df_from_file(path_to_csv)
 
     out_list = []
@@ -47,8 +52,4 @@ def main(dirname, path_to_csv, output_path):
 
 
 if __name__ == "__main__":
-    main(
-        r"H:\SubRet_recordings_imaging",
-        r"..\..\results\axona_file_index.csv",
-        "../../results/subret_recordings.csv",
-    )
+    main(snakemake.config["data_directory"], snakemake.input[0], snakemake.output[0])

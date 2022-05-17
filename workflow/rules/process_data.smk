@@ -2,7 +2,7 @@ rule preprocess_data:
     output:
         "results/axona_file_index.csv"
     script:
-        "scripts/index_axona_files.py"
+        "../scripts/index_axona_files.py"
 
 rule add_data_types:
     input:
@@ -10,4 +10,4 @@ rule add_data_types:
     output:
         "results/subret_recordings.csv"
     script:
-        "python"
+        "../scripts/add_types_to_table.py"

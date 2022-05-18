@@ -6,9 +6,9 @@ that will be performed on each recording in a loaded container.
 
 def setup_functions():
     """Establish the functions to run and arguments to pass."""
-    from frequency_analysis import per_animal_psd, powers
+    from frequency_analysis import powers
 
-    functions = [powers, (per_animal_psd, "run_after")]
+    functions = [powers]
 
     # The list of functions to run, in order
     # Each function should take as its first argument a recording object
@@ -59,8 +59,7 @@ def setup_functions():
         """
         args = [recording_container.attrs["base_dir"], figures]
         kwargs = {}
-        args2 = ["__dirname__", figures]
-        arguments = {"powers": (args, kwargs), "per_animal_psd": (args2, kwargs)}
+        arguments = {"powers": (args, kwargs)}
         return arguments
 
     return functions, argument_handler
@@ -152,7 +151,7 @@ def setup_loading():
 
     # If load_all is True, indicates what is loaded in bulk
     # Should be a subset of ["signals", "spatial", "units"]
-    to_load = ["signals"]
+    to_load = ["Signal"]
 
     # Whether a subset of recordings should be considered
     # True opens a console to help choose, but a list of indices can be passed
@@ -175,4 +174,5 @@ params = {
     "figure_names": fig_names,
     "load_all": load_all,
     "to_load": to_load,
+    "n_decimals": 4,
 }

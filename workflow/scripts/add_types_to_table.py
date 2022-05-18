@@ -1,11 +1,9 @@
+from email.mime import base
 from pathlib import Path
 
 from skm_pyutils.py_config import read_python
-from skm_pyutils.py_path import (
-    get_all_files_in_dir,
-    get_dirs_matching_regex,
-    remove_empty_dirs_and_caches,
-)
+from skm_pyutils.py_path import (get_all_files_in_dir, get_dirs_matching_regex,
+                                 remove_empty_dirs_and_caches)
 from skm_pyutils.py_table import df_from_file, df_to_file, list_to_df
 
 here = Path(__file__).resolve().parent
@@ -47,6 +45,17 @@ def main(dirname, path_to_csv, output_path):
     )
     merged_df["mapping"].fillna(merged_df["mapping_x"], inplace=True)
     del merged_df["mapping_x"]
+
+    base_mapping_dir = here / "recording_mappings"
+    new_mapping = []
+    for idx, row in merged_df.iterrows():
+        mapping = row["mapping"]
+        mapping_location = base_mapping_dir / mapping
+        if mapping_location.is_file():
+            new_mapping.append(mapping_location)
+        else:
+            new_mapping.append(mapping)
+    merged_df["mapping"] = new_mapping
 
     df_to_file(merged_df, output_path)
 

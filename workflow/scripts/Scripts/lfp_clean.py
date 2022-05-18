@@ -4,9 +4,9 @@ import os
 from collections import OrderedDict
 from copy import deepcopy
 
+import astropy.units as u
 import numpy as np
 import simuran
-import astropy.units as u
 from mne.preprocessing import ICA, read_ica
 
 
@@ -169,6 +169,8 @@ class LFPClean(object):
         Currently supports "avg", "zscore", "avg_raw", "ica", "pick".
     visualise : bool
         Whether to visualise the cleaning.
+    show_vis : bool
+        Whether to visualise on the fly or return figs
 
     Parameters
     ----------
@@ -199,12 +201,12 @@ class LFPClean(object):
             self.visualise = False
             result = self.clean(data, min_f, max_f, **filter_kwargs)["signals"]
             for k, v in result.items():
-                v.set_channel(method[:5])
+                v.channel = method[:5]
                 results[f"{method}-{k}"] = v
         self.visualise = temp
 
         if isinstance(data, simuran.Recording):
-            signals = data.signals
+            signals = data.data["signals"]
         else:
             signals = data
 
@@ -242,7 +244,7 @@ class LFPClean(object):
             method_kwargs = {}
         ica_fname = None
         if isinstance(data, simuran.Recording):
-            signals = data.signals
+            signals = data.data["signals"]
             base_dir = method_kwargs.get("base_dir", None)
             ica_fname = data.get_name_for_save(base_dir)
             for i in range(len(signals)):
@@ -400,8 +402,8 @@ class LFPClean(object):
             )
             eeg = simuran.Eeg()
             eeg.from_numpy(val, sampling_rate=signals[0].sampling_rate)
-            eeg.set_region(region)
-            eeg.set_channel("avg")
+            eeg.region = region
+            eeg.channel = "avg"
             if min_f is not None:
                 eeg.filter(min_f, max_f, inplace=True, **filter_kwargs)
             output_dict[region] = eeg
@@ -429,8 +431,8 @@ class LFPClean(object):
             )
             eeg = simuran.Eeg()
             eeg.from_numpy(val, sampling_rate=signals[0].sampling_rate)
-            eeg.set_region(region)
-            eeg.set_channel("avg")
+            eeg.region = region
+            eeg.channel = "avg"
             if min_f is not None:
                 eeg.filter(min_f, max_f, inplace=True, **filter_kwargs)
             output_dict[region] = eeg
@@ -622,8 +624,8 @@ class LFPClean(object):
             val, _ = average_signals(data_to_use, clean=False)
             eeg = simuran.Eeg()
             eeg.from_numpy(val * u.V, sampling_rate=signals[0].sampling_rate)
-            eeg.set_region(region)
-            eeg.set_channel("avg")
+            eeg.region = region
+            eeg.channel = "avg"
             output_dict[region] = eeg
 
         return reconst_raw, output_dict, figs

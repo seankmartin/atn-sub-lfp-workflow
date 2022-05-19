@@ -7,6 +7,7 @@ This should contain information about the recording,
 such as the number electrodes in the recording.
 """
 
+
 def setup_signals():
     """Set up the signals (such as eeg or lfp)."""
 
@@ -97,7 +98,7 @@ def setup_loader():
 load_params = setup_loader()
 mapping = {
     "signals": setup_signals(),
-    "units": setup_units(),
+    "units": None,
     "spatial": setup_spatial(),
     "loader": load_params["loader"],
     "loader_kwargs": load_params["loader_kwargs"],

@@ -1,4 +1,6 @@
+import datetime
 import re
+from pathlib import Path
 
 import numpy as np
 import simuran
@@ -311,9 +313,12 @@ def clean_setup_files(s):
 def get_date_from_files(fold, file):
     """Get date from the set file"""
     try:
-        with open(fold + "/" + file + ".set") as f:
+        fpath = Path(fold) / file
+        if not fpath.is_file():
+            fpath = fpath.with_suffix(".set")
+        with open(fpath, "r") as f:
             date = f.readline()[-12:].strip()
-            return date
+        return date
 
     except:
         return np.nan
@@ -409,8 +414,8 @@ def clean_data(df, **kwargs):
     df.loc[df.date.isnull(), "date"] = df.loc[df.date.isnull(), "recording_name"].apply(
         get_missing_dates
     )
-    df["date_time"] = df["date"] + " " + df["time"]
-    df["date_time"] = df["date_time"].apply(convert_datetime)
+    df["datetime"] = df["date"] + " " + df["time"]
+    df["datetime"] = df["datetime"].apply(convert_datetime)
     df.drop(["date", "time"], inplace=True, axis=1)
     df["name_dec"] = df.rat.apply(decode_name)
     df.drop("recording_name", axis=1, inplace=True)

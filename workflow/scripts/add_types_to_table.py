@@ -1,10 +1,12 @@
-from email.mime import base
 from pathlib import Path
 
-from skm_pyutils.py_config import read_python
-from skm_pyutils.py_path import (get_all_files_in_dir, get_dirs_matching_regex,
-                                 remove_empty_dirs_and_caches)
-from skm_pyutils.py_table import df_from_file, df_to_file, list_to_df
+from skm_pyutils.config import read_python
+from skm_pyutils.path import (
+    get_all_files_in_dir,
+    get_dirs_matching_regex,
+    remove_empty_dirs_and_caches,
+)
+from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
 here = Path(__file__).resolve().parent
 

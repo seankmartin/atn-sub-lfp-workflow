@@ -1,1 +1,3 @@
 data_directory: H:\SubRet_recordings_imaging
+simuran_config: config\simuran_params.yaml
+openfield_filter: config\openfield_recordings.yaml

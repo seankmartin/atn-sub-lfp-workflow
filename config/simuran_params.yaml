@@ -17,3 +17,4 @@ loader: neurochat
 loader_kwargs:
   system: Axona
   pos_extension: .pos
+plot_psd: True

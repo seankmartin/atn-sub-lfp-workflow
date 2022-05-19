@@ -7,13 +7,13 @@ import seaborn as sns
 import simuran
 from astropy import units as u
 from scipy.signal import welch
-from skm_pyutils.py_plot import UnicodeGrabber
+from skm_pyutils.plot import UnicodeGrabber
 
 from lfp_clean import LFPClean
 
 
-def plot_psd(
-    x, ax, fs=250, group="ATNx", region="SUB", fmin=1, fmax=100, scale="volts"
+def calculate_psd(
+    x, fs=250, group="ATNx", region="SUB", fmin=1, fmax=100, scale="volts"
 ):
     f, Pxx = welch(
         x.samples.to(u.uV).value,
@@ -26,30 +26,29 @@ def plot_psd(
 
     f = f[np.nonzero((f >= fmin) & (f <= fmax))]
     Pxx = Pxx[np.nonzero((f >= fmin) & (f <= fmax))]
+    Pxx_max = np.max(Pxx)
+    if scale == "decibels":
+        Pxx = 10 * np.log10(Pxx / Pxx_max)
+    elif scale != "volts":
+        raise ValueError("Unsupported scale {}".format(scale))
 
-    Pxx_max = 0
+    return (np.array([f, Pxx, [group] * len(f), [region] * len(f)]), Pxx_max)
+
+
+def plot_psd(ax, f, Pxx, scale="volts"):
+    sns.lineplot(x=f, y=Pxx, ax=ax)
+    simuran.despine()
+    ax.set_xlabel("Frequency (Hz)")
+
     ylabel = None
     if scale == "volts":
         micro = UnicodeGrabber.get("micro")
         pow2 = UnicodeGrabber.get("pow2")
         ylabel = f"PSD ({micro}V{pow2} / Hz)"
-    elif scale == "decibels":
-        # Convert to full scale relative dB (so max at 0)
-        Pxx_max = np.max(Pxx)
-        Pxx = 10 * np.log10(Pxx / Pxx_max)
+    else:
         ylabel = "PSD (dB)"
-    else:
-        raise ValueError("Unsupported scale {}".format(scale))
-    sns.lineplot(x=f, y=Pxx, ax=ax)
-    simuran.despine()
-    ax.set_xlabel("Frequency (Hz)")
+
     ax.set_ylabel(ylabel)
-
-    if scale == "volts":
-        return np.array([f, Pxx, [group] * len(f), [region] * len(f)])
-    else:
-        return (np.array([f, Pxx, [group] * len(f), [region] * len(f)]), Pxx_max)
-
 
 def per_animal_psd(recording_container, base_dir, figures, **kwargs):
     simuran.set_plot_style()
@@ -157,10 +156,13 @@ def powers(
     theta_max = kwargs.get("theta_max", 10)
     delta_min = kwargs.get("delta_min", 1.5)
     delta_max = kwargs.get("delta_max", 4.0)
+    plot_psd_ = kwargs.get("plot_psd", True)
 
     results = {}
     window_sec = 2
-    simuran.set_plot_style()
+
+    if plot_psd_:
+        simuran.set_plot_style()
 
     for name, signal in signals_grouped_by_region.items():
         results["{} delta".format(name)] = np.nan
@@ -208,21 +210,19 @@ def powers(
         results["{} high gamma rel".format(name)] = high_gamma_power["relative_power"]
 
         # Do power spectra
-        out_name = name_plot(recording, base_dir, f"_power_{name}")
         sr = signal.sampling_rate
-        fig, ax = plt.subplots()
         group = define_recording_group(base_dir)
-        if psd_scale == "volts":
-            results["{} welch".format(name)] = plot_psd(
-                signal, ax, sr, group, name, fmin=fmin, fmax=fmax, scale=psd_scale
-            )
-        else:
-            r1, r2 = plot_psd(
-                signal, ax, sr, group, name, fmin=fmin, fmax=fmax, scale=psd_scale
-            )
-            results["{} welch".format(name)] = r1
-            results["{} max f".format(name)] = r2
-        fig = simuran.SimuranFigure(fig, out_name, dpi=400, done=True, format=fmt)
-        figures.append(fig)
+        r1, r2 = calculate_psd(
+            signal, ax, sr, group, name, fmin=fmin, fmax=fmax, scale=psd_scale
+        )
+        results["{} welch".format(name)] = r1
+        results["{} max f".format(name)] = r2
+        
+        if plot_psd_:
+            fig, ax = plt.subplots()
+            plot_psd(ax, r1[0], r1[1], scale=psd_scale)
+            out_name = name_plot(recording, base_dir, f"_power_{name}")
+            fig = simuran.SimuranFigure(fig, out_name, dpi=400, done=True, format=fmt)
+            figures.append(fig)
 
     return results

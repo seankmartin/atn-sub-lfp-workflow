@@ -2,10 +2,11 @@
 
 from pathlib import Path
 
-import dtale
 import numpy as np
 import simuran as smr
-from pynwb import NWBHDF5IO, NWBFile
+from hdmf.backends.hdf5.h5_utils import H5DataIO
+from pynwb import NWBHDF5IO, NWBFile, TimeSeries
+from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from pynwb.ecephys import LFP, ElectricalSeries
 from pynwb.file import Subject
 from skm_pyutils.table import df_from_file, filter_table
@@ -13,7 +14,7 @@ from skm_pyutils.table import df_from_file, filter_table
 here = Path(__file__).resolve().parent
 
 
-def main(table_path, config_path, data_fpath, output_directory):
+def main(table_path, config_path, data_fpath, output_directory : Path, overwrite=False):
     table = df_from_file(table_path)
     config = smr.ParamHandler(source_file=config_path, name="params")
     filter_ = smr.ParamHandler(source_file=data_fpath, name="filter")
@@ -21,13 +22,20 @@ def main(table_path, config_path, data_fpath, output_directory):
     loader = smr.loader(config["loader"])(**config["loader_kwargs"])
 
     rc = smr.RecordingContainer.from_table(filtered_table, loader)
-    r = rc.load(0)
+    
+    for i in range(len(rc)):
+        save_name = rc[i].get_name_for_save(config["cfg_base_dir"])
+        filename = output_directory / "nwbfiles"/ f"{save_name}.nwb"
+        
+        if not overwrite and filename.is_file():
+            continue
 
-    nwbfile = convert_recording_to_nwb(r, config["cfg_base_dir"])
+        r = rc.load(i)
+        nwbfile = convert_recording_to_nwb(r, config["cfg_base_dir"])
 
-    filename = output_directory / "test.nwb"
-    with NWBHDF5IO(filename, "w") as io:
-        io.write(nwbfile)
+        filename.parent.mkdir(parents=True, exist_ok=True)
+        with NWBHDF5IO(filename, "w") as io:
+            io.write(nwbfile)
 
 
 def convert_recording_to_nwb(recording, rel_dir=None):
@@ -37,13 +45,14 @@ def convert_recording_to_nwb(recording, rel_dir=None):
         session_description=f"Openfield recording for {name}",
         identifier=f"ATNx_SUB_LFP--{name}",
         session_start_time=recording.datetime,
+        experiment_description="Relationship between ATN, SUB, RSC, and CA1",
         experimenter="Bethany Frost",
         lab="O'Mara lab",
         institution="TCD",
-        related_publications="DOI:10.1523/JNEUROSCI.2868-20.2021",
+        related_publications="doi:10.1523/JNEUROSCI.2868-20.2021",
     )
     nwbfile.subject = Subject(
-        species="Lister Hooded rat", sex="M", description=recording.attrs["rat"]
+        species="Lister Hooded rat", sex="M", subject_id=recording.attrs["rat"]
     )
     piw_device = nwbfile.create_device(
         name="Platinum-iridium wires 25um thick",
@@ -78,14 +87,19 @@ def convert_recording_to_nwb(recording, rel_dir=None):
             )
     if len(recording.data["signals"]) == 32:
         num_electrodes = 32
-        for i in range(7):
+
+    for i in range(7):
+        if len(recording.data["signals"]) == 32:
             brain_region = recording.data["signals"][(i + 1) * 4].region
-            electrode_group = nwbfile.create_electrode_group(
-                name=f"TT{i}",
-                device=piw_device,
-                location=brain_region,
-                description=f"Tetrode {i} electrodes placed in {brain_region}",
-            )
+        else:
+            brain_region = recording.data["units"][i+1].region
+        electrode_group = nwbfile.create_electrode_group(
+            name=f"TT{i}",
+            device=piw_device,
+            location=brain_region,
+            description=f"Tetrode {i} electrodes placed in {brain_region}",
+        )
+        if len(recording.data["signals"]) == 32:
             for j in range(4):
                 nwbfile.add_electrode(
                     x=np.nan,
@@ -105,9 +119,10 @@ def convert_recording_to_nwb(recording, rel_dir=None):
     lfp_data = np.transpose(
         np.array([s.samples.value for s in recording.data["signals"]])
     )
+    compressed_data = H5DataIO(data=lfp_data, compression="gzip", compression_opts=4)
     lfp_electrical_series = ElectricalSeries(
         name="LFP",
-        data=lfp_data,
+        data=compressed_data,
         electrodes=all_table_region,
         starting_time=0.0,
         rate=250.0,
@@ -122,6 +137,8 @@ def convert_recording_to_nwb(recording, rel_dir=None):
     nwbfile.add_unit_column(name="tname", description="Tetrode and unit number")
 
     for i, unit_info in enumerate(recording.data["units"]):
+        if unit_info.available_units is None:
+            continue
         if i == 0:
             group = f"BE{i}"
         else:
@@ -139,16 +156,57 @@ def convert_recording_to_nwb(recording, rel_dir=None):
                 tname=f"TT{unit_info.tag}_U{unit_no}",
                 waveform_mean=mean_wave,
                 waveform_sd=sd_wave,
-                electrode_group=nwbfile.get_electrode_group(group)
+                electrode_group=nwbfile.get_electrode_group(group),
             )
 
-    # nwbfile.units.waveform_unit = "microvolts"
+    position_data = np.transpose(
+        np.array(
+            [
+                recording.data["spatial"].position[0].value,
+                recording.data["spatial"].position[1].value,
+            ]
+        )
+    )
+    position_timestamps = recording.data["spatial"].time
+    time_rate = np.mean(np.diff(position_timestamps))
 
-    df = nwbfile.units.to_dataframe()
-    dtale.show(df).open_browser()
-    inp_ = input("Continue? (y/n): ")
+    spatial_series = SpatialSeries(
+        name="PositionSeries",
+        description="(x,y) position in open field",
+        data=position_data,
+        starting_time=0.,
+        rate=time_rate,
+        reference_frame="(0,0) is top left corner",
+        unit="centimeters",
+    )
+    position_obj = Position(spatial_series=spatial_series)
 
-    print(nwbfile)
+    hd_series = SpatialSeries(
+        name="HDSeries",
+        description="head direction",
+        data=recording.data["spatial"].direction,
+        starting_time=0.,
+        rate=time_rate,
+        reference_frame="0 degrees is west, rotation is anti-clockwise",
+        unit="degrees",
+    )
+    compass_obj = CompassDirection(spatial_series=hd_series)
+
+    speed_ts = TimeSeries(
+        name="running_speed",
+        description="Running speed in openfield",
+        data=recording.data["spatial"].speed.value,
+        starting_time=0.,
+        rate=time_rate,
+        unit="cm/s",
+    )
+
+    behavior_module = nwbfile.create_processing_module(
+        name="behavior", description="processed behavior data"
+    )
+    behavior_module.add(position_obj)
+    behavior_module.add(compass_obj)
+    behavior_module.add(speed_ts)
 
     return nwbfile
 

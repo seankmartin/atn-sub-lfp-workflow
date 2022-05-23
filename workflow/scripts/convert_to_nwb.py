@@ -10,7 +10,9 @@ from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from pynwb.ecephys import LFP, ElectricalSeries
 from pynwb.file import Subject
-from skm_pyutils.table import df_from_file, filter_table
+from skm_pyutils.table import df_from_file, filter_table, df_to_file
+import pandas as pd
+pd.options.mode.chained_assignment = None  # default='warn'
 
 here = Path(__file__).resolve().parent
 
@@ -23,11 +25,17 @@ def main(table_path, config_path, data_fpath, output_directory: Path, overwrite=
     loader = smr.loader(config["loader"])(**config["loader_kwargs"])
 
     rc = smr.RecordingContainer.from_table(filtered_table, loader)
+    
+    filenames = []
 
     for i in range(len(rc)):
-        convert_to_nwb_and_save(
+        fname = convert_to_nwb_and_save(
             rc, i, output_directory, config["cfg_base_dir"], overwrite
         )
+        filenames.append(fname)
+    
+    filtered_table["nwb_file"] = filenames
+    df_to_file(filtered_table, output_directory / "openfield_nwb.csv")
 
 
 def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=False):
@@ -35,7 +43,7 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
     filename = output_directory / "nwbfiles" / f"{save_name}.nwb"
 
     if not overwrite and filename.is_file():
-        return
+        return filename
 
     r = rc.load(i)
     nwbfile = convert_recording_to_nwb(r, rel_dir)
@@ -44,11 +52,13 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
     try:
         with NWBHDF5IO(filename, "w") as io:
             io.write(nwbfile)
+        return filename
     except Exception:
         print(f"Could not write {nwbfile} from {r} out to {filename}")
         if filename.is_file():
             filename.unlink()
         traceback.print_exc()
+
 
 
 def access_nwb(nwbfile):
@@ -228,15 +238,12 @@ def add_nwb_electrode(nwbfile, brain_region, electrode_group, label):
 
 def get_brain_region_for_tetrode(recording, i):
     brain_region = None
-    if len(recording.data["signals"]) == 32:
-        if hasattr(recording.data["signals"][(i + 1) * 4], "region"):
-            brain_region = recording.data["signals"][(i + 1) * 4].region
-    if (len(recording.data["units"]) == 7) and (brain_region is None):
-        if hasattr(recording.data["units"][i], "region"):
-            brain_region = recording.data["units"][i].region
-    if len(recording.data["units"]) == 8 and (brain_region is None):
-        if hasattr(recording.data["units"][i + 1], "region"):
-            brain_region = recording.data["units"][i + 1].region
+    if len(recording.data["signals"]) == 32 and hasattr(recording.data["signals"][(i + 1) * 4], "region"):
+        brain_region = recording.data["signals"][(i + 1) * 4].region
+    if (len(recording.data["units"]) == 7) and (brain_region is None) and hasattr(recording.data["units"][i], "region"):
+        brain_region = recording.data["units"][i].region
+    if len(recording.data["units"]) == 8 and (brain_region is None) and hasattr(recording.data["units"][i + 1], "region"):
+        brain_region = recording.data["units"][i + 1].region
     if brain_region is None:
         brain_region = "recording_setup_error"
         print(
@@ -282,17 +289,9 @@ def create_nwbfile_with_metadata(recording, name):
 
 if __name__ == "__main__":
     main(
-        here.parent.parent / "results/subret_recordings.csv",
-        here.parent.parent / "config/simuran_params.yaml",
-        here.parent.parent / "config/openfield_recordings.yaml",
-        Path("results/"),
+        snakemake.input[0],
+        snakemake.config["simuran_config"],
+        snakemake.config["openfield_filter"],
+        Path(snakemake.output[0]).parent,
+        snakemake.config["overwrite_nwb"],
     )
-
-    # main(
-    #     snakemake.input[0],
-    #     snakemake.config["simuran_config"],
-    #     snakemake.config["openfield_filter"],
-    #     Path(snakemake.output[0]).parent,
-    #     snakemake.threads,
-    #     snakemake.config["data_directory"],
-    # )

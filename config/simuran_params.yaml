@@ -16,5 +16,5 @@ do_spectrogram_plot: False
 loader: neurochat
 loader_kwargs:
   system: Axona
-  pos_extension: .pos
+  pos_extension: [.txt, .pos]
 plot_psd: True

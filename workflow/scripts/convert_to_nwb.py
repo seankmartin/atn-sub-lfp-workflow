@@ -1,5 +1,6 @@
 """Process openfield LFP into power spectra etc. saved to NWB"""
 
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -47,6 +48,17 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
         print(f"Could not write {nwbfile} from {r} out to {filename}")
         if filename.is_file():
             filename.unlink()
+        traceback.print_exc()
+
+
+def access_nwb(nwbfile):
+    # lfp_data = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].data[:]
+    # unit_data = nwbfile.units
+    # behavior = nwbfile.processing["behavior"]
+    # position = behavior["Position"]["SpatialSeries"].data[:]
+    # head_direction = behavior["CompassDirection"]["SpatialSeries"].data[:]
+    # running_speed = behavior["running_speed"].data[:]
+    pass
 
 
 def convert_recording_to_nwb(recording, rel_dir=None):
@@ -75,7 +87,7 @@ def add_position_data_to_nwb(recording, nwbfile):
     time_rate = np.mean(np.diff(position_timestamps))
 
     spatial_series = SpatialSeries(
-        name="PositionSeries",
+        name="SpatialSeries",
         description="(x,y) position in open field",
         data=position_data,
         starting_time=0.0,
@@ -86,7 +98,7 @@ def add_position_data_to_nwb(recording, nwbfile):
     position_obj = Position(spatial_series=spatial_series)
 
     hd_series = SpatialSeries(
-        name="HDSeries",
+        name="SpatialSeries",
         description="head direction",
         data=recording.data["spatial"].direction,
         starting_time=0.0,
@@ -114,30 +126,33 @@ def add_position_data_to_nwb(recording, nwbfile):
 
 
 def add_unit_data_to_nwb(recording, nwbfile):
-    nwbfile.add_unit_column(name="tname", description="Tetrode and unit number")
-
-    if recording.attrs.get("units", "default") is not None:
-        for i, unit_info in enumerate(recording.data["units"]):
-            if unit_info.available_units is None:
+    if recording.attrs.get("units", "default") is None:
+        return
+    added = False
+    for i, unit_info in enumerate(recording.data["units"]):
+        if unit_info.available_units is None:
+            continue
+        if not added:
+            nwbfile.add_unit_column(name="tname", description="Tetrode and unit number")
+            added = True
+        group = f"BE{i}" if i == 0 else f"TT{i-1}"
+        all_units = unit_info.available_units
+        nunit = unit_info.data
+        for unit_no in all_units:
+            nunit.set_unit_no(unit_no)
+            timestamps = nunit.get_unit_stamp()
+            if len(timestamps) < 10:
                 continue
-            group = f"BE{i}" if i == 0 else f"TT{i-1}"
-            all_units = unit_info.available_units
-            nunit = unit_info.data
-            for unit_no in all_units:
-                nunit.set_unit_no(unit_no)
-                timestamps = nunit.get_unit_stamp()
-                if len(timestamps) < 10:
-                    continue
-                mean_wave_res = nunit.wave_property()
-                mean_wave = mean_wave_res["Mean wave"][:, mean_wave_res["Max channel"]]
-                sd_wave = mean_wave_res["Std wave"][:, mean_wave_res["Max channel"]]
-                nwbfile.add_unit(
-                    spike_times=timestamps,
-                    tname=f"TT{unit_info.tag}_U{unit_no}",
-                    waveform_mean=mean_wave,
-                    waveform_sd=sd_wave,
-                    electrode_group=nwbfile.get_electrode_group(group),
-                )
+            mean_wave_res = nunit.wave_property()
+            mean_wave = mean_wave_res["Mean wave"][:, mean_wave_res["Max channel"]]
+            sd_wave = mean_wave_res["Std wave"][:, mean_wave_res["Max channel"]]
+            nwbfile.add_unit(
+                spike_times=timestamps,
+                tname=f"TT{unit_info.tag}_U{unit_no}",
+                waveform_mean=mean_wave,
+                waveform_sd=sd_wave,
+                electrode_group=nwbfile.get_electrode_group(group),
+            )
 
 
 def add_lfp_data_to_nwb(recording, nwbfile, num_electrodes):
@@ -150,7 +165,7 @@ def add_lfp_data_to_nwb(recording, nwbfile, num_electrodes):
     )
     compressed_data = H5DataIO(data=lfp_data, compression="gzip", compression_opts=4)
     lfp_electrical_series = ElectricalSeries(
-        name="LFP",
+        name="ElectricalSeries",
         data=compressed_data,
         electrodes=all_table_region,
         starting_time=0.0,
@@ -267,9 +282,9 @@ def create_nwbfile_with_metadata(recording, name):
 
 if __name__ == "__main__":
     main(
-        "results/subret_recordings.csv",
-        "config/simuran_params.yaml",
-        "config/openfield_recordings.yaml",
+        here.parent.parent / "results/subret_recordings.csv",
+        here.parent.parent / "config/simuran_params.yaml",
+        here.parent.parent / "config/openfield_recordings.yaml",
         Path("results/"),
     )
 

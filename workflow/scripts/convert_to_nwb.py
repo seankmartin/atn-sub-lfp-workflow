@@ -94,14 +94,11 @@ def add_position_data_to_nwb(recording, nwbfile):
         )
     )
     position_timestamps = recording.data["spatial"].time
-    time_rate = np.mean(np.diff(position_timestamps))
-
     spatial_series = SpatialSeries(
         name="SpatialSeries",
         description="(x,y) position in open field",
         data=position_data,
-        starting_time=0.0,
-        rate=time_rate,
+        timestamps=position_timestamps,
         reference_frame="(0,0) is top left corner",
         unit="centimeters",
     )
@@ -111,8 +108,7 @@ def add_position_data_to_nwb(recording, nwbfile):
         name="SpatialSeries",
         description="head direction",
         data=recording.data["spatial"].direction,
-        starting_time=0.0,
-        rate=time_rate,
+        timestamps=position_timestamps,
         reference_frame="0 degrees is west, rotation is anti-clockwise",
         unit="degrees",
     )
@@ -122,8 +118,7 @@ def add_position_data_to_nwb(recording, nwbfile):
         name="running_speed",
         description="Running speed in openfield",
         data=recording.data["spatial"].speed.value,
-        starting_time=0.0,
-        rate=time_rate,
+        timestamps=position_timestamps,
         unit="cm/s",
     )
 

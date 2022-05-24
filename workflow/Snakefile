@@ -1,4 +1,4 @@
-configfile: "config/snakemake_config.yaml"
+configfile: "config/snakemake_config.yml"
 
 include: "rules/process_data.smk"
 include: "rules/analyse_data.smk"

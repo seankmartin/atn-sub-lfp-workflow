@@ -1,0 +1,11 @@
+name: nwb-simuran
+channels:
+  - defaults
+  - anaconda
+  - conda-forge
+dependencies:
+  - python
+  - pip:
+      - pynwb == 2.0.1
+      - simuran
+      - ghostipy == 0.2.1

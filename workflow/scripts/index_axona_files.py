@@ -430,4 +430,5 @@ def clean_data(df, **kwargs):
 
 
 if __name__ == "__main__":
+    simuran.set_only_log_to_file(snakemake.log[0])
     main(snakemake.config["data_directory"], snakemake.output[0])

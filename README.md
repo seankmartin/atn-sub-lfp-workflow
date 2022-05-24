@@ -7,6 +7,10 @@
 A Snakemake workflow for `<description>`
 
 
+## Requirements
+
+See `envs/condaenv.yml`. Requires pynwb > 2 and simuran. TODO add fixed simuran to requirements.
+
 ## Usage
 
 The usage of this workflow is described in the [Snakemake Workflow Catalog](https://snakemake.github.io/snakemake-workflow-catalog/?usage=<owner>%2F<repo>).

@@ -30,7 +30,7 @@ def calculate_psd(
     if scale == "decibels":
         Pxx = 10 * np.log10(Pxx / Pxx_max)
     elif scale != "volts":
-        raise ValueError("Unsupported scale {}".format(scale))
+        raise ValueError(f"Unsupported scale {scale}")
 
     return (np.array([f, Pxx, [group] * len(f), [region] * len(f)]), Pxx_max)
 

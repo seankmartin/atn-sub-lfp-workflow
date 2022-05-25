@@ -4,14 +4,15 @@ import traceback
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import simuran as smr
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from pynwb.ecephys import LFP, ElectricalSeries
 from pynwb.file import Subject
-from skm_pyutils.table import df_from_file, filter_table, df_to_file
-import pandas as pd
+from skm_pyutils.table import df_from_file, df_to_file, filter_table
+
 pd.options.mode.chained_assignment = None  # default='warn'
 
 here = Path(__file__).resolve().parent
@@ -25,7 +26,7 @@ def main(table_path, config_path, data_fpath, output_directory: Path, overwrite=
     loader = smr.loader(config["loader"])(**config["loader_kwargs"])
 
     rc = smr.RecordingContainer.from_table(filtered_table, loader)
-    
+
     filenames = []
 
     for i in range(len(rc)):
@@ -33,7 +34,7 @@ def main(table_path, config_path, data_fpath, output_directory: Path, overwrite=
             rc, i, output_directory, config["cfg_base_dir"], overwrite
         )
         filenames.append(fname)
-    
+
     filtered_table["nwb_file"] = filenames
     df_to_file(filtered_table, output_directory / "openfield_nwb.csv")
 
@@ -58,7 +59,6 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
         if filename.is_file():
             filename.unlink()
         traceback.print_exc()
-
 
 
 def access_nwb(nwbfile):
@@ -161,13 +161,17 @@ def add_unit_data_to_nwb(recording, nwbfile):
 
 
 def add_lfp_data_to_nwb(recording, nwbfile, num_electrodes):
+    lfp_data = np.transpose(
+        np.array([s.samples.value for s in recording.data["signals"]])
+    )
+    add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data)
+
+
+def add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data, module=None):
     all_table_region = nwbfile.create_electrode_table_region(
         region=list(range(num_electrodes)), description="all electrodes"
     )
 
-    lfp_data = np.transpose(
-        np.array([s.samples.value for s in recording.data["signals"]])
-    )
     compressed_data = H5DataIO(data=lfp_data, compression="gzip", compression_opts=4)
     lfp_electrical_series = ElectricalSeries(
         name="ElectricalSeries",
@@ -175,13 +179,16 @@ def add_lfp_data_to_nwb(recording, nwbfile, num_electrodes):
         electrodes=all_table_region,
         starting_time=0.0,
         rate=250.0,
+        conversion=0.001,
+        filtering="Notch filter at 50Hz",
     )
     lfp = LFP(electrical_series=lfp_electrical_series)
 
-    ecephys_module = nwbfile.create_processing_module(
-        name="ecephys", description="Processed extracellular electrophysiology data"
-    )
-    ecephys_module.add(lfp)
+    if module is None:
+        module = nwbfile.create_processing_module(
+            name="ecephys", description="Processed extracellular electrophysiology data"
+        )
+    module.add(lfp)
 
 
 def add_electrodes_to_nwb(recording, nwbfile, piw_device, be_device):
@@ -233,11 +240,21 @@ def add_nwb_electrode(nwbfile, brain_region, electrode_group, label):
 
 def get_brain_region_for_tetrode(recording, i):
     brain_region = None
-    if len(recording.data["signals"]) == 32 and hasattr(recording.data["signals"][(i + 1) * 4], "region"):
+    if len(recording.data["signals"]) == 32 and hasattr(
+        recording.data["signals"][(i + 1) * 4], "region"
+    ):
         brain_region = recording.data["signals"][(i + 1) * 4].region
-    if (len(recording.data["units"]) == 7) and (brain_region is None) and hasattr(recording.data["units"][i], "region"):
+    if (
+        (len(recording.data["units"]) == 7)
+        and (brain_region is None)
+        and hasattr(recording.data["units"][i], "region")
+    ):
         brain_region = recording.data["units"][i].region
-    if len(recording.data["units"]) == 8 and (brain_region is None) and hasattr(recording.data["units"][i + 1], "region"):
+    if (
+        len(recording.data["units"]) == 8
+        and (brain_region is None)
+        and hasattr(recording.data["units"][i + 1], "region")
+    ):
         brain_region = recording.data["units"][i + 1].region
     if brain_region is None:
         brain_region = "recording_setup_error"

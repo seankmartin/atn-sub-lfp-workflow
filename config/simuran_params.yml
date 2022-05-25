@@ -1,9 +1,11 @@
 clean_method: pick_zscore
 clean_kwargs:
-  pick_property: group
-  channels: [LFP]
+  pick_property: group_name
+  options: [BE0, BE1]
 fmin: 1
 fmax: 100
+filter_kwargs:
+  copy: True
 theta_min: 6
 theta_max: 12
 delta_min: 1.5

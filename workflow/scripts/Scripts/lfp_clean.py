@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-
 # 1. create object to be worked on - like this
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -10,13 +9,11 @@ from typing import TYPE_CHECKING
 import astropy.units as u
 import numpy as np
 import simuran
+from mne.filter import filter_data
 from mne.preprocessing import ICA, read_ica
 
-from .lfp_utils import (
-    average_signals,
-    detect_outlying_signals,
-    z_score_normalise_signals,
-)
+from .lfp_utils import (average_signals, detect_outlying_signals,
+                        z_score_normalise_signals)
 
 if TYPE_CHECKING:
     import numpy as np
@@ -46,6 +43,10 @@ class SignalSeries(ABC):
     def group_by_brain_region(self):
         """Return signals grouped by the brain region."""
 
+    @abstractmethod
+    def data_as_volts(self):
+        """Return the data in volts unit (e.g. multiply by 1000)"""
+
     @property
     def data(self) -> "np.ndarray":
         return self._data
@@ -64,11 +65,19 @@ class SignalSeries(ABC):
 
 
 class NWBSignalSeries(SignalSeries):
+    """LFP is stored in mV units"""
+
     def __init__(self, recording):
-        self.data = recording.data.processing["ecephys"]["LFP"][
+        lfp =  recording.data.processing["ecephys"]["LFP"][
             "ElectricalSeries"
-        ].data[:]
+        ]
+        self.data = lfp.data[:]
         self.description = recording.data.electrodes.to_dataframe()
+        self.conversion = lfp.conversion
+        self.sampling_rate = lfp.rate
+
+    def data_as_volts(self):
+        return self.data * self.conversion
 
     def select_electrodes(self, property_, options):
         """Select electrodes with electrode.property_ in options"""
@@ -78,15 +87,22 @@ class NWBSignalSeries(SignalSeries):
         self.data = self.data[to_use]
         self.description = self.description.loc[to_use]
 
-    def group_by_brain_region(self):
+    def group_by_brain_region(self, index=False):
         out_dict = {}
         for i, row in self.description.iterrows():
             location = row["location"]
             if location not in out_dict:
                 out_dict[location] = []
-            out_dict[location].append(i)
+            to_append = i if index else self.data[i]
+            out_dict[location].append(to_append)
 
         return {k: np.array(v) for k, v in out_dict.items()}
+
+    def filter(self, min_f, max_f, **filter_kwargs):
+        """Filters with MNE - kwargs are passed to mne.filter.filter_data"""
+        self.data = filter_data(
+            self.data_as_volts(), self.sampling_rate, min_f, max_f, **filter_kwargs
+        )
 
 
 class LFPCombiner(ABC):
@@ -114,9 +130,7 @@ class LFPCombiner(ABC):
             eeg_array = simuran.EegArray()
             eeg_array.set_container([simuran.Eeg(signal=eeg) for eeg in result])
 
-        fig = eeg_array.plot(proj=False, show=self.show_vis, bad_chans=bad_chans)
-
-        return fig
+        return eeg_array.plot(proj=False, show=self.show_vis, bad_chans=bad_chans)
 
 
 @dataclass
@@ -133,18 +147,30 @@ class LFPAverageCombiner(LFPCombiner):
 
     def combine(self, signals):
         output_dict = OrderedDict()
-        bad_chans = []
 
-        signals_grouped_by_region = signals.split_into_groups("region")
-        for region, (signals, _) in signals_grouped_by_region.items():
+        signals_grouped_by_region = signals.group_by_brain_region()
+        for region, signals in signals_grouped_by_region.items():
             if self.remove_outliers:
-                signals, outliers = detect_outlying_signals(signals, self.z_threshold)
+                signals, outliers, good_idx, outliers_idx, _ = detect_outlying_signals(
+                    signals, self.z_threshold
+                )
+            else:
+                outliers_idx = np.array([])
+                outliers = np.array([])
+                good_idx = np.array(list(range(len(signals))))
             signals = (
                 z_score_normalise_signals(signals) if self.z_normalise else signals
             )
             average_signal = average_signals(signals)
+            output_dict[region] = dict(
+                signals=signals,
+                average_signal=average_signal,
+                outliers=outliers,
+                good_idx=good_idx,
+                outliers_idx=outliers_idx,
+            )
 
-        return output_dict, bad_chans
+        return output_dict
 
 
 class LFPICACombiner(LFPCombiner):

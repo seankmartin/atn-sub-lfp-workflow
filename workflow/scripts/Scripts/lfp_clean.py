@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+
 # 1. create object to be worked on - like this
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -12,8 +13,11 @@ import simuran
 from mne.filter import filter_data
 from mne.preprocessing import ICA, read_ica
 
-from .lfp_utils import (average_signals, detect_outlying_signals,
-                        z_score_normalise_signals)
+from .lfp_utils import (
+    average_signals,
+    detect_outlying_signals,
+    z_score_normalise_signals,
+)
 
 if TYPE_CHECKING:
     import numpy as np
@@ -68,10 +72,8 @@ class NWBSignalSeries(SignalSeries):
     """LFP is stored in mV units"""
 
     def __init__(self, recording):
-        lfp =  recording.data.processing["ecephys"]["LFP"][
-            "ElectricalSeries"
-        ]
-        self.data = lfp.data[:]
+        lfp = recording.data.processing["ecephys"]["LFP"]["ElectricalSeries"]
+        self.data = lfp.data[:].T
         self.description = recording.data.electrodes.to_dataframe()
         self.conversion = lfp.conversion
         self.sampling_rate = lfp.rate

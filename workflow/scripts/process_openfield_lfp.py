@@ -4,12 +4,14 @@ from pathlib import Path
 
 import numpy as np
 import simuran as smr
+from hdmf.container import Table
 from pynwb import TimeSeries
 from simuran.loaders.nwb_loader import NWBLoader
-from skm_pyutils.table import df_from_file
+from skm_pyutils.table import df_from_file, list_to_df
 
-from scripts.convert_to_nwb import add_lfp_array_to_nwb, add_nwb_electrode
-from scripts.lfp_clean import LFPAverageCombiner, NWBSignalSeries
+from .convert_to_nwb import add_lfp_array_to_nwb, write_nwbfile
+from .scripts.frequency_analysis import calculate_psd
+from .scripts.lfp_clean import LFPAverageCombiner, NWBSignalSeries
 
 here = Path(__file__).resolve().parent
 
@@ -34,7 +36,45 @@ def add_lfp_info(recording, config):
     nwbfile = recording.data
     nwb_proc = nwbfile.copy()
     store_normalised_lfp(ss, results_all, nwb_proc)
+    store_average_lfp(results_picked, nwb_proc)
+    calculate_and_store_lfp_power(config, nwb_proc)
 
+    return nwb_proc
+
+
+def calculate_and_store_lfp_power(config, nwb_proc):
+    signals = nwb_proc.processing["normalised_lfp"]["LFP"]["ElectricalSeries"].data[:].T
+    average_signals = np.array(
+        [
+            nwb_proc.processing["average_lfp"]["SUB_avg"].data[:],
+            nwb_proc.processing["average_lfp"]["RSC_avg"].data[:],
+        ]
+    )
+    all_sigs = np.concatenate(signals, average_signals, axis=0)
+    regions = list(nwb_proc.electrodes.to_dataframe()["location"])
+    regions.extend(("SUB", "RSC"))
+    labels = list(nwb_proc.electrodes.to_dataframe()["label"])
+    labels.extend("SUB_avg", "RSC_avg")
+    results_list = []
+    for (sig, region, label) in zip(all_sigs, regions, labels):
+        f, Pxx, max_psd = calculate_psd(
+            sig,
+            scale="decibels",
+            fmin=config["fmin"],
+            fmax=config["fmax"],
+        )
+        results_list.append(label, region, f, Pxx, max_psd)
+    results_df = list_to_df(
+        results_list, headers=["label", "region", "frequency", "power", "max_psd"]
+    )
+    hdmf_table = Table.from_dataframe(results_df, name="power_spectra")
+    mod = nwb_proc.create_processing_module(
+        "lfp_power", "Store power spectra and spectograms"
+    )
+    mod.add(hdmf_table)
+
+
+def store_average_lfp(results_picked, nwb_proc):
     mod = nwb_proc.create_processing_module(
         "average_lfp", "A single averaged LFP signal per brain region"
     )
@@ -49,11 +89,6 @@ def add_lfp_info(recording, config):
             starting_time=0.0,
         )
         mod.add(ts)
-
-    mod = nwb_proc.create_processing_module(
-        "lfp_power", "Store power spectra and spectograms"
-    )
-    mod.add_container(spectra)
 
 
 def store_normalised_lfp(ss, results_all, nwb_proc):
@@ -101,7 +136,9 @@ def main(
 
     for r in rc.load_iter():
         process_lfp(r, config)
-        add_lfp_info(r, config)
+        nwbfile = add_lfp_info(r, config)
+        filename = out_dir / "processed_nwbfiles" / r.source_file.name
+        write_nwbfile(filename, r, nwbfile)
         exit(-1)
 
 

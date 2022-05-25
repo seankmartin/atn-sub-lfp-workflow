@@ -1,5 +1,6 @@
 """Process openfield LFP into power spectra etc. saved to NWB"""
 
+import logging
 import traceback
 from pathlib import Path
 
@@ -16,6 +17,8 @@ from skm_pyutils.table import df_from_file, df_to_file, filter_table
 pd.options.mode.chained_assignment = None  # default='warn'
 
 here = Path(__file__).resolve().parent
+
+module_logger = logging.getLogger("simuran.custom.convert_to_nwb")
 
 
 def main(table_path, config_path, data_fpath, output_directory: Path, overwrite=False):
@@ -48,14 +51,17 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
 
     r = rc.load(i)
     nwbfile = convert_recording_to_nwb(r, rel_dir)
-    filename.parent.mkdir(parents=True, exist_ok=True)
+    return write_nwbfile(filename, r, nwbfile)
 
+
+def write_nwbfile(filename, r, nwbfile):
+    filename.parent.mkdir(parents=True, exist_ok=True)
     try:
         with NWBHDF5IO(filename, "w") as io:
             io.write(nwbfile)
         return filename
     except Exception:
-        print(f"Could not write {nwbfile} from {r} out to {filename}")
+        module_logger.error(f"Could not write {nwbfile} from {r} out to {filename}")
         if filename.is_file():
             filename.unlink()
         traceback.print_exc()
@@ -300,6 +306,7 @@ def create_nwbfile_with_metadata(recording, name):
 
 
 if __name__ == "__main__":
+    smr.set_only_log_to_file(snakemake.log[0])
     main(
         snakemake.input[0],
         snakemake.config["simuran_config"],

@@ -9,12 +9,10 @@ from astropy import units as u
 from scipy.signal import welch
 from skm_pyutils.plot import UnicodeGrabber
 
-from lfp_clean import LFPClean
+from .lfp_clean import LFPClean
 
 
-def calculate_psd(
-    x, fs=250, group="ATNx", region="SUB", fmin=1, fmax=100, scale="volts"
-):
+def calculate_psd(x, fs=250, fmin=1, fmax=100, scale="volts"):
     f, Pxx = welch(
         x.samples.to(u.uV).value,
         fs=fs,
@@ -32,7 +30,7 @@ def calculate_psd(
     elif scale != "volts":
         raise ValueError(f"Unsupported scale {scale}")
 
-    return (np.array([f, Pxx, [group] * len(f), [region] * len(f)]), Pxx_max)
+    return (f, Pxx, Pxx_max)
 
 
 def plot_psd(ax, f, Pxx, scale="volts"):
@@ -49,6 +47,7 @@ def plot_psd(ax, f, Pxx, scale="volts"):
         ylabel = "PSD (dB)"
 
     ax.set_ylabel(ylabel)
+
 
 def per_animal_psd(recording_container, base_dir, figures, **kwargs):
     simuran.set_plot_style()
@@ -217,7 +216,7 @@ def powers(
         )
         results["{} welch".format(name)] = r1
         results["{} max f".format(name)] = r2
-        
+
         if plot_psd_:
             fig, ax = plt.subplots()
             plot_psd(ax, r1[0], r1[1], scale=psd_scale)

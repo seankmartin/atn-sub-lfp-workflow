@@ -2,10 +2,9 @@
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-
 # 1. create object to be worked on - like this
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import astropy.units as u
 import numpy as np
@@ -13,11 +12,8 @@ import simuran
 from mne.filter import filter_data
 from mne.preprocessing import ICA, read_ica
 
-from .lfp_utils import (
-    average_signals,
-    detect_outlying_signals,
-    z_score_normalise_signals,
-)
+from .lfp_utils import (average_signals, detect_outlying_signals,
+                        z_score_normalise_signals)
 
 if TYPE_CHECKING:
     import numpy as np
@@ -40,7 +36,7 @@ class SignalSeries(ABC):
     """
 
     @abstractmethod
-    def __init__(self, recording: "Recording"):
+    def __init__(self, recording: Optional["Recording"]):
         """Convert recording object into required information."""
 
     @abstractmethod
@@ -71,7 +67,9 @@ class SignalSeries(ABC):
 class NWBSignalSeries(SignalSeries):
     """LFP is stored in mV units"""
 
-    def __init__(self, recording):
+    def __init__(self, recording=None):
+        if recording is None:
+            return
         lfp = recording.data.processing["ecephys"]["LFP"]["ElectricalSeries"]
         self.data = lfp.data[:].T
         self.description = recording.data.electrodes.to_dataframe()
@@ -86,8 +84,12 @@ class NWBSignalSeries(SignalSeries):
         to_use = [
             i for i, row in self.description.iterrows() if row[property_] in options
         ]
-        self.data = self.data[to_use]
-        self.description = self.description.loc[to_use]
+        nss = NWBSignalSeries()
+        nss.data = self.data[to_use]
+        nss.description = self.description.loc[to_use]
+        nss.conversion = self.conversion
+        nss.sampling_rate = self.sampling_rate
+        return nss
 
     def group_by_brain_region(self, index=False):
         out_dict = {}

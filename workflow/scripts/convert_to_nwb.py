@@ -54,10 +54,10 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
     return write_nwbfile(filename, r, nwbfile)
 
 
-def write_nwbfile(filename, r, nwbfile):
+def write_nwbfile(filename, r, nwbfile, manager=None):
     filename.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with NWBHDF5IO(filename, "w") as io:
+        with NWBHDF5IO(filename, "w", manager=manager) as io:
             io.write(nwbfile)
         return filename
     except Exception:

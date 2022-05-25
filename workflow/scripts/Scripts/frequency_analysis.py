@@ -9,12 +9,10 @@ from astropy import units as u
 from scipy.signal import welch
 from skm_pyutils.plot import UnicodeGrabber
 
-from .lfp_clean import LFPClean
-
 
 def calculate_psd(x, fs=250, fmin=1, fmax=100, scale="volts"):
     f, Pxx = welch(
-        x.samples.to(u.uV).value,
+        x * 0.001,
         fs=fs,
         nperseg=2 * fs,
         return_onesided=True,
@@ -145,10 +143,6 @@ def powers(
     recording, base_dir, figures, clean_method="avg", fmin=1, fmax=100, **kwargs
 ):
     clean_kwargs = kwargs.get("clean_kwargs", {})
-    lc = LFPClean(method=clean_method, visualise=False)
-    signals_grouped_by_region = lc.clean(
-        recording, fmin, fmax, method_kwargs=clean_kwargs
-    )["signals"]
     fmt = kwargs.get("image_format", "png")
     psd_scale = kwargs.get("psd_scale", "volts")
     theta_min = kwargs.get("theta_min", 6)

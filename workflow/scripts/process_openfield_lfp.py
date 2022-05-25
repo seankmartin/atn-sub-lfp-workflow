@@ -4,16 +4,29 @@ from pathlib import Path
 
 import numpy as np
 import simuran as smr
-from hdmf.container import Table
+from hdmf.common import DynamicTable
 from pynwb import TimeSeries
 from simuran.loaders.nwb_loader import NWBLoader
 from skm_pyutils.table import df_from_file, list_to_df
 
-from .convert_to_nwb import add_lfp_array_to_nwb, write_nwbfile
-from .scripts.frequency_analysis import calculate_psd
-from .scripts.lfp_clean import LFPAverageCombiner, NWBSignalSeries
+from convert_to_nwb import add_lfp_array_to_nwb, write_nwbfile
+from scripts.frequency_analysis import calculate_psd
+from scripts.lfp_clean import LFPAverageCombiner, NWBSignalSeries
 
 here = Path(__file__).resolve().parent
+
+
+# class PowerTable(NWBTable):
+
+
+def describe_columns():
+    return [
+        {"name": "label", "type": str, "doc": "label of electrode"},
+        {"name": "region", "type": str, "doc": "brain region of electrode"},
+        {"name": "frequency", "type": np.ndarray, "doc": "frequency values"},
+        {"name": "power", "type": np.ndarray, "doc": "power values in dB"},
+        {"name": "max_psd", "type": float, "doc": "maximum power value (uV)"},
+    ]
 
 
 def process_lfp(ss, config):
@@ -23,8 +36,11 @@ def process_lfp(ss, config):
     )
     results_dict = combiner.combine(ss)
 
-    ss.select_electrodes(config["group_name"], config["options"])
-    selected_res = combiner.combine(ss)
+    clean_kwargs = config["clean_kwargs"]
+    sub_ss = ss.select_electrodes(
+        clean_kwargs["pick_property"], clean_kwargs["options"]
+    )
+    selected_res = combiner.combine(sub_ss)
     return results_dict, selected_res
 
 
@@ -50,11 +66,11 @@ def calculate_and_store_lfp_power(config, nwb_proc):
             nwb_proc.processing["average_lfp"]["RSC_avg"].data[:],
         ]
     )
-    all_sigs = np.concatenate(signals, average_signals, axis=0)
+    all_sigs = np.concatenate((signals, average_signals), axis=0)
     regions = list(nwb_proc.electrodes.to_dataframe()["location"])
     regions.extend(("SUB", "RSC"))
     labels = list(nwb_proc.electrodes.to_dataframe()["label"])
-    labels.extend("SUB_avg", "RSC_avg")
+    labels.extend(("SUB_avg", "RSC_avg"))
     results_list = []
     for (sig, region, label) in zip(all_sigs, regions, labels):
         f, Pxx, max_psd = calculate_psd(
@@ -63,11 +79,14 @@ def calculate_and_store_lfp_power(config, nwb_proc):
             fmin=config["fmin"],
             fmax=config["fmax"],
         )
-        results_list.append(label, region, f, Pxx, max_psd)
+        results_list.append([label, region, f, Pxx, max_psd])
     results_df = list_to_df(
         results_list, headers=["label", "region", "frequency", "power", "max_psd"]
     )
-    hdmf_table = Table.from_dataframe(results_df, name="power_spectra")
+    results_df.index.name = "Index"
+    hdmf_table = DynamicTable.from_dataframe(
+        df=results_df, name="power_spectra", columns=describe_columns()
+    )
     mod = nwb_proc.create_processing_module(
         "lfp_power", "Store power spectra and spectograms"
     )
@@ -87,6 +106,7 @@ def store_average_lfp(results_picked, nwb_proc):
             conversion=0.001,
             rate=250.0,
             starting_time=0.0,
+            description="A single averaged LFP signal per brain region",
         )
         mod.add(ts)
 
@@ -96,8 +116,8 @@ def store_normalised_lfp(ss, results_all, nwb_proc):
         "normalised_lfp",
         "Store filtered and z-score normalised LFP, with outlier information",
     )
-    lfp_array = np.zeroes_like(ss.data)
-    electrode_type = []
+    lfp_array = np.zeros_like(ss.data)
+    electrode_type = np.zeros(shape=(lfp_array.shape[0]), dtype=object)
     region_to_idx_dict = ss.group_by_brain_region(index=True)
 
     for brain_region, result in results_all.items():
@@ -116,7 +136,7 @@ def store_normalised_lfp(ss, results_all, nwb_proc):
     nwb_proc.add_electrode_column(
         name="clean",
         description="The LFP signal matches others from this brain region or is an outlier",
-        data=electrode_type,
+        data=list(electrode_type),
     )
     add_lfp_array_to_nwb(nwb_proc, len(ss.data), lfp_array.T, mod)
 
@@ -135,11 +155,9 @@ def main(
     rc = smr.RecordingContainer.from_table(datatable, loader)
 
     for r in rc.load_iter():
-        process_lfp(r, config)
         nwbfile = add_lfp_info(r, config)
-        filename = out_dir / "processed_nwbfiles" / r.source_file.name
-        write_nwbfile(filename, r, nwbfile)
-        exit(-1)
+        filename = out_dir / "processed_nwbfiles" / Path(r.source_file).name
+        write_nwbfile(filename, r, nwbfile, r._nwb_io.manager)
 
 
 if __name__ == "__main__":

@@ -26,12 +26,10 @@ def calculate_psd(x, fs=250, fmin=1, fmax=100, scale="volts"):
     Pxx = Pxx[np.nonzero((f >= fmin) & (f <= fmax))]
     Pxx_max = np.max(Pxx)
     if Pxx_max == 0:
-        logging.warning("0-power found in LFP signal")
-        non_zero_Pxx_max = 1
-    else:
-        non_zero_Pxx_max = Pxx_max
+        module_logger.warning("0-power found in LFP signal, directly returning")
+        return (f, Pxx, Pxx_max)
     if scale == "decibels":
-        Pxx = 10 * np.log10(Pxx / non_zero_Pxx_max)
+        Pxx = 10 * np.log10(Pxx / Pxx_max)
     elif scale != "volts":
         raise ValueError(f"Unsupported scale {scale}")
 

@@ -8,7 +8,6 @@ import simuran as smr
 from hdmf.common import DynamicTable
 from pynwb import TimeSeries
 from simuran.loaders.nwb_loader import NWBLoader
-from skm_pyutils.log import clear_handlers
 from skm_pyutils.table import df_from_file, list_to_df
 
 from convert_to_nwb import add_lfp_array_to_nwb, write_nwbfile
@@ -16,7 +15,7 @@ from scripts.frequency_analysis import calculate_psd
 from scripts.lfp_clean import LFPAverageCombiner, NWBSignalSeries
 
 here = Path(__file__).resolve().parent
-module_logger = logging.getLogger("snakemake.process_lfp")
+module_logger = logging.getLogger("simuran.custom.process_lfp")
 
 
 def describe_columns():
@@ -156,15 +155,15 @@ def main(
 
     failed = False
     for r in rc.load_iter():
-        logging.debug(f"Processing {r.source_file}")
+        module_logger.debug(f"Processing {r.source_file}")
         nwbfile = add_lfp_info(r, config)
         filename = out_dir / "processed_nwbfiles" / Path(r.source_file).name
         fname = write_nwbfile(filename, r, nwbfile, r._nwb_io.manager)
         failed = True if failed is False and fname is None else failed
     if failed:
-        logging.warning("Failed to process at least one file")
+        module_logger.warning("Failed to process at least one file")
     else:
-        logging.info("All files processed successfully")
+        module_logger.info("All files processed successfully")
         with open(out_dir / "processed_nwbfiles.txt", "w") as f:
             for r in rc:
                 f.write(f"{r.source_file}\n")
@@ -172,8 +171,6 @@ def main(
 
 if __name__ == "__main__":
     fh = smr.set_only_log_to_file(snakemake.log[0])
-    clear_handlers(module_logger)
-    module_logger.addHandler(fh)
     main(
         snakemake.input[0],
         snakemake.config["simuran_config"],

@@ -1,3 +1,4 @@
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -5,9 +6,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import simuran
-from astropy import units as u
 from scipy.signal import welch
 from skm_pyutils.plot import UnicodeGrabber
+
+module_logger = logging.getLogger("simuran.custom.frequency_analysis")
 
 
 def calculate_psd(x, fs=250, fmin=1, fmax=100, scale="volts"):
@@ -23,8 +25,13 @@ def calculate_psd(x, fs=250, fmin=1, fmax=100, scale="volts"):
     f = f[np.nonzero((f >= fmin) & (f <= fmax))]
     Pxx = Pxx[np.nonzero((f >= fmin) & (f <= fmax))]
     Pxx_max = np.max(Pxx)
+    if Pxx_max == 0:
+        logging.warning("0-power found in LFP signal")
+        non_zero_Pxx_max = 1
+    else:
+        non_zero_Pxx_max = Pxx_max
     if scale == "decibels":
-        Pxx = 10 * np.log10(Pxx / Pxx_max)
+        Pxx = 10 * np.log10(Pxx / non_zero_Pxx_max)
     elif scale != "volts":
         raise ValueError(f"Unsupported scale {scale}")
 

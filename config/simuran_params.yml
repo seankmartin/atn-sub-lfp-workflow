@@ -20,4 +20,4 @@ loader_kwargs:
   system: Axona
   pos_extension: [.txt, .pos]
 plot_psd: True
-z_score_threshold: 1.1
+z_score_threshold: 1.2

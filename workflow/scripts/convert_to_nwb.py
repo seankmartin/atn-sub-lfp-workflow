@@ -12,13 +12,13 @@ from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from pynwb.ecephys import LFP, ElectricalSeries
 from pynwb.file import Subject
+from skm_pyutils.log import clear_handlers
 from skm_pyutils.table import df_from_file, df_to_file, filter_table
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
 here = Path(__file__).resolve().parent
-
-module_logger = logging.getLogger("simuran.custom.convert_to_nwb")
+module_logger = logging.getLogger("snakemake.convert_to_nwb")
 
 
 def main(table_path, config_path, data_fpath, output_directory: Path, overwrite=False):
@@ -65,6 +65,7 @@ def write_nwbfile(filename, r, nwbfile, manager=None):
         if filename.is_file():
             filename.unlink()
         traceback.print_exc()
+        return None
 
 
 def access_nwb(nwbfile):
@@ -307,6 +308,8 @@ def create_nwbfile_with_metadata(recording, name):
 
 if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
+    clear_handlers(module_logger)
+    module_logger.addHandler(fh)
     main(
         snakemake.input[0],
         snakemake.config["simuran_config"],

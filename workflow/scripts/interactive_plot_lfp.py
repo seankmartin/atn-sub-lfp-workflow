@@ -81,13 +81,31 @@ l = []
 headers = ["Power (Db)", "Frequency (Hz)", "Brain Region"]
 for r in regions:
     psd = psd_table.loc[psd_table["label"] == f"{r}_avg"]
-    l.extend([x, y, r] for x, y in zip(psd["power"], psd["frequency"]))
+    l.extend(
+        [x, y, r] for x, y in zip(psd["power"].array[0], psd["frequency"].array[0])
+    )
 avg_df = list_to_df(l, headers=headers)
 sns.lineplot(
     x="Frequency (Hz)",
     y="Power (Db)",
     hue="Brain Region",
     data=avg_df[avg_df["Frequency (Hz)"] < max_frequency],
+)
+
+# %%
+eeg_array = smr.EEGArray()
+sr = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
+lfp_data = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].data[:].T
+for sig in lfp_data:
+    eeg = smr.EEG.from_numpy(sig, sr)
+    eeg.conversion = 0.001  # mV
+    eeg_array.append(eeg)
+
+bad_chans = electrodes_table[electrodes_table["clean"] == "Outlier"].index
+eeg_array.plot(
+    ch_names=[str(i) for i in range(len(eeg_array))],
+    bad_chans=[str(i) for i in bad_chans],
+    title=recording.get_name_for_save(),
 )
 
 # %%

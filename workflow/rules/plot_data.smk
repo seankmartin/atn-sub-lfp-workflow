@@ -1,11 +1,11 @@
-rule add_data_types:
+rule plot_lfp_spectra:
     input:
-        "results/axona_file_index.csv"
+        "results/processed_nwbfiles.txt"
     output:
-        "results/subret_recordings.csv"
+        "results/plots.txt"
     log:
-        "logs/add_data.log"
+        "logs/plot_spectra.log"
     conda:
         "../../envs/nwb_simuran.yml"
     script:
-        "../scripts/add_types_to_table.py"
+        "../scripts/plot_lfp.py"

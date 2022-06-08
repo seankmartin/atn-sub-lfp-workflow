@@ -8,7 +8,7 @@ import simuran as smr
 from hdmf.common import DynamicTable
 from pynwb import TimeSeries
 from simuran.loaders.nwb_loader import NWBLoader
-from skm_pyutils.table import df_from_file, list_to_df
+from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
 from convert_to_nwb import add_lfp_array_to_nwb, write_nwbfile
 from scripts.frequency_analysis import calculate_psd
@@ -143,18 +143,21 @@ def store_normalised_lfp(ss, results_all, nwb_proc):
 def main(
     table_path,
     config_path,
-    out_dir,
+    output_path,
     num_cpus,
 ):
     datatable = df_from_file(table_path)
     config = smr.ParamHandler(source_file=config_path)
     config["num_cpus"] = num_cpus
     loader = NWBLoader()
+    out_dir = Path(output_path).parent
 
     rc = smr.RecordingContainer.from_table(datatable, loader)
 
+    out_df = datatable.copy()
+
     failed = False
-    for r in rc.load_iter():
+    for i, r in enumerate(rc.load_iter()):
         module_logger.debug(f"Processing {r.source_file}")
         nwbfile = add_lfp_info(r, config)
         filename = out_dir / "processed_nwbfiles" / Path(r.source_file).name
@@ -163,10 +166,10 @@ def main(
     if failed:
         module_logger.warning("Failed to process at least one file")
     else:
-        module_logger.info("All files processed successfully")
-        with open(out_dir / "processed_nwbfiles.txt", "w") as f:
-            for r in rc:
-                f.write(f"{r.source_file}\n")
+        row_idx = datatable.index[i]
+        out_df.at[row_idx, "nwb_file"] = filename
+
+    df_to_file(output_path)
 
 
 if __name__ == "__main__":
@@ -174,6 +177,6 @@ if __name__ == "__main__":
     main(
         snakemake.input[0],
         snakemake.config["simuran_config"],
-        Path(snakemake.output[0]).parent,
+        snakemake.output[0],
         snakemake.threads,
     )

@@ -21,3 +21,4 @@ loader_kwargs:
   pos_extension: [.txt, .pos]
 plot_psd: True
 z_score_threshold: 1.2
+max_psd_freq: 30

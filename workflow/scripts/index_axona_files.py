@@ -18,7 +18,7 @@ def main(path_to_files: str, output_path: str) -> None:
 
 
 def get_rat_name(s):
-    # '''Get rat name from filename'''
+    """Get rat name from filename"""
     names_part = ["Su", "Ca", "LR", "CS", "CR", "LS"]
     temp = s.split("_")
     for name in temp:
@@ -372,10 +372,11 @@ def clean_data(df, **kwargs):
     """
     df["recording_name"] = df.filename.apply(lambda x: x[:-4])
     # Rat name
-    df["rat"] = df.recording_name.apply(get_rat_name)
+    df["name_file"] = df.recording_name.apply(get_rat_name)
     df["name_folder"] = df.directory.apply(get_rat_name_folder)
-    df["rat"] = df["rat"].combine_first(df["name_folder"])
+    df["rat"] = df["name_folder"].combine_first(df["name_file"])
     df.drop("name_folder", axis=1, inplace=True)
+    df.drop("name_file", axis=1, inplace=True)
     # number of channels
     df["n_channels"] = df.filename.apply(n_channels)
     # sleep experiment

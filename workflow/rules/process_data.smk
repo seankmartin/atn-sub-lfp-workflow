@@ -8,7 +8,6 @@ rule preprocess_data:
     script:
         "../scripts/index_axona_files.py"
 
-
 rule add_data_types:
     input:
         "results/axona_file_index.csv"

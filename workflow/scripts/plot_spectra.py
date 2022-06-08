@@ -1,11 +1,11 @@
 import logging
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import simuran as smr
-from black import out
 from skm_pyutils.table import df_from_file, list_to_df
 
 module_logger = logging.getLogger("simuran.custom.plot_spectra")
@@ -136,16 +136,17 @@ def plot_psds(recording, out_dir, max_frequency):
     return psd_dataframe, paths
 
 
-def main(df_path, cfg, output_path, out_dir):
+def main(df_path, config_path, output_path, out_dir):
+    config = smr.ParamHandler(source_file=config_path)
     datatable = df_from_file(df_path)
     loader = smr.loader("nwb")
     rc = smr.RecordingContainer.from_table(datatable, loader=loader)
     per_animal_psds = []
-    max_frequency = cfg["max_psd_freq"]
+    max_frequency = config["max_psd_freq"]
 
     with open(output_path, "w") as f:
         for r in rc.load_iter():
-            rat_name = r.metadata["rat"]
+            rat_name = r.attrs["rat"]
             psd_df, paths = plot_psds(r, out_dir, max_frequency)
             clean_df = psd_df[psd_df["Type"] == "Clean"]
             clean_df["Rat"] = rat_name

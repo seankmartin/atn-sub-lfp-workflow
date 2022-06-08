@@ -1,4 +1,9 @@
 configfile: "config/snakemake_config.yml"
 
+
 include: "rules/process_data.smk"
 include: "rules/analyse_data.smk"
+include: "rules/plot_data.smk"
+
+rule all:
+    input: "results/final.csv"

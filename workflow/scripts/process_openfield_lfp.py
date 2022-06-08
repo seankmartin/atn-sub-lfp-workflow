@@ -168,8 +168,11 @@ def main(
     else:
         row_idx = datatable.index[i]
         out_df.at[row_idx, "nwb_file"] = filename
+        print(filename)
+        print(out_df)
+        exit(-1)
 
-    df_to_file(output_path)
+    df_to_file(out_df, output_path)
 
 
 if __name__ == "__main__":

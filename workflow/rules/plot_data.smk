@@ -1,6 +1,6 @@
 rule plot_lfp_spectra:
     input:
-        "results/processed_nwbfiles.txt"
+        "results/processed_nwbfiles.csv"
     output:
         "results/spectra_plots.txt"
     log:
@@ -10,4 +10,4 @@ rule plot_lfp_spectra:
     conda:
         "../../envs/nwb_simuran.yml"
     script:
-        "../scripts/plot_lfp.py"
+        "../scripts/plot_spectra.py"

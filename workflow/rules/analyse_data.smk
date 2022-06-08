@@ -2,7 +2,7 @@ rule process_openfield_lfp:
     input:
         "results/openfield_nwb.csv"
     output:
-        "results/processed_nwbfiles.txt"
+        "results/processed_nwbfiles.csv"
     log:
         "logs/process_openfieldlfp.log"
     conda:

@@ -163,14 +163,10 @@ def main(
         filename = out_dir / "processed_nwbfiles" / Path(r.source_file).name
         fname = write_nwbfile(filename, r, nwbfile, r._nwb_io.manager)
         failed = True if failed is False and fname is None else failed
-    if failed:
-        module_logger.warning("Failed to process at least one file")
-    else:
         row_idx = datatable.index[i]
         out_df.at[row_idx, "nwb_file"] = filename
-        print(filename)
-        print(out_df)
-        exit(-1)
+    if failed:
+        module_logger.error("Failed to process at least one NWB file")
 
     df_to_file(out_df, output_path)
 

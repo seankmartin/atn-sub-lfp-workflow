@@ -71,7 +71,7 @@ def plot_split_psd(psd_dataframe, output_path, max_frequency=30):
 def plot_average_signal_psd(psd_dataframe, output_path, max_frequency=30):
     l = []
     headers = ["Power (Db)", "Frequency (Hz)", "Brain Region"]
-    regions = sorted(list(set(psd_dataframe["Brain Region"])))
+    regions = sorted(list(set(psd_dataframe["region"])))
     for r in regions:
         psd = psd_dataframe.loc[psd_dataframe["label"] == f"{r}_avg"]
         l.extend(
@@ -93,36 +93,48 @@ def plot_average_signal_psd(psd_dataframe, output_path, max_frequency=30):
 def plot_psd_over_signals(normal_psds, output_path, max_frequency=30):
     fig, ax = plt.subplots()
     normal_psds["Brain Region"] = normal_psds["region"]
+    data = []
+    headers = ["Power (Db)", "Frequency (Hz)", "Brain Region"]
+    for _, row in normal_psds.iterrows():
+        region = row["region"]
+        frequency = row["frequency"]
+        power = row["power"]
+        data.extend([p, f, region] for (f, p) in zip(frequency, power))
+    df = list_to_df(data, headers)
     sns.lineplot(
         ax=ax,
-        x="frequency",
-        y="power",
+        x="Frequency (Hz)",
+        y="Power (Db)",
         hue="Brain Region",
-        data=normal_psds[normal_psds["frequency"] < max_frequency],
+        data=df[df["Frequency (Hz)"] < max_frequency],
     )
-    ax.set_xlabel("Frequency (Hz)")
-    ax.set_ylabel("Power (Db)")
     fig = smr.SimuranFigure(fig, filename=output_path)
     fig.save()
 
 
 def plot_per_animal_psd(per_animal_df, output_path, max_frequency):
-    fig, ax = plt.subplots()
-    sns.lineplot(
-        ax=ax,
-        x="Frequency (Hz)",
-        y="Power (Db)",
-        style="Brain Region",
-        hue="Rat",
-        data=per_animal_df[per_animal_df["Frequency (Hz)"] < max_frequency],
-    )
-    fig = smr.SimuranFigure(fig, filename=output_path)
-    fig.save()
+    regions = sorted(list(set(per_animal_df["Brain Region"])))
+    paths = []
+    for region in regions:
+        df = per_animal_df[per_animal_df["Brain Region"] == region]
+        fig, ax = plt.subplots()
+        sns.lineplot(
+            ax=ax,
+            x="Frequency (Hz)",
+            y="Power (Db)",
+            hue="Rat",
+            data=df[df["Frequency (Hz)"] < max_frequency],
+        )
+        paths.append(f"{output_path}--{region}")
+        fig = smr.SimuranFigure(fig, filename=f"{output_path}--{region}")
+        fig.save()
+
+    return paths
 
 
 def plot_psds(recording, out_dir, max_frequency):
     psd_dataframe = create_psd_table(recording.data)
-    normal_psds, _ = split_psds(grab_psds(recording.data))
+    normal_psds, _ = split_psds(*grab_psds(recording.data))
 
     name_save = recording.get_name_for_save()
     paths = [
@@ -131,7 +143,7 @@ def plot_psds(recording, out_dir, max_frequency):
         out_dir / "normal_psds" / f"{name_save}--normal_psds",
     ]
     plot_split_psd(psd_dataframe, paths[0], max_frequency)
-    plot_average_signal_psd(psd_dataframe, paths[1], max_frequency)
+    plot_average_signal_psd(grab_psds(recording.data)[0], paths[1], max_frequency)
     plot_psd_over_signals(normal_psds, paths[2], max_frequency)
     return psd_dataframe, paths
 
@@ -149,13 +161,13 @@ def main(df_path, config_path, output_path, out_dir):
             rat_name = r.attrs["rat"]
             psd_df, paths = plot_psds(r, out_dir, max_frequency)
             clean_df = psd_df[psd_df["Type"] == "Clean"]
-            clean_df["Rat"] = rat_name
+            clean_df.assign(Rat=rat_name)
             per_animal_psds.append(clean_df)
-            f.writelines(paths)
+            f.writelines([f"{path.name}\n" for path in paths])
         full_df = pd.concat(per_animal_psds, ignore_index=True)
         path = out_dir / "per_animal_psds"
-        plot_per_animal_psd(full_df, path, max_frequency)
-        f.write(path)
+        paths = plot_per_animal_psd(full_df, path, max_frequency)
+        f.writelines([f"{path.name}\n" for path in paths])
 
 
 if __name__ == "__main__":

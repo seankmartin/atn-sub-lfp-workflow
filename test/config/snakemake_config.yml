@@ -1,0 +1,4 @@
+data_directory: data
+simuran_config: ..\..\config\simuran_params.yml
+openfield_filter: ..\..\config\openfield_recordings.yml
+overwrite_nwb: False

@@ -25,7 +25,7 @@ def main(table_path, config_path, data_fpath, output_directory: Path, overwrite=
     config = smr.ParamHandler(source_file=config_path, name="params")
     filter_ = smr.ParamHandler(source_file=data_fpath, name="filter")
     filtered_table = filter_table(table, filter_)
-    loader = smr.loader(config["loader"])(**config["loader_kwargs"])
+    loader = smr.loader(config["loader"], **config["loader_kwargs"])
 
     rc = smr.RecordingContainer.from_table(filtered_table, loader)
 

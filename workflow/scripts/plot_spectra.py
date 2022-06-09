@@ -6,9 +6,18 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import simuran as smr
+from skm_pyutils.plot import GridFig
 from skm_pyutils.table import df_from_file, list_to_df
 
+from common import rename_rat
+
 module_logger = logging.getLogger("simuran.custom.plot_spectra")
+
+
+def group_type_from_rat_name(name):
+    ctrl = "Control (ATN,   N = 6)"
+    lesion = "Lesion  (ATNx, N = 5)"
+    return lesion if name.lower().startswith("l") else ctrl
 
 
 def grab_psds(nwbfile):
@@ -53,22 +62,7 @@ def create_psd_table(nwbfile):
     return list_to_df(l, headers=headers)
 
 
-def plot_split_psd(psd_dataframe, output_path, max_frequency=30):
-    smr.set_plot_style()
-    fig, ax = plt.subplots()
-    sns.lineplot(
-        ax=ax,
-        x="Frequency (Hz)",
-        y="Power (Db)",
-        style="Type",
-        hue="Brain Region",
-        data=psd_dataframe[psd_dataframe["Frequency (Hz)"] < max_frequency],
-    )
-    fig = smr.SimuranFigure(fig, filename=output_path)
-    fig.save()
-
-
-def plot_average_signal_psd(psd_dataframe, output_path, max_frequency=30):
+def convert_df_to_averages(psd_dataframe):
     l = []
     headers = ["Power (Db)", "Frequency (Hz)", "Brain Region"]
     regions = sorted(list(set(psd_dataframe["region"])))
@@ -77,8 +71,30 @@ def plot_average_signal_psd(psd_dataframe, output_path, max_frequency=30):
         l.extend(
             [x, y, r] for x, y in zip(psd["power"].array[0], psd["frequency"].array[0])
         )
-    avg_df = list_to_df(l, headers=headers)
-    fig, ax = plt.subplots()
+    return list_to_df(l, headers=headers)
+
+
+def plot_split_psd(psd_dataframe, max_frequency=30, ax=None):
+    if ax is None:
+        fig, ax = plt.subplots()
+    smr.set_plot_style()
+    sns.lineplot(
+        ax=ax,
+        x="Frequency (Hz)",
+        y="Power (Db)",
+        style="Type",
+        hue="Brain Region",
+        data=psd_dataframe[psd_dataframe["Frequency (Hz)"] < max_frequency],
+    )
+    ax.set_title("Z-score outlier PSD")
+    return ax
+
+
+def plot_average_signal_psd(psd_dataframe, max_frequency=30, ax=None):
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    avg_df = convert_df_to_averages(psd_dataframe)
     sns.lineplot(
         ax=ax,
         x="Frequency (Hz)",
@@ -86,13 +102,15 @@ def plot_average_signal_psd(psd_dataframe, output_path, max_frequency=30):
         hue="Brain Region",
         data=avg_df[avg_df["Frequency (Hz)"] < max_frequency],
     )
-    fig = smr.SimuranFigure(fig, filename=output_path)
-    fig.save()
+    ax.set_title("Average signal PSD")
+    return ax
 
 
-def plot_psd_over_signals(normal_psds, output_path, max_frequency=30):
-    fig, ax = plt.subplots()
+def plot_psd_over_signals(normal_psds, max_frequency=30, ax=None):
+    if ax is None:
+        fig, ax = plt.subplots()
     normal_psds["Brain Region"] = normal_psds["region"]
+    regions = sorted(list(set(normal_psds["Brain Region"])))
     data = []
     headers = ["Power (Db)", "Frequency (Hz)", "Brain Region"]
     for _, row in normal_psds.iterrows():
@@ -106,10 +124,27 @@ def plot_psd_over_signals(normal_psds, output_path, max_frequency=30):
         x="Frequency (Hz)",
         y="Power (Db)",
         hue="Brain Region",
+        hue_order=regions,
         data=df[df["Frequency (Hz)"] < max_frequency],
     )
-    fig = smr.SimuranFigure(fig, filename=output_path)
+    ax.set_title("Across signals PSD CI")
+    return ax
+
+
+def plot_psds(recording, out_dir, max_frequency):
+    psd_dataframe = create_psd_table(recording.data)
+    normal_psds, _ = split_psds(*grab_psds(recording.data))
+
+    gf = GridFig(rows=1, cols=3, size_multiplier_x=15, size_multiplier_y=10)
+    plot_split_psd(psd_dataframe, max_frequency, ax=gf.get_next())
+    plot_average_signal_psd(
+        grab_psds(recording.data)[0], max_frequency, ax=gf.get_next()
+    )
+    plot_psd_over_signals(normal_psds, max_frequency, ax=gf.get_next())
+    path = out_dir / f"{recording.get_name_for_save()}--spectra"
+    fig = smr.SimuranFigure(gf.fig, path)
     fig.save()
+    return psd_dataframe, path
 
 
 def plot_per_animal_psd(per_animal_df, output_path, max_frequency):
@@ -131,22 +166,6 @@ def plot_per_animal_psd(per_animal_df, output_path, max_frequency):
         fig.save()
 
     return paths
-
-
-def plot_psds(recording, out_dir, max_frequency):
-    psd_dataframe = create_psd_table(recording.data)
-    normal_psds, _ = split_psds(*grab_psds(recording.data))
-
-    name_save = recording.get_name_for_save()
-    paths = [
-        out_dir / "split" / f"{name_save}--split",
-        out_dir / "average" / f"{name_save}--average",
-        out_dir / "normal_psds" / f"{name_save}--normal_psds",
-    ]
-    plot_split_psd(psd_dataframe, paths[0], max_frequency)
-    plot_average_signal_psd(grab_psds(recording.data)[0], paths[1], max_frequency)
-    plot_psd_over_signals(normal_psds, paths[2], max_frequency)
-    return psd_dataframe, paths
 
 
 def plot_control_vs_lesion_psd(per_animal_df, output_path, max_frequency):
@@ -171,10 +190,6 @@ def plot_control_vs_lesion_psd(per_animal_df, output_path, max_frequency):
         fig.save()
 
 
-def group_type_from_rat_name(name):
-    return "Lesion" if name.lower().startswith("l") else "Control"
-
-
 def main(df_path, config_path, output_path, out_dir):
     config = smr.ParamHandler(source_file=config_path)
     datatable = df_from_file(df_path)
@@ -184,13 +199,15 @@ def main(df_path, config_path, output_path, out_dir):
 
     with open(output_path, "w") as f:
         for r in rc.load_iter():
-            psd_df, paths = plot_psds(r, out_dir, max_frequency)
-            f.writelines([f"{path.name}\n" for path in paths])
+            _, path = plot_psds(r, out_dir, max_frequency)
+            f.write(f"{path.name}\n")
 
 
-def summary(df_path, config_path, out_dir):
+def summary(df_path, config_path, out_dir, order=0):
+    """Order 0, average PSDs, order 1, average signals"""
     config = smr.ParamHandler(source_file=config_path)
     datatable = df_from_file(df_path)
+    datatable.loc[:, "rat"] = datatable["rat"].map(lambda x: rename_rat(x))
     loader = smr.loader("nwb")
     rc = smr.RecordingContainer.from_table(datatable, loader=loader)
     per_animal_psds = []
@@ -199,15 +216,20 @@ def summary(df_path, config_path, out_dir):
     smr.set_plot_style()
     for r in rc.load_iter():
         rat_name = r.attrs["rat"]
-        psd_df = create_psd_table(r.data)
-        clean_df = psd_df[psd_df["Type"] == "Clean"]
+        if order == 0:
+            psd_df = create_psd_table(r.data)
+            clean_df = psd_df[psd_df["Type"] == "Clean"]
+        else:
+            clean_df = convert_df_to_averages(grab_psds(r.data)[0])
         clean_df = clean_df.assign(Rat=rat_name)
         clean_df = clean_df.assign(Group=group_type_from_rat_name(rat_name))
         per_animal_psds.append(clean_df)
+
+    end_bit = "averaged_psds" if order == 0 else "averaged_signals"
     full_df = pd.concat(per_animal_psds, ignore_index=True)
-    path = out_dir / "per_animal_psds"
+    path = out_dir / f"per_animal_psds--{end_bit}"
     plot_per_animal_psd(full_df, path, max_frequency)
-    path = out_dir / "per_group_psds"
+    path = out_dir / f"per_group_psds--{end_bit}"
     plot_control_vs_lesion_psd(full_df, path, max_frequency)
 
 
@@ -215,11 +237,13 @@ if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
 
     if snakemake.params.get("mode") == "summary":
-        summary(
-            snakemake.input[0],
-            snakemake.config["simuran_config"],
-            Path(snakemake.params["output_dir"]),
-        )
+        for order in (0, 1):
+            summary(
+                snakemake.input[0],
+                snakemake.config["simuran_config"],
+                Path(snakemake.output[0]).parent.parent,
+                order
+            )
     else:
         main(
             snakemake.input[0],

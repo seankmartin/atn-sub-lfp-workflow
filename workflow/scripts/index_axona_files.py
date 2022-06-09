@@ -1,4 +1,6 @@
 import datetime
+import itertools
+import os
 import re
 from pathlib import Path
 
@@ -29,12 +31,11 @@ def get_rat_name(s):
 
 def get_rat_name_folder(s):
     """Get rat name from folder"""
-    names_part = ["Su", "Ca", "LR", "CS", "CR", "LS"]
-    temp = s.split("/")
-    for name in temp:
-        for part in names_part:
-            if part in name:
-                return name
+    names_part = ["Ca", "LR", "CS", "CR", "LS"]
+    temp = s.split(os.sep)
+    for name, part in itertools.product(temp, names_part):
+        if name.startswith(part):
+            return name
 
 
 def decode_name(rat_name):

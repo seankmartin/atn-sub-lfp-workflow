@@ -10,7 +10,7 @@ from pynwb import TimeSeries
 from simuran.loaders.nwb_loader import NWBLoader
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
-from convert_to_nwb import add_lfp_array_to_nwb, write_nwbfile
+from convert_to_nwb import add_lfp_array_to_nwb
 from scripts.frequency_analysis import calculate_psd
 from scripts.lfp_clean import LFPAverageCombiner, NWBSignalSeries
 
@@ -151,13 +151,16 @@ def main(
     config = smr.ParamHandler(source_file=config_path)
     config["num_cpus"] = num_cpus
     loader = NWBLoader(mode="a")
-    out_dir = Path(output_path).parent
 
     rc = smr.RecordingContainer.from_table(datatable, loader)
 
     out_df = datatable.copy()
 
     for i, r in enumerate(rc.load_iter()):
+        row_idx = datatable.index[i]
+        if "normalised_lfp" in r.data.processing:
+            out_df.at[row_idx, "nwb_file"] = r.source_file
+            continue
         module_logger.debug(f"Processing {r.source_file}")
         nwbfile = add_lfp_info(r, config)
         try:
@@ -167,7 +170,6 @@ def main(
             fname = None
             module_logger.error(f"Failed to process {r.source_file}")
             raise (e)
-        row_idx = datatable.index[i]
         out_df.at[row_idx, "nwb_file"] = fname
     df_to_file(out_df, output_path)
 

@@ -190,17 +190,15 @@ def plot_control_vs_lesion_psd(per_animal_df, output_path, max_frequency):
         fig.save()
 
 
-def main(df_path, config_path, output_path, out_dir):
+def main(df_path, config_path, out_dir):
     config = smr.ParamHandler(source_file=config_path)
     datatable = df_from_file(df_path)
     loader = smr.loader("nwb")
     rc = smr.RecordingContainer.from_table(datatable, loader=loader)
     max_frequency = config["max_psd_freq"]
 
-    with open(output_path, "w") as f:
-        for r in rc.load_iter():
-            _, path = plot_psds(r, out_dir, max_frequency)
-            f.write(f"{path.name}\n")
+    for r in rc.load_iter():
+        plot_psds(r, out_dir, max_frequency)
 
 
 def summary(df_path, config_path, out_dir, order=0):
@@ -242,12 +240,11 @@ if __name__ == "__main__":
                 snakemake.input[0],
                 snakemake.config["simuran_config"],
                 Path(snakemake.output[0]).parent.parent,
-                order
+                order,
             )
     else:
         main(
             snakemake.input[0],
             snakemake.config["simuran_config"],
-            snakemake.output[0],
             Path(snakemake.params["output_dir"]),
         )

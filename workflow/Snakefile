@@ -1,3 +1,4 @@
+report: "report/overview.rst"
 configfile: "config/snakemake_config.yml"
 
 

@@ -125,6 +125,7 @@ def plot_per_animal_psd(per_animal_df, output_path, max_frequency):
             hue="Rat",
             data=df[df["Frequency (Hz)"] < max_frequency],
         )
+        smr.despine()
         paths.append(f"{output_path}--{region}")
         fig = smr.SimuranFigure(fig, filename=f"{output_path}--{region}")
         fig.save()
@@ -148,7 +149,46 @@ def plot_psds(recording, out_dir, max_frequency):
     return psd_dataframe, paths
 
 
+def plot_control_vs_lesion_psd(per_animal_df, output_path, max_frequency):
+    regions = sorted(list(set(per_animal_df["Brain Region"])))
+    paths = []
+    for region in regions:
+        df = per_animal_df[per_animal_df["Brain Region"] == region]
+        fig, ax = plt.subplots()
+        sns.lineplot(
+            ax=ax,
+            x="Frequency (Hz)",
+            y="Power (Db)",
+            hue="Group",
+            style="Group",
+            data=df[df["Frequency (Hz)"] < max_frequency],
+            estimator=np.median,
+        )
+        ax.set_title(f"{region} LFP power (median)")
+        smr.despine()
+        paths.append(f"{output_path}--{region}")
+        fig = smr.SimuranFigure(fig, filename=f"{output_path}--{region}")
+        fig.save()
+
+
+def group_type_from_rat_name(name):
+    return "Lesion" if name.lower().startswith("l") else "Control"
+
+
 def main(df_path, config_path, output_path, out_dir):
+    config = smr.ParamHandler(source_file=config_path)
+    datatable = df_from_file(df_path)
+    loader = smr.loader("nwb")
+    rc = smr.RecordingContainer.from_table(datatable, loader=loader)
+    max_frequency = config["max_psd_freq"]
+
+    with open(output_path, "w") as f:
+        for r in rc.load_iter():
+            psd_df, paths = plot_psds(r, out_dir, max_frequency)
+            f.writelines([f"{path.name}\n" for path in paths])
+
+
+def summary(df_path, config_path, out_dir):
     config = smr.ParamHandler(source_file=config_path)
     datatable = df_from_file(df_path)
     loader = smr.loader("nwb")
@@ -156,25 +196,34 @@ def main(df_path, config_path, output_path, out_dir):
     per_animal_psds = []
     max_frequency = config["max_psd_freq"]
 
-    with open(output_path, "w") as f:
-        for r in rc.load_iter():
-            rat_name = r.attrs["rat"]
-            psd_df, paths = plot_psds(r, out_dir, max_frequency)
-            clean_df = psd_df[psd_df["Type"] == "Clean"]
-            clean_df.assign(Rat=rat_name)
-            per_animal_psds.append(clean_df)
-            f.writelines([f"{path.name}\n" for path in paths])
-        full_df = pd.concat(per_animal_psds, ignore_index=True)
-        path = out_dir / "per_animal_psds"
-        paths = plot_per_animal_psd(full_df, path, max_frequency)
-        f.writelines([f"{path.name}\n" for path in paths])
+    smr.set_plot_style()
+    for r in rc.load_iter():
+        rat_name = r.attrs["rat"]
+        psd_df = create_psd_table(r.data)
+        clean_df = psd_df[psd_df["Type"] == "Clean"]
+        clean_df = clean_df.assign(Rat=rat_name)
+        clean_df = clean_df.assign(Group=group_type_from_rat_name(rat_name))
+        per_animal_psds.append(clean_df)
+    full_df = pd.concat(per_animal_psds, ignore_index=True)
+    path = out_dir / "per_animal_psds"
+    plot_per_animal_psd(full_df, path, max_frequency)
+    path = out_dir / "per_group_psds"
+    plot_control_vs_lesion_psd(full_df, path, max_frequency)
 
 
 if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
-    main(
-        snakemake.input[0],
-        snakemake.config["simuran_config"],
-        snakemake.output[0],
-        Path(snakemake.params["output_dir"]),
-    )
+
+    if snakemake.params.get("mode") == "summary":
+        summary(
+            snakemake.input[0],
+            snakemake.config["simuran_config"],
+            Path(snakemake.params["output_dir"]),
+        )
+    else:
+        main(
+            snakemake.input[0],
+            snakemake.config["simuran_config"],
+            snakemake.output[0],
+            Path(snakemake.params["output_dir"]),
+        )

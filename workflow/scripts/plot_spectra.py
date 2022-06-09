@@ -246,5 +246,5 @@ if __name__ == "__main__":
         main(
             snakemake.input[0],
             snakemake.config["simuran_config"],
-            Path(snakemake.params["output_dir"]),
+            Path(snakemake.output[0]),
         )

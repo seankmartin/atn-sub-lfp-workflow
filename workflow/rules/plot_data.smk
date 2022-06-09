@@ -9,8 +9,6 @@ rule plot_lfp_spectra:
             caption="../report/per_animal.rst")
     log:
         "logs/plot_spectra.log"
-    params:
-        output_dir="results/plots/spectra"
     conda:
         "../../envs/nwb_simuran.yml"
     script:

@@ -49,7 +49,8 @@ def add_lfp_info(recording, config):
     results_all, results_picked = process_lfp(ss, config)
 
     nwbfile = recording.data
-    nwb_proc = nwbfile.copy()
+    # nwb_proc = nwbfile.copy()
+    nwb_proc = nwbfile
     store_normalised_lfp(ss, results_all, nwb_proc)
     store_average_lfp(results_picked, nwb_proc)
     calculate_and_store_lfp_power(config, nwb_proc)
@@ -149,25 +150,25 @@ def main(
     datatable = df_from_file(table_path)
     config = smr.ParamHandler(source_file=config_path)
     config["num_cpus"] = num_cpus
-    loader = NWBLoader()
+    loader = NWBLoader(mode="a")
     out_dir = Path(output_path).parent
 
     rc = smr.RecordingContainer.from_table(datatable, loader)
 
     out_df = datatable.copy()
 
-    failed = False
     for i, r in enumerate(rc.load_iter()):
         module_logger.debug(f"Processing {r.source_file}")
         nwbfile = add_lfp_info(r, config)
-        filename = out_dir / "processed_nwbfiles" / Path(r.source_file).name
-        fname = write_nwbfile(filename, r, nwbfile, r._nwb_io.manager)
-        failed = True if failed is False and fname is None else failed
+        try:
+            r._nwb_io.write(nwbfile)
+            fname = r.source_file
+        except Exception as e:
+            fname = None
+            module_logger.error(f"Failed to process {r.source_file}")
+            raise (e)
         row_idx = datatable.index[i]
-        out_df.at[row_idx, "nwb_file"] = filename
-    if failed:
-        module_logger.error("Failed to process at least one NWB file")
-
+        out_df.at[row_idx, "nwb_file"] = fname
     df_to_file(out_df, output_path)
 
 

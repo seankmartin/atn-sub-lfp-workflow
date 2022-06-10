@@ -60,17 +60,16 @@ def add_lfp_info(recording, config):
 
 def calculate_and_store_lfp_power(config, nwb_proc):
     signals = nwb_proc.processing["normalised_lfp"]["LFP"]["ElectricalSeries"].data[:].T
+    brain_regions = sorted(list(set(nwb_proc.electrodes.to_dataframe()["location"])))
+    br_avg = [f"{br}_avg" for br in brain_regions]
     average_signals = np.array(
-        [
-            nwb_proc.processing["average_lfp"]["SUB_avg"].data[:],
-            nwb_proc.processing["average_lfp"]["RSC_avg"].data[:],
-        ]
+        [nwb_proc.processing["average_lfp"][br].data[:] for br in br_avg]
     )
     all_sigs = np.concatenate((signals, average_signals), axis=0)
     regions = list(nwb_proc.electrodes.to_dataframe()["location"])
-    regions.extend(("SUB", "RSC"))
+    regions.extend(brain_regions)
     labels = list(nwb_proc.electrodes.to_dataframe()["label"])
-    labels.extend(("SUB_avg", "RSC_avg"))
+    labels.extend(br_avg)
     results_list = []
     for (sig, region, label) in zip(all_sigs, regions, labels):
         f, Pxx, max_psd = calculate_psd(

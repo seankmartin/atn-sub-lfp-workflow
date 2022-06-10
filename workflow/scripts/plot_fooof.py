@@ -12,7 +12,6 @@ smr.set_plot_style()
 
 def grab_fooof_info_from_container(recording_container):
     info_for_fooof = {"Control": {}, "Lesion": {}}
-    default = {"frequency": None, "spectra": []}
     for recording in recording_container.load_iter():
         brain_regions = recording.data.electrodes.to_dataframe()["location"]
         brain_regions = sorted(list(set(brain_regions)))
@@ -27,7 +26,7 @@ def grab_fooof_info_from_container(recording_container):
             power = np.array(psd_row["power"].values[0]).astype(np.float64)
             volts_scale = np.power(10.0, (power / 10.0)) * max_psd
             if region not in info_for_fooof[group]:
-                info_for_fooof[group][region] = default
+                info_for_fooof[group][region] = {"frequency": None, "spectra": []}
             info_for_fooof[group][region]["spectra"].append(volts_scale)
             info_for_fooof[group][region]["frequency"] = psd_row["frequency"].values[0]
 

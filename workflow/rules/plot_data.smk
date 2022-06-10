@@ -63,3 +63,18 @@ rule plot_coherence:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/plot_coherence.py"
+
+rule plot_speed_lfp:
+    input:
+        "results/processed_nwbfiles.csv"
+    output:
+        report(
+            expand(
+                "results/plots/summary/png/{region}--speed_theta.png", region=REGIONS),
+            category="Summary")
+    log:
+        "logs/plot_speed_lfp.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/plot_speed_vs_lfp.py"

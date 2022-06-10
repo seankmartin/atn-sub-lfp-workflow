@@ -12,7 +12,7 @@ def create_coherence_df(recording_container):
     for recording in recording_container.load_iter():
         nwbfile = recording.data
         coherence_df = nwbfile.processing["lfp_coherence"][
-            "power_spectra"
+            "coherence_table"
         ].to_dataframe()
         region = coherence_df["label"].values[0]
         group = recording.attrs["treatment"]
@@ -34,9 +34,9 @@ def plot_coherence(df, out_dir, max_frequency=40):
 
     fig, ax = plt.subplots()
     sns.lineplot(
-        data=df[df["frequency"] <= max_frequency],
-        x="frequency",
-        y="coherence",
+        data=df[df["Frequency (Hz)"] <= max_frequency],
+        x="Frequency (Hz)",
+        y="Coherence",
         style="Group",
         hue="Group",
         estimator=np.median,

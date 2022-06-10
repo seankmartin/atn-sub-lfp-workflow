@@ -213,7 +213,7 @@ def main(table_path, config_path, output_path, num_cpus, overwrite=False):
             if overwrite:
                 r._nwb_io.write(nwbfile)
             else:
-                fname = r.source_file.parent.parent / "processed" / fname.name
+                fname = fname.parent.parent / "processed" / fname.name
                 export_nwbfile(fname, r, nwbfile, r._nwb_io)
         except Exception as e:
             module_logger.error(f"Failed to process {r.source_file}")

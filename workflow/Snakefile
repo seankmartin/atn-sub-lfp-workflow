@@ -10,4 +10,5 @@ rule all:
     input: 
         [
             "results/plots/spectra", 
-            "results/plots/summary/png/per_animal_psds--averaged_psds--SUB.png"]
+            "results/plots/summary/png/per_animal_psds--averaged_psds--SUB.png",
+            "results/plots/summary/png/SUB--fooof_combined.png"]

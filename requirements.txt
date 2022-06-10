@@ -1,0 +1,4 @@
+simuran
+fooof
+pynwb
+python-picard

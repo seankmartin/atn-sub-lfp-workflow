@@ -44,7 +44,7 @@ def decode_name(rat_name):
     regex_dict = {
         "Canula": "^(Can)",
         "Ca1": "(Ca)",
-        "lesion": "(L)",
+        "Lesion": "(L)",
         "Control": "(CC)|(CR)|(CS)",
         "Ret": "(Ret)|(R)",
         "Sub": "(Sub)|(S)",

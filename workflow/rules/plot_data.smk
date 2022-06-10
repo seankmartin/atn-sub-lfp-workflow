@@ -1,3 +1,6 @@
+GROUPS = ["Control", "Lesion"]
+REGIONS = ["SUB", "RSC"]
+
 rule plot_lfp_spectra:
     input:
         "results/processed_nwbfiles.csv"
@@ -34,3 +37,16 @@ rule plot_spectra_summary:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/plot_spectra.py"
+
+rule plot_fooof:
+    input:
+        "results/processed_nwbfiles.csv"
+    output:
+        expand("results/plots/summary/{region}--{group}--fooof.pdf", region=REGIONS, group=GROUPS),
+        report(
+            expand("results/plots/summary/png/{region}--fooof_combined.png", region=REGIONS), category="Summary")
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/plot_fooof.py"
+    

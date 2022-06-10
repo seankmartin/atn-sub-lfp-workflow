@@ -67,6 +67,20 @@ def write_nwbfile(filename, r, nwbfile, manager=None):
         return None
 
 
+def export_nwbfile(filename, r, nwbfile, src_io):
+    filename.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with NWBHDF5IO(filename, "w") as io:
+            io.export(src_io=src_io, nwbfile=nwbfile)
+        return filename
+    except Exception:
+        module_logger.error(f"Could not write {nwbfile} from {r} out to {filename}")
+        if filename.is_file():
+            filename.unlink()
+        traceback.print_exc()
+        return None
+
+
 def access_nwb(nwbfile):
     # lfp_data = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].data[:]
     # unit_data = nwbfile.units

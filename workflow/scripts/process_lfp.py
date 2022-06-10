@@ -11,7 +11,7 @@ from scipy.signal import coherence
 from simuran.loaders.nwb_loader import NWBLoader
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
-from convert_to_nwb import add_lfp_array_to_nwb
+from convert_to_nwb import add_lfp_array_to_nwb, export_nwbfile
 from scripts.frequency_analysis import calculate_psd
 from scripts.lfp_clean import LFPAverageCombiner, NWBSignalSeries
 
@@ -60,15 +60,23 @@ def add_lfp_info(recording, config):
     nwbfile = recording.data
     # nwb_proc = nwbfile.copy()
     nwb_proc = nwbfile
-    store_normalised_lfp(ss, results_all, nwb_proc)
-    store_average_lfp(results_picked, nwb_proc)
-    calculate_and_store_lfp_power(config, nwb_proc)
-    store_coherence(nwb_proc, flims=(config["fmin"], config["fmax"]))
+    did_anything = [store_normalised_lfp(ss, results_all, nwb_proc)]
+    did_anything.append(store_average_lfp(results_picked, nwb_proc))
+    did_anything.append(calculate_and_store_lfp_power(config, nwb_proc))
+    did_anything.append(
+        store_coherence(nwb_proc, flims=(config["fmin"], config["fmax"]))
+    )
 
-    return nwb_proc
+    for d in did_anything:
+        if d is not False:
+            return nwb_proc, True
+
+    return nwb_proc, False
 
 
 def calculate_and_store_lfp_power(config, nwb_proc):
+    if "lfp_power" in nwb_proc.processing:
+        return False
     signals = nwb_proc.processing["normalised_lfp"]["LFP"]["ElectricalSeries"].data[:].T
     brain_regions = sorted(list(set(nwb_proc.electrodes.to_dataframe()["location"])))
     br_avg = [f"{br}_avg" for br in brain_regions]
@@ -103,6 +111,8 @@ def calculate_and_store_lfp_power(config, nwb_proc):
 
 
 def store_average_lfp(results_picked, nwb_proc):
+    if "average_lfp" in nwb_proc.processing:
+        return False
     mod = nwb_proc.create_processing_module(
         "average_lfp", "A single averaged LFP signal per brain region"
     )
@@ -121,6 +131,8 @@ def store_average_lfp(results_picked, nwb_proc):
 
 
 def store_normalised_lfp(ss, results_all, nwb_proc):
+    if "normalised_lfp" in nwb_proc.processing:
+        return False
     mod = nwb_proc.create_processing_module(
         "normalised_lfp",
         "Store filtered and z-score normalised LFP, with outlier information",
@@ -151,6 +163,8 @@ def store_normalised_lfp(ss, results_all, nwb_proc):
 
 
 def store_coherence(nwb_proc, flims=None):
+    if "lfp_coherence" in nwb_proc.processing:
+        return False
     average_signals = nwb_proc.processing["average_lfp"]
     fields = average_signals.data_interfaces.keys()
     coherence_list = []
@@ -171,22 +185,18 @@ def store_coherence(nwb_proc, flims=None):
     headers = ["label", "frequency", "coherence"]
     results_df = list_to_df(coherence_list, headers=headers)
     hdmf_table = DynamicTable.from_dataframe(
-        df=results_df, name="power_spectra", columns=describe_coherence_columns()
+        df=results_df, name="coherence_table", columns=describe_coherence_columns()
     )
     mod = nwb_proc.create_processing_module("lfp_coherence", "Store coherence")
     mod.add(hdmf_table)
 
 
-def main(
-    table_path,
-    config_path,
-    output_path,
-    num_cpus,
-):
+def main(table_path, config_path, output_path, num_cpus, overwrite=False):
     datatable = df_from_file(table_path)
     config = smr.ParamHandler(source_file=config_path)
     config["num_cpus"] = num_cpus
-    loader = NWBLoader(mode="a")
+
+    loader = NWBLoader(mode="a") if overwrite else NWBLoader(mode="r")
 
     rc = smr.RecordingContainer.from_table(datatable, loader)
 
@@ -194,19 +204,21 @@ def main(
 
     for i, r in enumerate(rc.load_iter()):
         row_idx = datatable.index[i]
-        if "normalised_lfp" in r.data.processing:
-            out_df.at[row_idx, "nwb_file"] = r.source_file
-            continue
         module_logger.debug(f"Processing {r.source_file}")
-        nwbfile = add_lfp_info(r, config)
+        nwbfile, did_anything = add_lfp_info(r, config)
+        if not did_anything:
+            continue
         try:
-            r._nwb_io.write(nwbfile)
-            fname = r.source_file
+            fname = Path(r.source_file)
+            if overwrite:
+                r._nwb_io.write(nwbfile)
+            else:
+                fname = r.source_file.parent.parent / "processed" / fname.name
+                export_nwbfile(fname, r, nwbfile, r._nwb_io)
         except Exception as e:
-            fname = None
             module_logger.error(f"Failed to process {r.source_file}")
             raise (e)
-        out_df.at[row_idx, "nwb_file"] = fname
+        out_df.at[row_idx, "nwb_file"] = str(fname)
     df_to_file(out_df, output_path)
 
 

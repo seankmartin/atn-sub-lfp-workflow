@@ -45,6 +45,8 @@ rule plot_fooof:
         expand("results/plots/summary/{region}--{group}--fooof.pdf", region=REGIONS, group=GROUPS),
         report(
             expand("results/plots/summary/png/{region}--fooof_combined.png", region=REGIONS), category="Summary")
+    log:
+        "logs/plot_fooof.log"
     conda:
         "../../envs/nwb_simuran.yml"
     script:

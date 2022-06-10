@@ -51,4 +51,15 @@ rule plot_fooof:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/plot_fooof.py"
-    
+
+rule plot_coherence:
+    input:
+        "results/processed_nwbfiles.csv"
+    output:
+        report("results/plots/summary/png/coherence.png", category="Summary")
+    log:
+        "logs/plot_coherence.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/plot_coherence.py"

@@ -1,12 +1,11 @@
 import os
 
-import numpy as np
-from scipy.signal import coherence
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 import simuran
-
 from lfp_atn_simuran.Scripts.lfp_clean import LFPClean
+from scipy.signal import coherence
 
 
 def plot_coherence(x, y, ax, fs=250, group="ATNx", fmin=1, fmax=100):
@@ -53,8 +52,6 @@ def plot_recording_coherence(
     theta_min = kwargs.get("theta_min", 6)
     theta_max = kwargs.get("theta_max", 10)
     group = define_recording_group(base_dir)
-    result = {}
-
     # Firstly, clean
     lfp_clean = LFPClean(method=clean_method, visualise=False)
     clean_res = lfp_clean.clean(
@@ -77,7 +74,7 @@ def plot_recording_coherence(
     theta_co = Cxy[np.nonzero((f >= theta_min) & (f <= theta_max))]
     delta_co = Cxy[np.nonzero((f >= delta_min) & (f <= delta_max))]
     peak_theta_co = Cxy[np.nonzero((f >= 9.0) & (f <= 10.0))]
-    result["theta_coherence"] = np.nanmean(theta_co)
+    result = {"theta_coherence": np.nanmean(theta_co)}
     result["Peak 9_p5Hz Theta coherence"] = np.nanmax(peak_theta_co)
     result["delta_coherence"] = np.nanmean(delta_co)
     result["full_res"] = g

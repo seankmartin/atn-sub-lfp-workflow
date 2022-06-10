@@ -1,5 +1,5 @@
 """Process openfield LFP into power spectra etc. saved to NWB"""
-
+import itertools
 import logging
 from pathlib import Path
 
@@ -7,6 +7,7 @@ import numpy as np
 import simuran as smr
 from hdmf.common import DynamicTable
 from pynwb import TimeSeries
+from scipy.signal import coherence
 from simuran.loaders.nwb_loader import NWBLoader
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
@@ -22,9 +23,17 @@ def describe_columns():
     return [
         {"name": "label", "type": str, "doc": "label of electrode"},
         {"name": "region", "type": str, "doc": "brain region of electrode"},
-        {"name": "frequency", "type": np.ndarray, "doc": "frequency values"},
+        {"name": "frequency", "type": np.ndarray, "doc": "frequency values in Hz"},
         {"name": "power", "type": np.ndarray, "doc": "power values in dB"},
         {"name": "max_psd", "type": float, "doc": "maximum power value (uV)"},
+    ]
+
+
+def describe_coherence_columns():
+    return [
+        {"name": "label", "type": str, "doc": "label of coherence pair"},
+        {"name": "frequency", "type": np.ndarray, "doc": "frequency values in Hz"},
+        {"name": "coherence", "type": np.ndarray, "doc": "coherence values unitless"},
     ]
 
 
@@ -54,6 +63,7 @@ def add_lfp_info(recording, config):
     store_normalised_lfp(ss, results_all, nwb_proc)
     store_average_lfp(results_picked, nwb_proc)
     calculate_and_store_lfp_power(config, nwb_proc)
+    store_coherence(nwb_proc, flims=(config["fmin"], config["fmax"]))
 
     return nwb_proc
 
@@ -138,6 +148,33 @@ def store_normalised_lfp(ss, results_all, nwb_proc):
         data=list(electrode_type),
     )
     add_lfp_array_to_nwb(nwb_proc, len(ss.data), lfp_array.T, mod)
+
+
+def store_coherence(nwb_proc, flims=None):
+    average_signals = nwb_proc.processing["average_lfp"]
+    fields = average_signals.data_interfaces.keys()
+    coherence_list = []
+    for fd in sorted(itertools.combinations(fields, 2)):
+        x = average_signals[fd[0]].data[:]
+        y = average_signals[fd[1]].data[:]
+        fs = average_signals[fd[0]].rate
+        f, Cxy = coherence(x, y, fs, nperseg=2 * fs)
+
+        if flims is not None:
+            fmin, fmax = flims
+            f = f[np.nonzero((f >= fmin) & (f <= fmax))]
+            Cxy = Cxy[np.nonzero((f >= fmin) & (f <= fmax))]
+
+        key = f"{fd[0][:-4]}_{fd[1][:-4]}"
+        coherence_list.append([key, f, Cxy])
+
+    headers = ["label", "frequency", "coherence"]
+    results_df = list_to_df(coherence_list, headers=headers)
+    hdmf_table = DynamicTable.from_dataframe(
+        df=results_df, name="power_spectra", columns=describe_coherence_columns()
+    )
+    mod = nwb_proc.create_processing_module("lfp_coherence", "Store coherence")
+    mod.add(hdmf_table)
 
 
 def main(

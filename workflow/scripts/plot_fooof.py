@@ -90,6 +90,7 @@ def main(input_df_path, output_directory, config_path):
 
 
 if __name__ == "__main__":
+    smr.set_only_log_to_file(snakemake.log[0])
     main(
         snakemake.input[0],
         Path(snakemake.output[0]).parent,

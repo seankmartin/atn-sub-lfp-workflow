@@ -36,6 +36,7 @@ def plot_all_signals(recording, output_path):
         show=False,
     )
 
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=400)
     plt.close(fig)
 

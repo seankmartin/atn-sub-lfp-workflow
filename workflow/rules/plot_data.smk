@@ -78,3 +78,15 @@ rule plot_speed_lfp:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/plot_speed_vs_lfp.py"
+
+rule plot_lfp:
+    input:
+        "results/processed_nwbfiles.csv"
+    output:
+        directory("results/plots/signals/")
+    log:
+        "logs/plot_lfp.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/plot_signals.py"

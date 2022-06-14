@@ -1,30 +1,63 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import seaborn as sns
 import simuran as smr
+from skm_pyutils.table import df_from_file
 
 
 def plot_all_signals(recording, output_path):
     eeg_array = smr.EEGArray()
     nwbfile = recording.data
     electrodes_table = nwbfile.electrodes.to_dataframe()
+    bad_chans = electrodes_table[electrodes_table["clean"] == "Outlier"].index
+    locations = electrodes_table["location"]
+    ch_names = [f"{locations[i]}_{i}" for i in range(len(locations))]
+    bad_chans = [ch_names[i] for i in bad_chans]
     sr = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
     lfp_data = nwbfile.processing["normalised_lfp"]["LFP"]["ElectricalSeries"].data[:].T
     for sig in lfp_data:
         eeg = smr.EEG.from_numpy(sig, sr)
-        eeg.conversion = 0.001  # mV
+        eeg.conversion = 0.0000001
         eeg_array.append(eeg)
+    average_signal = nwbfile.processing["average_lfp"]
+    names = []
+    for k in average_signal.data_interfaces:
+        sig = average_signal[k].data[:]
+        eeg = smr.EEG.from_numpy(sig, sr)
+        eeg.conversion = 0.0000001
+        eeg_array.append(eeg)
+        names.append(k)
 
-    bad_chans = electrodes_table[electrodes_table["clean"] == "Outlier"].index
+    ch_names.extend(names)
     fig = eeg_array.plot(
-        ch_names=[str(i) for i in range(len(eeg_array))],
-        bad_chans=[str(i) for i in bad_chans],
+        ch_names=ch_names,
+        bad_chans=bad_chans,
         title=recording.get_name_for_save(),
         show=False,
     )
+
     fig.savefig(output_path, dpi=400)
     plt.close(fig)
 
 
-plot_all_signals(recording, path)
+def plot_signals_rc(recording_container, out_dir):
+    for recording in recording_container.load_iter():
+        output_path = out_dir / f"{recording.get_name_for_save()}--lfp.png"
+        plot_all_signals(recording, output_path)
+
+
+def main(input_df_path, out_dir, config_path):
+    config = smr.ParamHandler(source_file=config_path)
+    datatable = df_from_file(input_df_path)
+    loader = smr.loader("nwb")
+    rc = smr.RecordingContainer.from_table(datatable, loader=loader)
+    plot_signals_rc(rc, out_dir)
+
+
+if __name__ == "__main__":
+    smr.set_only_log_to_file(snakemake.log[0])
+    main(
+        snakemake.input[0],
+        Path(snakemake.output[0]),
+        snakemake.config["simuran_config"],
+    )

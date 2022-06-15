@@ -1,3 +1,4 @@
+import itertools
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -8,64 +9,51 @@ from neurochat.nc_lfp import NLfp
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
 
-def plot_sta(sta_df):
-    smr.set_plot_style()
-    fig, ax = plt.subplots()
-    sns.lineplot(
-        data=df1,
-        x="Time (s)",
-        y="STA",
-        ax=ax,
-        style="Group",
-        hue="Spatial",
-        ci=None,
-    )
-    smr.despine()
-    mc = UnicodeGrabber.get("micro")
-    ax.set_ylabel(f"Spike triggered average ({mc}V)")
-    name = f"average_sta_{out_region}"
-    fig.savefig(os.path.join(out_dir, name + "." + "pdf"))
-    plt.close(fig)
-
-def plot_sfc(sfc_df):
-    fig, ax = plt.subplots()
-        if "Muscimol" in df2["Group"]:
-            sns.lineplot(
-                data=df2,
-                x="Frequency (Hz)",
-                y="SFC",
-                ax=ax,
-                hue="Spatial",
-            )
-        else:
-            sns.lineplot(
-                data=df2,
-                x="Frequency (Hz)",
-                y="SFC",
-                ax=ax,
-                style="Group",
-                hue="Spatial",
-            )
-        smr.despine()
-        ax.set_ylabel("Spike field coherence")
-        name = f"average_sfc_{out_region}"
-        fig.savefig(os.path.join(out_dir, name + "." + "pdf"))
-        plt.close(fig)
-
+def plot_sta(sta_df, out_dir):
+    brain_regions = sorted(list(set(sta_df["Region"])))
+    name_iter = zip(["", "_shuffled"], ["STA", "Shuffled STA"])
+    for region, (name, y) in itertools.product(brain_regions, name_iter):
+        df_part = sta_df[sta_df["Region"] == region]
+        smr.set_plot_style()
         fig, ax = plt.subplots()
         sns.lineplot(
-            data=df2,
-            x="Frequency (Hz)",
-            y="Shuffled SFC",
+            data=df_part,
+            x="Time (s)",
+            y=y,
             ax=ax,
             style="Group",
             hue="Spatial",
+            ci=None,
+        )
+        smr.despine()
+        ax.set_ylabel("Spike triggered average")
+        out_name = out_dir / f"{region}_average_sta{name}"
+        smr_fig = smr.SimuranFigure(fig=fig, filename=out_name)
+        smr_fig.save()
+
+
+def plot_sfc(sta_df, out_dir):
+    brain_regions = sorted(list(set(sta_df["Region"])))
+    name_iter = zip(["", "_shuffled"], ["SFC", "Shuffled SFC"])
+    for region, (name, y) in itertools.product(brain_regions, name_iter):
+        df_part = sta_df[sta_df["Region"] == region]
+        smr.set_plot_style()
+        fig, ax = plt.subplots()
+        sns.lineplot(
+            data=df_part,
+            x="Frequency (Hz)",
+            y=y,
+            ax=ax,
+            style="Group",
+            hue="Spatial",
+            ci=None,
         )
         smr.despine()
         ax.set_ylabel("Spike field coherence")
-        name = f"average_sfc_shuffled_{out_region}"
-        fig.savefig(os.path.join(out_dir, name + "." + "pdf"))
-        plt.close(fig)
+        out_name = out_dir / f"{region}_average_sfc{name}"
+        smr_fig = smr.SimuranFigure(fig=fig, filename=out_name)
+        smr_fig.save()
+
 
 def convert_spike_lfp_to_df(recording_container):
     sta_list = []
@@ -83,6 +71,8 @@ def convert_spike_lfp_to_df(recording_container):
         for unit, type_ in zip(unit, unit_types):
             spike_train = unit_table.loc["unit"].spike_times
             for region in brain_regions:
+                if f"{region}_avg" not in recording.nwbfile.processing["average_lfp"]:
+                    continue
                 add_spike_lfp_info(
                     sta_list, sfc_list, recording, animal, type_, spike_train, region
                 )
@@ -100,9 +90,10 @@ def add_spike_lfp_info(
     signal = recording.nwbfile.processing["average_lfp"][f"{region}_avg"]
     lfp = numpy_to_nc(signal.data[:], sample_rate=signal.rate)
     sta, sfc, t, f = compute_spike_lfp(lfp, spike_train)
+    sfc = sfc / 100
     shuffled_sta, shuffled_sfc = compute_shuffled_spike_lfp(lfp)
     sta_mean = np.mean(shuffled_sta, axis=0)
-    sfc_mean = np.mean(shuffled_sfc, axis=0)
+    sfc_mean = np.mean(shuffled_sfc, axis=0) / 100
 
     sta_list.extend(
         [

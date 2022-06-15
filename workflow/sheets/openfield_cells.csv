@@ -1,0 +1,38 @@
+directory,filename,units,unit_types
+D:\SubRet_recordings_imaging\CSubRet1\CSubRet1_recording\big sq\11092017_bigsq,44092017_CSubRet1_bigsq_d4_1.set,['TT3_U3'],['Spatial']
+D:\SubRet_recordings_imaging\CSubRet1\CSubRet1_recording\CSR1_small sq\04092017,04092017_CSubRet1_smallsq_d2_1.set,"['TT3_U1', 'TT3_U5', 'TT6_U5', 'TT6_U6']","['Spatial', 'Spatial', 'Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet1\CSubRet1_recording\CSR1_small sq\07092017,07092017_CSubRet1_smallsq_d3_1.set,"['TT3_U4', 'TT3_U5', 'TT6_U5', 'TT8_U1', 'TT8_U3']","['Spatial', 'Spatial', 'Spatial', 'Non-Spatial', 'Spatial']"
+D:\SubRet_recordings_imaging\CSubRet1\CSubRet1_recording\CSR1_small sq\11092017,11092017_CSubRet1_smallsq_d4_1.set,"['TT3_U2', 'TT3_U4', 'TT3_U6', 'TT8_U1', 'TT8_U10']","['Spatial', 'Spatial', 'Spatial', 'Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet1\CSubRet1_recording\big sq\13092017,13092017_CSubRet1_bigsq_d5_1.set,"['TT3_U3', 'TT5_U2', 'TT8_U1']","['Spatial', 'Spatial', 'Spatial']"
+D:\SubRet_recordings_imaging\CSubRet1\CSubRet1_recording\CSR1_small sq\13092017,13092017_CSubRet1_smallsq_d5_1.set,"['TT3_U2', 'TT3_U5', 'TT3_U6', 'TT3_U7', 'TT5_U1', 'TT6_U5', 'TT6_U6', 'TT8_U1', 'TT8_U4']","['Spatial', 'Spatial', 'Non-Spatial', 'Spatial', 'Spatial', 'Spatial', 'Spatial', 'Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet1\CSubRet1_recording\small sq_habituation\16082017,16082017_CSubRet1_smallsq_1.set,"['TT2_U1', 'TT2_U2', 'TT2_U3', 'TT3_U5', 'TT3_U8', 'TT3_U9', 'TT3_U10']","['Non-Spatial', 'Non-Spatial', 'Spatial', 'Non-Spatial', 'Spatial', 'Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet1\CSubRet1_recording\small sq_habituation\24082017,24082017_CSubRet1_smallsq_d5_1.set,"['TT3_U2', 'TT3_U3', 'TT3_U4', 'TT3_U5', 'TT6_U1', 'TT6_U2']","['Non-Spatial', 'Spatial', 'Spatial', 'Non-Spatial', 'Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet1\CSubRet1_recording\big sq\26092017,26092017_CSubRet1_bigsq_d6_1.set,"['TT2_U1', 'TT3_U1', 'TT3_U3', 'TT3_U4', 'TT3_U6', 'TT3_U7', 'TT6_U4', 'TT6_U5', 'TT6_U6', 'TT6_U7', 'TT8_U1', 'TT8_U3', 'TT8_U10']","['Non-Spatial', 'Non-Spatial', 'Non-Spatial', 'Non-Spatial', 'Spatial', 'Spatial', 'Non-Spatial', 'Non-Spatial', 'Non-Spatial', 'Spatial', 'Spatial', 'Non-Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet1\CSubRet1_recording\CSR1_small sq\31082017,31082017_CSubRet1_smallsq_d1_1.set,"['TT3_U6', 'TT6_U4', 'TT6_U5', 'TT6_U6', 'TT8_U1', 'TT8_U2']","['Spatial', 'Spatial', 'Spatial', 'Spatial', 'Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet2_sham\CSubRet2_recording\small sq\04092017,04092017_CSubRet2_smallsq_d2_1.set,"['TT2_U1', 'TT3_U1', 'TT4_U1']","['Non-Spatial', 'Non-Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet2_sham\CSubRet2_recording\small square_habituation\17082017,17082017_CSubRet2_smallsq_d2_1.set,['TT3_U1'],['Non-Spatial']
+D:\SubRet_recordings_imaging\CSubRet2_sham\CSubRet2_recording\small square_habituation\23082017,23082017_CSubRet2_smallsq_d4_1.set,"['TT4_U2', 'TT5_U1']","['Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet2_sham\CSubRet2_recording\small square_habituation\24082017,24082017_CSubRet2_smallsq_d5_1.set,"['TT4_U3', 'TT5_U1']","['Non-Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet2_sham\CSubRet2_recording\small square_habituation\25082017,25082017_CSubRet2_smallsq_d6_1.set,"['TT4_U2', 'TT4_U3', 'TT5_U1']","['Spatial', 'Non-Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet3_sham\recording\small sq\05092017,05092017_CSubRet3_smallsq_d2_1.set,"['TT2_U1', 'TT4_U1', 'TT4_U2', 'TT4_U3']","['Spatial', 'Spatial', 'Spatial', 'Spatial']"
+D:\SubRet_recordings_imaging\CSubRet3_sham\recording\small sq\12092017,12092017_CSubRet3_smallsq_d4_1.set,['TT4_U1'],['Spatial']
+D:\SubRet_recordings_imaging\CSubRet3_sham\recording\small sq\14092017,14092017_CSubRet3_smallsq_d5_1.set,['TT4_U1'],['Spatial']
+D:\SubRet_recordings_imaging\CSubRet3_sham\recording\small sq_habituation\18082017,18082017_CSubRet3_smallsq_d1_1.set,['TT7_U1'],['Spatial']
+D:\SubRet_recordings_imaging\CSubRet3_sham\recording\small sq_habituation\23082017,23082017_CSubRet3_smallsq_d2_1.set,['TT4_U6'],['Spatial']
+D:\SubRet_recordings_imaging\CSubRet3_sham\recording\small sq_habituation\24082017,24082017_CSubRet3_smallsq_d3_1.set,['TT4_U5'],['Non-Spatial']
+D:\SubRet_recordings_imaging\CSubRet3_sham\recording\small sq_habituation\25082017,25082017_CSubRet3_smallsq_d4_1.set,"['TT2_U1', 'TT2_U2']","['Non-Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\CSubRet4\recording\small sq up down\01122017\S1_small sq up,01122017_CSR4_smallsqupdown_up_1_1.set,['TT3_U1'],['Non-Spatial']
+D:\SubRet_recordings_imaging\LSubRet1\recording\small sq\04092017,04092017_LSubRet1_small sq_d2_1.set,['TT8_U1'],['Non-Spatial']
+D:\SubRet_recordings_imaging\LSubRet1\recording\small sq\11092017,11092017_LSubRet1_smallsq_d4_1.set,['TT4_U1'],['Non-Spatial']
+D:\SubRet_recordings_imaging\LSubRet1\recording\small sq_habituation\23082017,23082017_LSubRet1_smallsq_d4_1.set,['TT6_U1'],['Non-Spatial']
+D:\SubRet_recordings_imaging\LSubRet3\recording\big sq\05092017_bigsq,05092017_LSubRet3_bigsq_d2_1.set,"['TT3_U1', 'TT5_U1', 'TT5_U3']","['Non-Spatial', 'Non-Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\LSubRet3\recording\big sq\08092017,08092017_LSubRet3_bigsq_d3_1.set,['TT5_U2'],['Non-Spatial']
+D:\SubRet_recordings_imaging\LSubRet3\recording\move spatial cues\S1_hab1,10102017_LSubRet3_spacue_1_1.set,['TT4_U1'],['Non-Spatial']
+D:\SubRet_recordings_imaging\LSubRet3\recording\big sq\12092017,12092017_LSubRet3_bigsq_d4_1.set,"['TT3_U1', 'TT5_U1', 'TT5_U2']","['Non-Spatial', 'Non-Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\LSubRet3\recording\big sq\14092017,14092017_LSubRet3_bigsq_d5_1.set,['TT3_U1'],['Non-Spatial']
+D:\SubRet_recordings_imaging\LSubRet3\recording\small sq_habituation\23082017,23082017_LSubRet3_smallsq_d2_1.set,['TT4_U1'],['Non-Spatial']
+D:\SubRet_recordings_imaging\LSubRet5\recording\Small sq up_small sq down\01122017\S1_small sq up,01122017_smallsqdownup_up_1_1.set,['TT3_U1'],['Non-Spatial']
+D:\SubRet_recordings_imaging\LSubRet5\recording\small sq_screen\21112017,ab112017_LSubRet5_smallsq_screen_3.set,"['TT3_U1', 'TT3_U2']","['Non-Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\LSubRet5\recording\small sq_screen\23112017,23112017_LSubRet5_smallsq_screen_6.set,"['TT3_U1', 'TT12_U1']","['Non-Spatial', 'Non-Spatial']"
+D:\SubRet_recordings_imaging\LSubRet5\recording\small sq_screen\26112017,26112017_LSubRet5_smallsq_screen_7.set,['TT4_U1'],['Non-Spatial']
+D:\SubRet_recordings_imaging\LSubRet5\recording\big sq_one wall_2wall\27112017\27112017,27112017_LSR5_bigsq_1_1.set,"['TT3_U1', 'TT4_U1']","['Non-Spatial', 'Non-Spatial']"

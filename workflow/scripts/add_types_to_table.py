@@ -31,8 +31,9 @@ def main(dirname, path_to_csv, output_path):
             if len(all_files) == 1:
                 dirs_with_set.append(dir_)
 
-        for dir_ in dirs_with_set:
-            out_list.append((dir_, Path(fname).stem, mapping_file))
+        out_list.extend(
+            (dir_, Path(fname).stem, mapping_file) for dir_ in dirs_with_set
+        )
 
     df_to_merge = list_to_df(
         out_list, transpose=False, headers=["directory", "recording_type", "mapping"]

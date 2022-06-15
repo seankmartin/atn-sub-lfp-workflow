@@ -24,7 +24,8 @@ rule openfield_to_nwb:
     input:
         "results/subret_recordings.csv"
     output:
-        "results/openfield_nwb.csv"
+        "results/openfield_nwb.csv",
+        directory("results/nwbfiles")
     log:
         "logs/convert_openfield_to_nwb.log"
     conda:

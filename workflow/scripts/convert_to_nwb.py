@@ -20,15 +20,10 @@ here = Path(__file__).resolve().parent
 module_logger = logging.getLogger("simuran.custom.convert_to_nwb")
 
 
-def main(table_path, config_path, data_fpath, output_directory: Path, overwrite=False):
-    table = df_from_file(table_path)
-    config = smr.ParamHandler(source_file=config_path, name="params")
-    filter_ = smr.ParamHandler(source_file=data_fpath, name="filter")
-    filtered_table = filter_table(table, filter_)
+def main(table, config, filter_, output_directory, out_name, overwrite=False):
+    filtered_table = filter_table(table, filter_) if filter_ is not None else table
     loader = smr.loader(config["loader"], **config["loader_kwargs"])
-
     rc = smr.RecordingContainer.from_table(filtered_table, loader)
-
     filenames = []
 
     for i in range(len(rc)):
@@ -38,7 +33,7 @@ def main(table_path, config_path, data_fpath, output_directory: Path, overwrite=
         filenames.append(fname)
 
     filtered_table["nwb_file"] = filenames
-    df_to_file(filtered_table, output_directory / "openfield_nwb.csv")
+    df_to_file(filtered_table, output_directory / out_name)
 
 
 def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=False):
@@ -319,12 +314,46 @@ def create_nwbfile_with_metadata(recording, name):
     return nwbfile
 
 
+def convert_listed_data_to_nwb(
+    overall_datatable,
+    config_path,
+    data_fpath,
+    output_directory,
+    individual_tables,
+    overwrite=False,
+):
+    """These are processed in order of individual_tables"""
+    table = df_from_file(overall_datatable)
+    config = smr.ParamHandler(source_file=config_path, name="params")
+    filter_ = smr.ParamHandler(source_file=data_fpath, name="filter")
+    out_name = "openfield_nwb.csv"
+    # main(table, config, filter_, output_directory, out_name, overwrite=overwrite)
+    for id_table_name in individual_tables:
+        id_table = df_from_file(id_table_name)
+        out_name = f"{Path(id_table_name).stem}_nwb.csv"
+        filter_ = {"filename": id_table["filename"].values}
+        filtered_table = filter_table(table, filter_)
+        filtered_table.merge(
+            id_table,
+            how="left",
+            on="filename",
+            validate="one_to_one",
+            suffixes=(None, "_x"),
+        )
+        if "directory_x" in filtered_table.columns:
+            filtered_table.drop("directory_x", inplace=True)
+        df_to_file(filtered_table, "test.csv")
+        exit(-1)
+        main(filtered_table, config, None, output_directory, out_name, overwrite)
+
+
 if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
-    main(
+    convert_listed_data_to_nwb(
         snakemake.input[0],
         snakemake.config["simuran_config"],
         snakemake.config["openfield_filter"],
         Path(snakemake.output[0]).parent,
+        snakemake.input[1:],
         snakemake.config["overwrite_nwb"],
     )

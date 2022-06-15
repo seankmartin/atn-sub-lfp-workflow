@@ -20,12 +20,13 @@ rule add_data_types:
     script:
         "../scripts/add_types_to_table.py"
 
-rule openfield_to_nwb:
+rule convert_to_nwb:
     input:
-        "results/subret_recordings.csv"
+        "results/subret_recordings.csv",
+        "workflow/sheets/openfield_cells.csv",
     output:
         "results/openfield_nwb.csv",
-        directory("results/nwbfiles")
+        "results/openfield_cells_nwb.csv",
     log:
         "logs/convert_openfield_to_nwb.log"
     conda:

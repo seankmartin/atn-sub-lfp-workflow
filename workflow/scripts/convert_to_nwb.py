@@ -209,17 +209,28 @@ def add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data, module=None):
 
 def add_electrodes_to_nwb(recording, nwbfile, piw_device, be_device):
     nwbfile.add_electrode_column(name="label", description="electrode label")
-    for i in range(2):
-        brain_region = recording.data["signals"][i * 2].region
+    if len(recording.data["signals"]) == 1:
+        brain_region = recording.data["signals"][0].region
         electrode_group = nwbfile.create_electrode_group(
-            name=f"BE{i}",
+            name="BE0",
             device=be_device,
             location=brain_region,
-            description=f"Bipolar electrodes {i} placed in {brain_region}",
+            description=f"Bipolar electrode 0 placed in {brain_region}",
         )
-        for j in range(2):
-            add_nwb_electrode(nwbfile, brain_region, electrode_group, f"BE{i}_E{j}")
-    num_electrodes = 32 if len(recording.data["signals"]) == 32 else 4
+        add_nwb_electrode(nwbfile, brain_region, electrode_group, "BE0_E0")
+        num_electrodes = 1
+    else:
+        for i in range(2):
+            brain_region = recording.data["signals"][i * 2].region
+            electrode_group = nwbfile.create_electrode_group(
+                name=f"BE{i}",
+                device=be_device,
+                location=brain_region,
+                description=f"Bipolar electrodes {i} placed in {brain_region}",
+            )
+            for j in range(2):
+                add_nwb_electrode(nwbfile, brain_region, electrode_group, f"BE{i}_E{j}")
+        num_electrodes = 32 if len(recording.data["signals"]) == 32 else 4
     if (
         len(recording.data["signals"]) == 32
         or recording.attrs.get("units", "d") is not None

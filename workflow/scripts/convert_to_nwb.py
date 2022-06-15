@@ -27,6 +27,7 @@ def main(table, config, filter_, output_directory, out_name, overwrite=False):
     filenames = []
 
     for i in range(len(rc)):
+        module_logger.info(f"Converting {rc[i].source_file} to NWB")
         fname = convert_to_nwb_and_save(
             rc, i, output_directory, config["cfg_base_dir"], overwrite
         )
@@ -342,8 +343,6 @@ def convert_listed_data_to_nwb(
         )
         if "directory_x" in filtered_table.columns:
             filtered_table.drop("directory_x", inplace=True)
-        df_to_file(filtered_table, "test.csv")
-        exit(-1)
         main(filtered_table, config, None, output_directory, out_name, overwrite)
 
 

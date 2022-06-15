@@ -23,10 +23,9 @@ def get_rat_name(s):
     """Get rat name from filename"""
     names_part = ["Su", "Ca", "LR", "CS", "CR", "LS"]
     temp = s.split("_")
-    for name in temp:
-        for parts in names_part:
-            if parts in name:
-                return name
+    for name, parts in itertools.product(temp, names_part):
+        if parts in name:
+            return name
 
 
 def get_rat_name_folder(s):
@@ -35,7 +34,7 @@ def get_rat_name_folder(s):
     temp = s.split(os.sep)
     for name, part in itertools.product(temp, names_part):
         if name.startswith(part):
-            return name
+            return name.split("_")[0]
 
 
 def decode_name(rat_name):
@@ -350,15 +349,29 @@ def animal_to_mapping(s):
     cl_13 = "CL-SR_1-3.py"
     cl_46 = "CL-SR_4-6.py"
     d = {
-        "CSubRet1": cl_13,
+        "CSubRet1": "CSR1.py",
         "CSubRet2": cl_13,
         "CSubRet3": cl_13,
         "CSubRet4": cl_46,
         "CSubRet5": cl_46,
         "CSR6": cl_46,
+        "LSubRet1": cl_13,
+        "LSubRet2": cl_13,
+        "LSubRet3": cl_13,
+        "LSubRet4": cl_46,
+        "LSubRet5": cl_46,
+        "LSR6": cl_46,
+        "LSR7": "LSR7.py",
     }
 
     return d.get(s, "NOT_EXIST")
+
+
+def filename_to_mapping(s):
+    """Some filenames need special mappings."""
+    d = {"16082017_CSubRet1_smallsq_1.set": "only_1_sub_eeg.py"}
+
+    return d.get(s, np.nan)
 
 
 def clean_data(df, **kwargs):
@@ -429,6 +442,9 @@ def clean_data(df, **kwargs):
     df.drop("name_dec", axis=1, inplace=True)
 
     df["mapping"] = df.rat.apply(animal_to_mapping)
+    df["mapping_file"] = df.filename.apply(filename_to_mapping)
+    df["mapping"] = df["mapping_file"].combine_first(df["mapping"])
+    df.drop("mapping_file", axis=1, inplace=True)
 
     return df
 

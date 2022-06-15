@@ -90,3 +90,16 @@ rule plot_lfp:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/plot_signals.py"
+
+rule plot_spike_lfp:
+    input:
+        "results/processed_nwbfiles.csv",
+        "workflow/sheets/openfield_cells.csv"
+    output:
+        directory("results/plots/spike_lfp/")
+    log:
+        "logs/plot_spike_lfp.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/plot_spike_lfp.py"

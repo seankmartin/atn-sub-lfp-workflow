@@ -65,7 +65,7 @@ def decode_name_folder(rat_name):
     regex_dict = {
         "Canula": "^(Can)",
         "Ca1": "(Ca)",
-        "lesion": "(L)",
+        "Lesion": "(L)",
         "Control": "(CC)|(CR)|(CS)",
         "Ret": "(Ret)|(R)",
         "Sub": "(Sub)|(S)",
@@ -335,15 +335,15 @@ def convert_datetime(dt):
     """convert datetime string to datetime object"""
     try:
         return datetime.datetime.strptime(dt, "%d %b %Y %H:%M:%S")
-    except:
+    except Exception:
         return np.nan
 
 
 def update_maze(s):
     if "Control" in s:
         return "Control"
-    if "lesion" in s:
-        return "lesion"
+    if ("lesion" in s) or ("Lesion" in s):
+        return "Lesion"
 
 
 def animal_to_mapping(s):
@@ -371,6 +371,8 @@ def clean_data(df, **kwargs):
     dataframe: Cleaned dataframe
 
     """
+    to_drop = df[df["directory"].str.contains("Extra")].index
+    df.drop(to_drop, inplace=True)
     df["recording_name"] = df.filename.apply(lambda x: x[:-4])
     # Rat name
     df["name_file"] = df.recording_name.apply(get_rat_name)

@@ -11,6 +11,8 @@ from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
 def plot_sta(sta_df, out_dir):
     brain_regions = sorted(list(set(sta_df["Region"])))
+    hue = "Treatment" if "muscimol" in sta_df["Group"] else "Spatial"
+    style = "Treatment" if "muscimol" in sta_df["Group"] else "Group"
     name_iter = zip(["", "_shuffled"], ["STA", "Shuffled STA"])
     for region, (name, y) in itertools.product(brain_regions, name_iter):
         df_part = sta_df[sta_df["Region"] == region]
@@ -21,8 +23,8 @@ def plot_sta(sta_df, out_dir):
             x="Time (s)",
             y=y,
             ax=ax,
-            style="Group",
-            hue="Spatial",
+            style=style,
+            hue=hue,
             ci=None,
         )
         smr.despine()
@@ -32,11 +34,13 @@ def plot_sta(sta_df, out_dir):
         smr_fig.save()
 
 
-def plot_sfc(sta_df, out_dir):
-    brain_regions = sorted(list(set(sta_df["Region"])))
+def plot_sfc(sfc_df, out_dir):
+    brain_regions = sorted(list(set(sfc_df["Region"])))
+    hue = "Treatment" if "muscimol" in sfc_df["Group"] else "Spatial"
+    style = "Treatment" if "muscimol" in sfc_df["Group"] else "Group"
     name_iter = zip(["", "_shuffled"], ["SFC", "Shuffled SFC"])
     for region, (name, y) in itertools.product(brain_regions, name_iter):
-        df_part = sta_df[sta_df["Region"] == region]
+        df_part = sfc_df[sfc_df["Region"] == region]
         smr.set_plot_style()
         fig, ax = plt.subplots()
         sns.lineplot(
@@ -44,8 +48,8 @@ def plot_sfc(sta_df, out_dir):
             x="Frequency (Hz)",
             y=y,
             ax=ax,
-            style="Group",
-            hue="Spatial",
+            style=style,
+            hue=hue,
             ci=None,
         )
         smr.despine()
@@ -64,7 +68,7 @@ def convert_spike_lfp_to_df(recording_container):
             continue
         recording = recording_container.load(i)
         unit_types = recording.attrs["unit_types"]
-        animal = recording.attrs[""]
+        animal = recording.attrs["treatment"]
         unit_table = recording.nwbfile.units.to_dataframe()
         electrodes = recording.nwbfile.electrodes.to_dataframe()
         brain_regions = sorted(list(set(electrodes["location"])))
@@ -81,6 +85,10 @@ def convert_spike_lfp_to_df(recording_container):
     sta_df = list_to_df(sta_list, headers=headers)
     headers = ["Region", "Group", "Spatial", "SFC", "Time (s)", "Shuffled SFC"]
     sfc_df = list_to_df(sfc_list, headers=headers)
+
+    if "muscimol" in sta_df["Group"]:
+        sta_df["Treatment"] = sta_df["Spatial"]
+        sfc_df["Treatment"] = sfc_df["Spatial"]
     return sta_df, sfc_df
 
 
@@ -193,14 +201,13 @@ def main(input_df_path, input_cell_path, out_dir, config_path):
     config = smr.ParamHandler(source_file=config_path)
     datatable = df_from_file(input_df_path)
     cell_table = df_from_file(input_cell_path)
-    merged_df = datatable.merge(
-        cell_table,
+    merged_df = cell_table.merge(
+        datatable,
         how="left",
         on="filename",
-        validate="many_to_one",
-        suffixes=(None, "_x"),
+        validate="one_to_one",
+        suffixes=("_x", None),
     )
-    print(merged_df)
     df_to_file(merged_df, "test.csv")
     exit(-1)
     loader = smr.loader("nwb")

@@ -1,0 +1,27 @@
+directory,filename,units,unit_types
+D:\SubRet_recordings_imaging\muscimol_data\CanCSCa1_muscimol\09082018\t1_smallsq_beforeinfusion,09082018_CanCSubCa1_muscimol_smallsq_before_2_1.set,['TT10_U1'],['Control']
+D:\SubRet_recordings_imaging\muscimol_data\CanCSCa1_muscimol\09082018\t2_smallsq,09082018_CanCSubCa1_muscimol_smallsq_2_2.set,['TT10_U1'],['Muscimol']
+D:\SubRet_recordings_imaging\muscimol_data\CanCSCa1_muscimol\09082018\t3_bigsq,09082018_CanCSubCa1_muscimol_bigsq_2_3.set,['TT10_U1'],['Muscimol']
+D:\SubRet_recordings_imaging\muscimol_data\CanCSCa1_muscimol\09082018\t4_smallsq_resting,09082018_CanCSubCa1_muscimol_smallsq_2_4.set,['TT10_U1'],['Muscimol']
+D:\SubRet_recordings_imaging\muscimol_data\CanCSCa1_muscimol\09082018\t5_smallsq,09082018_CanCSubCa1_muscimol_smallsq_2_5.set,['TT10_U1'],['Muscimol']
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR7_muscimol\2_03082018\t1_smallsq_before,03082018_CanCSR7_muscimol_smallsq_before_2_1.set,"['TT3_U1', 'TT4_U1', 'TT9_U1', 'TT9_U2']","['Control', 'Control', 'Control', 'Control']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR7_muscimol\2_03082018\t2_smallsq_immediatelyafter,03082018_CanCSR7_muscimol_smallsq_2_2.set,"['TT3_U1', 'TT4_U1', 'TT9_U1', 'TT9_U2']","['Muscimol', 'Muscimol', 'Muscimol', 'Muscimol']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR7_muscimol\2_03082018\t3_smallsq,03082018_CanCSR7_muscimol_smallsq_2_3.set,"['TT3_U1', 'TT4_U1', 'TT9_U1', 'TT9_U2']","['Muscimol', 'Muscimol', 'Muscimol', 'Muscimol']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR7_muscimol\2_03082018\t4_bigsq,03082018_CanCSR7_muscimol_bigsq_2_4.set,"['TT3_U1', 'TT4_U1', 'TT9_U1', 'TT9_U2']","['Muscimol', 'Muscimol', 'Muscimol', 'Muscimol']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR7_muscimol\2_03082018\t5_bigsq,03082018_CanCSR7_muscimol_bigsq_2_5.set,"['TT3_U1', 'TT4_U1', 'TT9_U1', 'TT9_U2']","['Muscimol', 'Muscimol', 'Muscimol', 'Muscimol']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR7_muscimol\2_03082018\t17_nextday_bigsq,04082018_CanCSR7_muscimol_bigsq_2_17.set,"['TT3_U1', 'TT4_U1', 'TT9_U1', 'TT9_U2']","['Control', 'Control', 'Control', 'Control']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\05102018\s1_smallsq_before,05102018_CanCSR8_smallsq_10_1.set,"['TT11_U1', 'TT3_U1', 'TT3_U2']","['Control', 'Control', 'Control']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\05102018\s2_before_bigsq,05102018_CanCSR8_biglsq_10_2.set,"['TT11_U1', 'TT3_U1', 'TT3_U2']","['Control', 'Control', 'Control']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\05102018\s3_after_smallsq,05102018_CanCSR8_smallsq_10_3.set,"['TT11_U1', 'TT3_U1']","['Muscimol', 'Muscimol']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\05102018\s4_big sq,05102018_CanCSR8_bigsq_10_4.set,['TT11_U1'],['Muscimol']
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\05102018\s5_bigsq,05102018_CanCSR8_bigsq_10_.set,"['TT11_U1', 'TT3_U1']","['Muscimol', 'Muscimol']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\05102018\s6_smallsq,05102018_CanCSR8_smallsq_10_6.set,['TT3_U1'],['Muscimol']
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\12112018\s1_before_bigsq,12112018_musc_before_2_1.set,"['TT10_U1', 'TT10_U2', 'TT10_U3']","['Control', 'Control', 'Control']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\12112018\s2_before_smallsq,12112018_musc_before_2_2.set,"['TT10_U1', 'TT10_U3']","['Control', 'Control']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\12112018\s3_muscimol_smallsq,12112018_musc_2_3.set,"['TT10_U1', 'TT10_U2', 'TT10_U3']","['Muscimol', 'Muscimol', 'Muscimol']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\12112018\s4_muscimol_bigsq,12112018_musc_2_4.set,"['TT10_U1', 'TT10_U3']","['Muscimol', 'Muscimol']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\12112018\s5_muscimol_bigsq,12112018_musc_2_5.set,"['TT10_U1', 'TT10_U3']","['Muscimol', 'Muscimol']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\12112018\s6_muscimol_smallsq,12112018_musc_2_6.set,"['TT10_U1', 'TT10_U2', 'TT10_U3']","['Muscimol', 'Muscimol', 'Muscimol']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\12112018\s16_smallsq_nextday,13112018_musc_2_16.set,"['TT10_U1', 'TT10_U3']","['Control', 'Control']"
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\12112018\s7_muscimol_smallsq,12112018_musc_2_7.set,['TT10_U2'],['Muscimol']
+D:\SubRet_recordings_imaging\muscimol_data\CanCSR8_muscimol\12112018\s8_bigsq_with friends,12112018_musc_2_8.set,['TT10_U2'],['Muscimol']

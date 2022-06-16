@@ -8,6 +8,8 @@ app = typer.Typer()
 
 def convert_name_to_type(name):
     p1 = name.split("_")[0]
+    if p1 in ["Control", "Muscimol"]:
+        return p1
     return "Spatial" if p1 == "S" else "Non-Spatial"
 
 

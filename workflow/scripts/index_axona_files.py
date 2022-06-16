@@ -119,22 +119,18 @@ def get_habituation(s):
     """Get the type of maze from filename"""
     temp = re.split("_|\.|\ |\/", s.lower())
     names_part = ["habituation", "hab", "hab1", "hab2", "hab3", "hab4"]
-    for name in temp:
-        for parts in names_part:
-            if parts in name:
-                return 1
-    return 0
+    return next(
+        (1 for name, parts in itertools.product(temp, names_part) if parts in name), 0
+    )
 
 
 def get_habituation_folder(s):
     """Get the type of maze from folder"""
     names_part = ["habituation", "hab", "hab1", "hab2", "hab3", "hab4", "hab5"]
-    temp = s.split("/")
-    for name in temp:
-        for parts in names_part:
-            if parts in name:
-                return 1
-    return 0
+    temp = s.split(os.sep)
+    return next(
+        (1 for name, parts in itertools.product(temp, names_part) if parts in name), 0
+    )
 
 
 def n_channels(s):
@@ -362,6 +358,9 @@ def animal_to_mapping(s):
         "LSubRet5": cl_46,
         "LSR6": cl_46,
         "LSR7": "LSR7.py",
+        "CanCSCa1": "CanCSCa.py",
+        "CanCSR7": "CanCSR.py",
+        "CanCSR8": "CanCSR.py",
     }
 
     return d.get(s, "NOT_EXIST")
@@ -369,7 +368,11 @@ def animal_to_mapping(s):
 
 def filename_to_mapping(s):
     """Some filenames need special mappings."""
-    d = {"16082017_CSubRet1_smallsq_1.set": "only_1_sub_eeg.py"}
+    d = {
+        "16082017_CSubRet1_smallsq_1.set": "only_1_sub_eeg.py",
+        "23112017_LSubRet5_smallsq_screen_6.set": "only_1_sub_eeg.py",
+        "26112017_LSubRet5_smallsq_screen_7.set": "only_1_sub_eeg.py",
+    }
 
     return d.get(s, np.nan)
 
@@ -406,10 +409,10 @@ def clean_data(df, **kwargs):
     df["maze"] = df["maze"].combine_first(df["maze_folder"])
     df.drop("maze_folder", axis=1, inplace=True)
     # get habituation
-    df["habituation"] = df.filename.apply(get_habituation)
-    df["habituation_folder"] = df.filename.apply(get_habituation_folder)
-    df["habituation"] = df["habituation"].combine_first(df["habituation_folder"])
-    df.drop("habituation_folder", axis=1, inplace=True)
+    df["habituation"] = df.filename.apply(get_habituation_folder)
+    df["habituation_fname"] = df.filename.apply(get_habituation)
+    df["habituation"] = df["habituation"].combine_first(df["habituation_fname"])
+    df.drop("habituation_fname", axis=1, inplace=True)
     # Get treatment
     df["treatment"] = df.filename.apply(get_treatment)
     df["treatment_folder"] = df.filename.apply(get_treatment_folder)

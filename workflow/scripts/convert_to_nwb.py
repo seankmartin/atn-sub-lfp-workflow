@@ -339,7 +339,7 @@ def convert_listed_data_to_nwb(
     config = smr.ParamHandler(source_file=config_path, name="params")
     filter_ = smr.ParamHandler(source_file=data_fpath, name="filter")
     out_name = "openfield_nwb.csv"
-    # main(table, config, filter_, output_directory, out_name, overwrite=overwrite)
+    main(table, config, filter_, output_directory, out_name, overwrite=overwrite)
     for id_table_name in individual_tables:
         id_table = df_from_file(id_table_name)
         out_name = f"{Path(id_table_name).stem}_nwb.csv"

@@ -112,14 +112,14 @@ def power_of_signal(lfp_signal, lfp_sr, low_f, high_f):
     return abs_power, total_power
 
 
-def process_lfp(ss, config):
+def process_lfp(ss, config, type_):
     combiner = LFPAverageCombiner(
         z_threshold=config["z_score_threshold"],
         remove_outliers=True,
     )
     results_dict = combiner.combine(ss)
 
-    clean_kwargs = config["clean_kwargs"]
+    clean_kwargs = config[type_]
     sub_ss = ss.select_electrodes(
         clean_kwargs["pick_property"], clean_kwargs["options"]
     )
@@ -130,7 +130,9 @@ def process_lfp(ss, config):
 def add_lfp_info(recording, config):
     ss = NWBSignalSeries(recording)
     ss.filter(config["fmin"], config["fmax"], **config["filter_kwargs"])
-    results_all, results_picked = process_lfp(ss, config)
+    canulated = recording.attrs["rat"].startswith("Can")
+    type_ = "can_clean_kwargs" if canulated else "clean_kwargs"
+    results_all, results_picked = process_lfp(ss, config, type_)
 
     nwbfile = recording.data
     # nwb_proc = nwbfile.copy()
@@ -308,42 +310,46 @@ def store_speed_theta(nwbfile, samples_per_second, low_f, high_f, sf):
     mod.add(hdmf_table)
 
 
-def main(table_path, config_path, output_path, num_cpus, overwrite=False):
-    datatable = df_from_file(table_path)
+def main(table_paths, config_path, output_paths, num_cpus, overwrite=False):
+    output_dfs = []
     config = smr.ParamHandler(source_file=config_path)
     config["num_cpus"] = num_cpus
+    for table_path, output_path in zip(table_paths, output_paths[:-1]):
+        datatable = df_from_file(table_path)
+        loader = NWBLoader(mode="a") if overwrite else NWBLoader(mode="r")
+        rc = smr.RecordingContainer.from_table(datatable, loader)
+        out_df = datatable.copy()
 
-    loader = NWBLoader(mode="a") if overwrite else NWBLoader(mode="r")
-
-    rc = smr.RecordingContainer.from_table(datatable, loader)
-
-    out_df = datatable.copy()
-
-    for i, r in enumerate(rc.load_iter()):
-        row_idx = datatable.index[i]
-        module_logger.debug(f"Processing {r.source_file}")
-        nwbfile, did_anything = add_lfp_info(r, config)
-        if not did_anything:
-            continue
-        try:
+        for i, r in enumerate(rc.load_iter()):
             fname = Path(r.source_file)
-            if overwrite:
-                r._nwb_io.write(nwbfile)
+            fname = fname.parent.parent / "processed" / fname.name
+            if not fname.is_file() or overwrite:
+                module_logger.debug(f"Processing {r.source_file}")
+                nwbfile, _ = add_lfp_info(r, config)
+                write_nwbfile(r, nwbfile, fname)
             else:
-                fname = fname.parent.parent / "processed" / fname.name
-                export_nwbfile(fname, r, nwbfile, r._nwb_io)
-        except Exception as e:
-            module_logger.error(f"Failed to process {r.source_file}")
-            raise (e)
-        out_df.at[row_idx, "nwb_file"] = str(fname)
-    df_to_file(out_df, output_path)
+                module_logger.debug(f"Already processed {r.source_file}")
+            row_idx = datatable.index[i]
+            out_df.at[row_idx, "nwb_file"] = str(fname)
+        output_dfs.append(out_df)
+        df_to_file(out_df, output_path)
+    final_df = pd.concat(output_dfs, ignore_index=True)
+    df_to_file(final_df, output_paths[-1])
+
+
+def write_nwbfile(r, nwbfile, out_name):
+    try:
+        export_nwbfile(out_name, r, nwbfile, r._nwb_io)
+    except Exception as e:
+        module_logger.error(f"Failed to process {r.source_file}")
+        raise (e)
 
 
 if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
     main(
-        snakemake.input[0],
+        snakemake.input,
         snakemake.config["simuran_config"],
-        snakemake.output[0],
+        snakemake.output,
         snakemake.threads,
     )

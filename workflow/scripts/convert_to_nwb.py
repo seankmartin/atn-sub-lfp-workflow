@@ -156,7 +156,11 @@ def add_unit_data_to_nwb(recording, nwbfile):
         if not added:
             nwbfile.add_unit_column(name="tname", description="Tetrode and unit number")
             added = True
-        group = f"BE{i}" if i == 0 else f"TT{i-1}"
+        electrodes = nwbfile.electrodes.to_dataframe()
+        if electrodes.iloc[0]["group_name"].startswith("BE"):
+            group = f"BE{i}" if i == 0 else f"TT{i-1}"
+        else:
+            group = f"TT{i}"
         all_units = unit_info.available_units
         nunit = unit_info.data
         for unit_no in all_units:
@@ -209,33 +213,21 @@ def add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data, module=None):
 
 def add_electrodes_to_nwb(recording, nwbfile, piw_device, be_device):
     nwbfile.add_electrode_column(name="label", description="electrode label")
-    if len(recording.data["signals"]) == 1:
-        brain_region = recording.data["signals"][0].region
-        electrode_group = nwbfile.create_electrode_group(
-            name="BE0",
-            device=be_device,
-            location=brain_region,
-            description=f"Bipolar electrode 0 placed in {brain_region}",
-        )
-        add_nwb_electrode(nwbfile, brain_region, electrode_group, "BE0_E0")
-        num_electrodes = 1
+    if recording.attrs["rat"].startswith("CanCsCa"):
+        num_electrodes = add_tetrodes_no_bipolar(recording, nwbfile, piw_device)
     else:
-        for i in range(2):
-            brain_region = recording.data["signals"][i * 2].region
-            electrode_group = nwbfile.create_electrode_group(
-                name=f"BE{i}",
-                device=be_device,
-                location=brain_region,
-                description=f"Bipolar electrodes {i} placed in {brain_region}",
-            )
-            for j in range(2):
-                add_nwb_electrode(nwbfile, brain_region, electrode_group, f"BE{i}_E{j}")
-        num_electrodes = 32 if len(recording.data["signals"]) == 32 else 4
+        num_electrodes = add_bipolar_electrodes(recording, nwbfile, be_device)
+        add_tetrodes_for_bipolar(recording, nwbfile, piw_device)
+
+    return num_electrodes
+
+
+def add_tetrodes_no_bipolar(recording, nwbfile, piw_device):
     if (
         len(recording.data["signals"]) == 32
         or recording.attrs.get("units", "d") is not None
     ):
-        for i in range(7):
+        for i in range(8):
             brain_region = get_brain_region_for_tetrode(recording, i)
             electrode_group = nwbfile.create_electrode_group(
                 name=f"TT{i}",
@@ -248,8 +240,53 @@ def add_electrodes_to_nwb(recording, nwbfile, piw_device, be_device):
                     add_nwb_electrode(
                         nwbfile, brain_region, electrode_group, f"TT{i}_E{j}"
                     )
+        return 32
+    return 0
 
-    return num_electrodes
+
+def add_tetrodes_for_bipolar(recording, nwbfile, piw_device):
+    if (
+        len(recording.data["signals"]) == 32
+        or recording.attrs.get("units", "d") is not None
+    ):
+        for i in range(7):
+            brain_region = get_brain_region_for_tetrode_bipolar(recording, i)
+            electrode_group = nwbfile.create_electrode_group(
+                name=f"TT{i}",
+                device=piw_device,
+                location=brain_region,
+                description=f"Tetrode {i} electrodes placed in {brain_region}",
+            )
+            if len(recording.data["signals"]) == 32:
+                for j in range(4):
+                    add_nwb_electrode(
+                        nwbfile, brain_region, electrode_group, f"TT{i}_E{j}"
+                    )
+
+
+def add_bipolar_electrodes(recording, nwbfile, be_device):
+    if len(recording.data["signals"]) == 1:
+        brain_region = recording.data["signals"][0].region
+        electrode_group = nwbfile.create_electrode_group(
+            name="BE0",
+            device=be_device,
+            location=brain_region,
+            description=f"Bipolar electrode 0 placed in {brain_region}",
+        )
+        add_nwb_electrode(nwbfile, brain_region, electrode_group, "BE0_E0")
+        return 1
+    else:
+        for i in range(2):
+            brain_region = recording.data["signals"][i * 2].region
+            electrode_group = nwbfile.create_electrode_group(
+                name=f"BE{i}",
+                device=be_device,
+                location=brain_region,
+                description=f"Bipolar electrodes {i} placed in {brain_region}",
+            )
+            for j in range(2):
+                add_nwb_electrode(nwbfile, brain_region, electrode_group, f"BE{i}_E{j}")
+        return 32 if len(recording.data["signals"]) == 32 else 4
 
 
 def add_nwb_electrode(nwbfile, brain_region, electrode_group, label):
@@ -266,6 +303,28 @@ def add_nwb_electrode(nwbfile, brain_region, electrode_group, label):
 
 
 def get_brain_region_for_tetrode(recording, i):
+    brain_region = None
+    if len(recording.data["signals"]) == 32 and hasattr(
+        recording.data["signals"][i * 4], "region"
+    ):
+        brain_region = recording.data["signals"][i * 4].region
+    if (
+        (len(recording.data["units"]) == 8)
+        and (brain_region is None)
+        and hasattr(recording.data["units"][i], "region")
+    ):
+        brain_region = recording.data["units"][i].region
+    if brain_region is None:
+        brain_region = "recording_setup_error"
+        print(
+            f"Electrode group {i+1} has unknown "
+            f"brain region for recording {recording.source_file}"
+        )
+
+    return brain_region
+
+
+def get_brain_region_for_tetrode_bipolar(recording, i):
     brain_region = None
     if len(recording.data["signals"]) == 32 and hasattr(
         recording.data["signals"][(i + 1) * 4], "region"

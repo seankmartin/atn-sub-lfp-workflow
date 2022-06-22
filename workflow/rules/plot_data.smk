@@ -3,7 +3,7 @@ REGIONS = ["SUB", "RSC"]
 
 rule plot_lfp_spectra:
     input:
-        "results/processed_nwbfiles.csv"
+        "results/openfield_processed.csv"
     output:
         report(
             directory("results/plots/spectra"),
@@ -19,7 +19,7 @@ rule plot_lfp_spectra:
 
 rule plot_spectra_summary:
     input:
-        "results/processed_nwbfiles.csv"
+        "results/openfield_processed.csv"
     output:
         report("results/plots/summary/png/per_animal_psds--averaged_psds--SUB.png", category="Comparison"),
         report("results/plots/summary/png/per_animal_psds--averaged_psds--RSC.png", category="Comparison"),
@@ -40,7 +40,7 @@ rule plot_spectra_summary:
 
 rule plot_fooof:
     input:
-        "results/processed_nwbfiles.csv"
+        "results/openfield_processed.csv"
     output:
         expand("results/plots/summary/{region}--{group}--fooof.pdf", region=REGIONS, group=GROUPS),
         report(
@@ -54,7 +54,7 @@ rule plot_fooof:
 
 rule plot_coherence:
     input:
-        "results/processed_nwbfiles.csv"
+        "results/openfield_processed.csv"
     output:
         report("results/plots/summary/png/coherence.png", category="Summary")
     log:
@@ -66,7 +66,7 @@ rule plot_coherence:
 
 rule plot_speed_lfp:
     input:
-        "results/processed_nwbfiles.csv"
+        "results/openfield_processed.csv"
     output:
         report(
             expand(
@@ -81,7 +81,7 @@ rule plot_speed_lfp:
 
 rule plot_lfp:
     input:
-        "results/processed_nwbfiles.csv"
+        "results/openfield_processed.csv"
     output:
         directory("results/plots/signals/")
     log:
@@ -91,9 +91,22 @@ rule plot_lfp:
     script:
         "../scripts/plot_signals.py"
 
-rule plot_spike_lfp:
+rule plot_open_spike_lfp:
     input:
-        "results/processed_nwbfiles.csv",
+        "results/openfield_processed.csv",
+        "workflow/sheets/openfield_cells.csv"
+    output:
+        directory("results/plots/spike_lfp/")
+    log:
+        "logs/plot_spike_lfp.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/plot_spike_lfp.py"
+
+rule plot_musc_spike_lfp:
+    input:
+        "results/muscimol_cells_processed.csv",
         "workflow/sheets/openfield_cells.csv"
     output:
         directory("results/plots/spike_lfp/")

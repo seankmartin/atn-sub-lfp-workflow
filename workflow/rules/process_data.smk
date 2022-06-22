@@ -24,9 +24,11 @@ rule convert_to_nwb:
     input:
         "results/subret_recordings.csv",
         "workflow/sheets/openfield_cells.csv",
+        "workflow/sheets/muscimol_cells.csv"
     output:
         "results/openfield_nwb.csv",
         "results/openfield_cells_nwb.csv",
+        "results/muscimol_cells_nwb.csv"
     log:
         "logs/convert_openfield_to_nwb.log"
     conda:

@@ -1,0 +1,16 @@
+rat:
+  [
+    CSubRet1,
+    CSubRet2,
+    CSubRet3,
+    CSubRet4,
+    CSubRet5,
+    CSR6,
+    LSubRet1,
+    LSubRet2,
+    LSubRet3,
+    LSubRet4,
+    LSubRet5,
+  ]
+habituation: [0]
+maze: [tmaze]

@@ -130,7 +130,7 @@ def process_lfp(ss, config, type_):
 def add_lfp_info(recording, config):
     ss = NWBSignalSeries(recording)
     ss.filter(config["fmin"], config["fmax"], **config["filter_kwargs"])
-    canulated = recording.attrs["rat"].startswith("Can")
+    canulated = recording.data.subject.fields["subject_id"].startswith("CanCsCa")
     type_ = "can_clean_kwargs" if canulated else "clean_kwargs"
     results_all, results_picked = process_lfp(ss, config, type_)
 
@@ -253,6 +253,8 @@ def store_coherence(nwb_proc, flims=None):
         return False
     average_signals = nwb_proc.processing["average_lfp"]
     fields = average_signals.data_interfaces.keys()
+    if len(fields) < 2:
+        return False
     coherence_list = []
     for fd in sorted(itertools.combinations(fields, 2)):
         x = average_signals[fd[0]].data[:]
@@ -326,7 +328,7 @@ def main(table_paths, config_path, output_paths, num_cpus, overwrite=False):
             if not fname.is_file() or overwrite:
                 module_logger.debug(f"Processing {r.source_file}")
                 nwbfile, _ = add_lfp_info(r, config)
-                write_nwbfile(r, nwbfile, fname)
+                export_nwbfile(fname, r, nwbfile, r._nwb_io, debug=True)
             else:
                 module_logger.debug(f"Already processed {r.source_file}")
             row_idx = datatable.index[i]
@@ -334,15 +336,8 @@ def main(table_paths, config_path, output_paths, num_cpus, overwrite=False):
         output_dfs.append(out_df)
         df_to_file(out_df, output_path)
     final_df = pd.concat(output_dfs, ignore_index=True)
+    final_df.drop_duplicates("nwb_file", inplace=True, ignore_index=True)
     df_to_file(final_df, output_paths[-1])
-
-
-def write_nwbfile(r, nwbfile, out_name):
-    try:
-        export_nwbfile(out_name, r, nwbfile, r._nwb_io)
-    except Exception as e:
-        module_logger.error(f"Failed to process {r.source_file}")
-        raise (e)
 
 
 if __name__ == "__main__":

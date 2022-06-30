@@ -63,7 +63,7 @@ def write_nwbfile(filename, r, nwbfile, manager=None):
         return None
 
 
-def export_nwbfile(filename, r, nwbfile, src_io):
+def export_nwbfile(filename, r, nwbfile, src_io, debug=False):
     filename.parent.mkdir(parents=True, exist_ok=True)
     try:
         with NWBHDF5IO(filename, "w") as io:
@@ -71,6 +71,8 @@ def export_nwbfile(filename, r, nwbfile, src_io):
         return filename
     except Exception:
         module_logger.error(f"Could not write {nwbfile} from {r} out to {filename}")
+        if debug:
+            breakpoint()
         if filename.is_file():
             filename.unlink()
         traceback.print_exc()

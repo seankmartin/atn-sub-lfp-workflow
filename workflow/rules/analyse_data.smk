@@ -6,7 +6,7 @@ rule process_lfp:
     output:
         "results/openfield_processed.csv",
         "results/openfield_cells_processed.csv",
-        "results/muscimol_cells_processed.csv"
+        "results/muscimol_cells_processed.csv",
         "results/processed_nwbfiles.csv",
     log:
         "logs/process_lfp.log"

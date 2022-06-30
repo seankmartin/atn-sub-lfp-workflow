@@ -1,4 +1,6 @@
+import ast
 import itertools
+import logging
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -7,6 +9,8 @@ import seaborn as sns
 import simuran as smr
 from neurochat.nc_lfp import NLfp
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
+
+module_logger = logging.getLogger("simuran.custom.plot_spike_lfp")
 
 
 def plot_sta(sta_df, out_dir):
@@ -63,9 +67,13 @@ def convert_spike_lfp_to_df(recording_container):
     sta_list = []
     sfc_list = []
     for i in range(len((recording_container))):
+        to_log = recording_container[i].attrs["nwb_file"]
         units = recording_container[i].attrs["units"]
-        if np.isnan(units):
+        units = ast.literal_eval(units)
+        if not isinstance(units, list):
+            module_logger.debug(f"No units for spike lfp in {to_log}")
             continue
+        module_logger.debug(f"Adding data for {to_log}")
         recording = recording_container.load(i)
         unit_types = recording.attrs["unit_types"]
         animal = recording.attrs["treatment"]
@@ -75,6 +83,7 @@ def convert_spike_lfp_to_df(recording_container):
         for unit, type_ in zip(unit, unit_types):
             spike_train = unit_table.loc["unit"].spike_times
             for region in brain_regions:
+                module_logger.debug(f"Processing region {region} unit {unit}")
                 if f"{region}_avg" not in recording.nwbfile.processing["average_lfp"]:
                     continue
                 add_spike_lfp_info(
@@ -189,12 +198,10 @@ def compute_shuffled_spike_lfp(lfp, spike_train, n_shuffles, sfc_length, sta_len
     return shuffle_sta, shuffle_sfc
 
 
-def get_unit_dict(recording):
-    set_units = recording.attrs["units_to_use"]
-
-
-def compute_spike_lfp(recording):
-    pass
+def plot_spike_lfp(recording, out_dir):
+    sta_df, sfc_df = convert_spike_lfp_to_df(recording)
+    plot_sta(sta_df, out_dir)
+    plot_sfc(sfc_df, out_dir)
 
 
 def main(input_df_path, input_cell_path, out_dir, config_path):
@@ -208,8 +215,6 @@ def main(input_df_path, input_cell_path, out_dir, config_path):
         validate="one_to_one",
         suffixes=("_x", None),
     )
-    df_to_file(merged_df, "test.csv")
-    exit(-1)
     loader = smr.loader("nwb")
     rc = smr.RecordingContainer.from_table(merged_df, loader=loader)
     plot_spike_lfp(rc, out_dir)

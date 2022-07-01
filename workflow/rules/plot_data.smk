@@ -93,7 +93,7 @@ rule plot_lfp:
 
 rule plot_open_spike_lfp:
     input:
-        "results/openfield_processed.csv",
+        "results/openfield_cells_processed.csv",
         "workflow/sheets/openfield_cells.csv"
     output:
         directory("results/plots/spike_lfp/")
@@ -107,7 +107,7 @@ rule plot_open_spike_lfp:
 rule plot_musc_spike_lfp:
     input:
         "results/muscimol_cells_processed.csv",
-        "workflow/sheets/openfield_cells.csv"
+        "workflow/sheets/muscimol_cells.csv"
     output:
         directory("results/plots/spike_lfp/")
     log:
@@ -115,4 +115,4 @@ rule plot_musc_spike_lfp:
     conda:
         "../../envs/nwb_simuran.yml"
     script:
-        "../scripts/plot_spike_lfp.py"
+        "../scripts/plot_musc_spike_lfp.py"

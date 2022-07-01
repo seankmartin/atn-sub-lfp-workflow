@@ -63,7 +63,7 @@ def plot_sfc(sfc_df, out_dir):
         smr_fig.save()
 
 
-def convert_spike_lfp_to_df(recording_container):
+def convert_spike_lfp_to_df(recording_container, n_shuffles):
     sta_list = []
     sfc_list = []
     for i in range(len((recording_container))):
@@ -77,17 +77,26 @@ def convert_spike_lfp_to_df(recording_container):
         recording = recording_container.load(i)
         unit_types = recording.attrs["unit_types"]
         animal = recording.attrs["treatment"]
-        unit_table = recording.nwbfile.units.to_dataframe()
-        electrodes = recording.nwbfile.electrodes.to_dataframe()
+        unit_table = recording.data.units.to_dataframe()
+        electrodes = recording.data.electrodes.to_dataframe()
         brain_regions = sorted(list(set(electrodes["location"])))
-        for unit, type_ in zip(unit, unit_types):
-            spike_train = unit_table.loc["unit"].spike_times
+        for unit, type_ in zip(units, unit_types):
+            spike_train = unit_table.loc[unit_table["tname"] == unit].spike_times
+            spike_train = spike_train.iloc[0]
             for region in brain_regions:
                 module_logger.debug(f"Processing region {region} unit {unit}")
-                if f"{region}_avg" not in recording.nwbfile.processing["average_lfp"]:
+                avg_lfp = recording.data.processing["average_lfp"]
+                if f"{region}_avg" not in avg_lfp.data_interfaces:
                     continue
                 add_spike_lfp_info(
-                    sta_list, sfc_list, recording, animal, type_, spike_train, region
+                    sta_list,
+                    sfc_list,
+                    recording,
+                    animal,
+                    type_,
+                    spike_train,
+                    region,
+                    n_shuffles,
                 )
 
     headers = ["Region", "Group", "Spatial", "STA", "Time (s)", "Shuffled STA"]
@@ -102,13 +111,15 @@ def convert_spike_lfp_to_df(recording_container):
 
 
 def add_spike_lfp_info(
-    sta_list, sfc_list, recording, animal, type_, spike_train, region
+    sta_list, sfc_list, recording, animal, type_, spike_train, region, n_shuffles
 ):
-    signal = recording.nwbfile.processing["average_lfp"][f"{region}_avg"]
+    signal = recording.data.processing["average_lfp"][f"{region}_avg"]
     lfp = numpy_to_nc(signal.data[:], sample_rate=signal.rate)
     sta, sfc, t, f = compute_spike_lfp(lfp, spike_train)
     sfc = sfc / 100
-    shuffled_sta, shuffled_sfc = compute_shuffled_spike_lfp(lfp)
+    shuffled_sta, shuffled_sfc = compute_shuffled_spike_lfp(
+        lfp, spike_train, n_shuffles, len(sfc), len(sta)
+    )
     sta_mean = np.mean(shuffled_sta, axis=0)
     sfc_mean = np.mean(shuffled_sfc, axis=0) / 100
 
@@ -128,7 +139,7 @@ def add_spike_lfp_info(
 
 def numpy_to_nc(data, sample_rate=None, timestamp=None):
     if timestamp is None:
-        timestamp = [float(i) / sample_rate for i in range(len(data))]
+        timestamp = np.arange(0, len(data), dtype=np.float32) / sample_rate
     elif sample_rate is None:
         sample_rate = 1 / np.mean(np.diff(timestamp))
 
@@ -198,8 +209,8 @@ def compute_shuffled_spike_lfp(lfp, spike_train, n_shuffles, sfc_length, sta_len
     return shuffle_sta, shuffle_sfc
 
 
-def plot_spike_lfp(recording, out_dir):
-    sta_df, sfc_df = convert_spike_lfp_to_df(recording)
+def plot_spike_lfp(recording_container, out_dir, n_shuffles):
+    sta_df, sfc_df = convert_spike_lfp_to_df(recording_container, n_shuffles)
     plot_sta(sta_df, out_dir)
     plot_sfc(sfc_df, out_dir)
 
@@ -217,7 +228,8 @@ def main(input_df_path, input_cell_path, out_dir, config_path):
     )
     loader = smr.loader("nwb")
     rc = smr.RecordingContainer.from_table(merged_df, loader=loader)
-    plot_spike_lfp(rc, out_dir)
+    n_shuffles = config.get("num_spike_shuffles")
+    plot_spike_lfp(rc, out_dir, n_shuffles)
 
 
 if __name__ == "__main__":

@@ -35,3 +35,16 @@ rule convert_to_nwb:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/convert_to_nwb.py"
+
+rule convert_tmaze:
+    input:
+        "results/subret_recordings.csv",
+        "workflow/sheets/tmaze-times.csv"
+    output:
+        "results/tmaze-times_nwb.csv"
+    log:
+        "logs/convert_tmaze.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/tmaze/t_maze_convert.py"

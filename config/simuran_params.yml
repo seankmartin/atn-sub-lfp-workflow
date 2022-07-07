@@ -27,4 +27,4 @@ z_score_threshold: 1.2
 max_psd_freq: 30
 speed_theta_samples_per_second: 5
 max_speed: 40
-num_spike_shuffles: 10
+num_spike_shuffles: 40

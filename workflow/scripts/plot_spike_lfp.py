@@ -82,6 +82,10 @@ def convert_spike_lfp_to_df(recording_container, n_shuffles):
         brain_regions = sorted(list(set(electrodes["location"])))
         for unit, type_ in zip(units, unit_types):
             spike_train = unit_table.loc[unit_table["tname"] == unit].spike_times
+            if len(spike_train) == 0:
+                raise ValueError(
+                    f"unit {unit} not found in table with units {unit_table['tname']}"
+                )
             spike_train = spike_train.iloc[0]
             for region in brain_regions:
                 module_logger.debug(f"Processing region {region} unit {unit}")
@@ -101,7 +105,7 @@ def convert_spike_lfp_to_df(recording_container, n_shuffles):
 
     headers = ["Region", "Group", "Spatial", "STA", "Time (s)", "Shuffled STA"]
     sta_df = list_to_df(sta_list, headers=headers)
-    headers = ["Region", "Group", "Spatial", "SFC", "Time (s)", "Shuffled SFC"]
+    headers = ["Region", "Group", "Spatial", "SFC", "Frequency (Hz)", "Shuffled SFC"]
     sfc_df = list_to_df(sfc_list, headers=headers)
 
     if "muscimol" in sta_df["Group"]:
@@ -115,7 +119,7 @@ def add_spike_lfp_info(
 ):
     signal = recording.data.processing["average_lfp"][f"{region}_avg"]
     lfp = numpy_to_nc(signal.data[:], sample_rate=signal.rate)
-    sta, sfc, t, f = compute_spike_lfp(lfp, spike_train)
+    sta, sfc, t, f = compute_spike_lfp(lfp, spike_train, n_shuffles * 4)
     sfc = sfc / 100
     shuffled_sta, shuffled_sfc = compute_shuffled_spike_lfp(
         lfp, spike_train, n_shuffles, len(sfc), len(sta)
@@ -237,6 +241,6 @@ if __name__ == "__main__":
     main(
         snakemake.input[0],
         snakemake.input[1],
-        Path(snakemake.output[0]).parent,
+        Path(snakemake.output[0]),
         snakemake.config["simuran_config"],
     )

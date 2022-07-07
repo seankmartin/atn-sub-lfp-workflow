@@ -414,7 +414,7 @@ def convert_listed_data_to_nwb(
             suffixes=(None, "_x"),
         )
         if "directory_x" in filtered_table.columns:
-            filtered_table.drop("directory_x", inplace=True)
+            filtered_table.drop("directory_x", axis=1, inplace=True)
         main(filtered_table, config, None, output_directory, out_name, overwrite)
 
 

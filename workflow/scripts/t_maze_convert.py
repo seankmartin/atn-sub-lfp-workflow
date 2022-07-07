@@ -3,9 +3,9 @@ from pathlib import Path
 
 import simuran as smr
 from pandas import DataFrame
-from skm_pyutils.table import df_from_file, filter_table, list_to_df
+from skm_pyutils.table import df_from_file, df_to_file, filter_table, list_to_df
 
-from ..convert_to_nwb import main
+from convert_to_nwb import main
 
 
 def convert_tmaze_data(
@@ -23,12 +23,11 @@ def convert_tmaze_data(
     cfg = smr.config_from_file(main_cfg_path)
 
     filtered_df = filter_table(df, filter_cfg)
+    filtered_df["merge_key"] = filtered_df[["directory", "filename"]].agg(
+        os.sep.join, axis=1
+    )
     new_tmaze_df = modify_tmaze_times(t_maze_times, cfg["cfg_base_dir"])
     merged_df = merge_times_files(filtered_df, new_tmaze_df)
-    from skm_pyutils.table import df_to_file
-
-    df_to_file(merged_df, "testtmaze.csv")
-    exit(-1)
 
     main(
         merged_df,
@@ -41,23 +40,27 @@ def convert_tmaze_data(
 
 
 def change_mapping(s):
+    if type(s) is not str:
+        raise TypeError(f"{s} should be a string")
     bits = os.path.splitext(s)
     return bits[0] + "-no-cells" + bits[1]
 
 
 def merge_times_files(files_df: DataFrame, times_df: DataFrame):
-    files_df.merge(
+    merged_df = files_df.merge(
         times_df,
-        how="inner",
-        on=["directory", "filename"],
+        how="right",
+        on="merge_key",
         validate="one_to_one",
         suffixes=(None, "_x"),
     )
-    files_df.drop(
-        ["directory_x", "filename_x", "mapping_x", "animal"], axis=1, inplace=True
+    merged_df.drop(
+        ["directory_x", "filename_x", "mapping_x", "merge_key"],
+        axis=1,
+        inplace=True,
     )
-    files_df.loc[:, "mapping"] = files_df["mapping"].apply(change_mapping)
-    return files_df
+    merged_df.loc[:, "mapping"] = merged_df["mapping"].apply(change_mapping)
+    return merged_df
 
 
 def modify_tmaze_times(df, base_dir):
@@ -75,6 +78,7 @@ def modify_tmaze_times(df, base_dir):
                 row.session,
                 row.trial,
                 row.passed,
+                row.mapping,
             ]
         part = [
             row.start,
@@ -86,7 +90,9 @@ def modify_tmaze_times(df, base_dir):
         if row.test == "second":
             new_df_list.append(ilist)
 
-    return list_to_df(new_df_list, headers)
+    new_df = list_to_df(new_df_list, headers)
+    new_df["merge_key"] = new_df[["directory", "filename"]].agg(os.sep.join, axis=1)
+    return new_df
 
 
 def tmaze_headers():
@@ -96,14 +102,13 @@ def tmaze_headers():
         "session",
         "trial",
         "passed",
+        "mapping",
         "start1",
         "choice1",
         "end1",
         "start2",
-        "passed2",
         "choice2",
         "end2",
-        "mapping",
     ]
 
 
@@ -111,8 +116,8 @@ if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
     convert_tmaze_data(
         snakemake.input[0],
-        snakemake.input[1],
         snakemake.config["tmaze_filter"],
+        snakemake.input[1],
         snakemake.config["simuran_config"],
         Path(snakemake.output[0]).parent,
         snakemake.config["overwrite_nwb"],

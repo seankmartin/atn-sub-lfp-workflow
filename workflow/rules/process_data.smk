@@ -47,4 +47,4 @@ rule convert_tmaze:
     conda:
         "../../envs/nwb_simuran.yml"
     script:
-        "../scripts/tmaze/t_maze_convert.py"
+        "../scripts/t_maze_convert.py"

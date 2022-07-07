@@ -406,16 +406,16 @@ def convert_listed_data_to_nwb(
         out_name = f"{Path(id_table_name).stem}_nwb.csv"
         filter_ = {"filename": id_table["filename"].values}
         filtered_table = filter_table(table, filter_)
-        filtered_table.merge(
+        merged_df = filtered_table.merge(
             id_table,
             how="left",
             on="filename",
             validate="one_to_one",
             suffixes=(None, "_x"),
         )
-        if "directory_x" in filtered_table.columns:
-            filtered_table.drop("directory_x", axis=1, inplace=True)
-        main(filtered_table, config, None, output_directory, out_name, overwrite)
+        if "directory_x" in merged_df.columns:
+            merged_df.drop("directory_x", axis=1, inplace=True)
+        main(merged_df, config, None, output_directory, out_name, overwrite)
 
 
 if __name__ == "__main__":

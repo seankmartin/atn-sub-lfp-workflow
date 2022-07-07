@@ -94,7 +94,6 @@ rule plot_lfp:
 rule plot_open_spike_lfp:
     input:
         "results/openfield_cells_processed.csv",
-        "workflow/sheets/openfield_cells.csv"
     output:
         directory("results/plots/spike_lfp/")
     log:

@@ -75,7 +75,7 @@ def convert_spike_lfp_to_df(recording_container, n_shuffles):
             continue
         module_logger.debug(f"Adding data for {to_log}")
         recording = recording_container.load(i)
-        unit_types = recording.attrs["unit_types"]
+        unit_types = ast.literal_eval(recording.attrs["unit_types"])
         animal = recording.attrs["treatment"]
         unit_table = recording.data.units.to_dataframe()
         electrodes = recording.data.electrodes.to_dataframe()
@@ -219,19 +219,11 @@ def plot_spike_lfp(recording_container, out_dir, n_shuffles):
     plot_sfc(sfc_df, out_dir)
 
 
-def main(input_df_path, input_cell_path, out_dir, config_path):
+def main(input_df_path, out_dir, config_path):
     config = smr.ParamHandler(source_file=config_path)
     datatable = df_from_file(input_df_path)
-    cell_table = df_from_file(input_cell_path)
-    merged_df = cell_table.merge(
-        datatable,
-        how="left",
-        on="filename",
-        validate="one_to_one",
-        suffixes=("_x", None),
-    )
     loader = smr.loader("nwb")
-    rc = smr.RecordingContainer.from_table(merged_df, loader=loader)
+    rc = smr.RecordingContainer.from_table(datatable, loader=loader)
     n_shuffles = config.get("num_spike_shuffles")
     plot_spike_lfp(rc, out_dir, n_shuffles)
 
@@ -240,7 +232,6 @@ if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
     main(
         snakemake.input[0],
-        snakemake.input[1],
         Path(snakemake.output[0]),
         snakemake.config["simuran_config"],
     )

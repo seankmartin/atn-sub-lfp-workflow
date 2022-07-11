@@ -111,7 +111,7 @@ def add_position_data_to_nwb(recording, nwbfile):
             ]
         )
     )
-    position_timestamps = recording.data["spatial"].time
+    position_timestamps = recording.data["spatial"].timestamps.value
     spatial_series = SpatialSeries(
         name="SpatialSeries",
         description="(x,y) position in open field",
@@ -122,10 +122,11 @@ def add_position_data_to_nwb(recording, nwbfile):
     )
     position_obj = Position(spatial_series=spatial_series)
 
+    recording.data["spatial"].direction
     hd_series = SpatialSeries(
         name="SpatialSeries",
         description="head direction",
-        data=recording.data["spatial"].direction,
+        data=recording.data["spatial"].direction.value,
         timestamps=position_timestamps,
         reference_frame="0 degrees is west, rotation is anti-clockwise",
         unit="degrees",

@@ -8,15 +8,16 @@ import numpy as np
 import seaborn as sns
 import simuran as smr
 from neurochat.nc_lfp import NLfp
-from skm_pyutils.table import df_from_file, df_to_file, list_to_df
+from skm_pyutils.table import df_from_file, list_to_df
 
 module_logger = logging.getLogger("simuran.custom.plot_spike_lfp")
 
 
 def plot_sta(sta_df, out_dir):
     brain_regions = sorted(list(set(sta_df["Region"])))
-    hue = "Treatment" if "muscimol" in sta_df["Group"] else "Spatial"
-    style = "Treatment" if "muscimol" in sta_df["Group"] else "Group"
+    is_musc = any(sta_df["Group"].str.startswith("musc"))
+    hue = "Treatment" if is_musc else "Spatial"
+    style = "Treatment" if is_musc else "Group"
     name_iter = zip(["", "_shuffled"], ["STA", "Shuffled STA"])
     for region, (name, y) in itertools.product(brain_regions, name_iter):
         df_part = sta_df[sta_df["Region"] == region]
@@ -40,8 +41,9 @@ def plot_sta(sta_df, out_dir):
 
 def plot_sfc(sfc_df, out_dir):
     brain_regions = sorted(list(set(sfc_df["Region"])))
-    hue = "Treatment" if "muscimol" in sfc_df["Group"] else "Spatial"
-    style = "Treatment" if "muscimol" in sfc_df["Group"] else "Group"
+    is_musc = any(sfc_df["Group"].str.startswith("musc"))
+    hue = "Treatment" if is_musc else "Spatial"
+    style = "Treatment" if is_musc else "Group"
     name_iter = zip(["", "_shuffled"], ["SFC", "Shuffled SFC"])
     for region, (name, y) in itertools.product(brain_regions, name_iter):
         df_part = sfc_df[sfc_df["Region"] == region]
@@ -108,7 +110,7 @@ def convert_spike_lfp_to_df(recording_container, n_shuffles):
     headers = ["Region", "Group", "Spatial", "SFC", "Frequency (Hz)", "Shuffled SFC"]
     sfc_df = list_to_df(sfc_list, headers=headers)
 
-    if "muscimol" in sta_df["Group"]:
+    if sta_df["Group"].str.startswith("musc").any():
         sta_df["Treatment"] = sta_df["Spatial"]
         sfc_df["Treatment"] = sfc_df["Spatial"]
     return sta_df, sfc_df

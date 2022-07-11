@@ -108,10 +108,10 @@ rule plot_musc_spike_lfp:
         "results/muscimol_cells_processed.csv",
         "workflow/sheets/muscimol_cells.csv"
     output:
-        directory("results/plots/spike_lfp/")
+        directory("results/plots/spike_lfp_musc/")
     log:
-        "logs/plot_spike_lfp.log"
+        "logs/plot_spike_lfp_musc.log"
     conda:
         "../../envs/nwb_simuran.yml"
     script:
-        "../scripts/plot_musc_spike_lfp.py"
+        "../scripts/plot_spike_lfp.py"

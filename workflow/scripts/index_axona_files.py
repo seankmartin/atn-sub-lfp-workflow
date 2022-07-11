@@ -345,7 +345,7 @@ def animal_to_mapping(s):
     cl_13 = "CL-SR_1-3.py"
     cl_46 = "CL-SR_4-6.py"
     d = {
-        "CSubRet1": "CSR1.py",
+        "CSubRet1": cl_13,
         "CSubRet2": cl_13,
         "CSubRet3": cl_13,
         "CSubRet4": cl_46,

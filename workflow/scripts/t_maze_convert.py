@@ -77,7 +77,7 @@ def modify_tmaze_times(df, base_dir):
                 filename,
                 row.session,
                 row.trial,
-                row.passed,
+                row.passed.strip().upper(),
                 row.mapping,
             ]
         part = [

@@ -1,9 +1,11 @@
+from copy import copy
 import logging
 import os
 from math import floor, ceil
 from pprint import pprint
 import csv
 import argparse
+from random import random
 
 import simuran as smr
 import pandas as pd
@@ -65,274 +67,222 @@ def main(
     overwrite=False,
 ):
     config = smr.parse_config(config_filepath)
-    max_lfp_lengths_seconds = config.get("max_lfp_lengths")
     datatable = df_from_file(tmaze_times_filepath)
     rc = smr.RecordingContainer.from_table(datatable, smr.loader("nwb"))
-    groups = []
-    choices = []
-    pxx_arr = []
 
-    module_logger.info(f"Analysing t_maze for {r.source_file}")
+    if should_skip():
+        dfs = load_saved_results(config)
+    else:
+        results, coherence_df_list = [], []
+        for r in rc.load_iter():
+            module_logger.info(f"Analysing t_maze for {r.source_file}")
+            if do_coherence:
+                result, coherence = compute_coherence_and_power(r, config)
+                results.append(result)
+                coherence_df_list.extend(coherence)
+    if do_decoding:
+        pass
 
-    skip = (
+
+def should_skip(decoding_loc, overwrite, oname_coherence):
+    return (
         (os.path.exists(decoding_loc))
         and (not overwrite)
         and (os.path.exists(oname_coherence))
     )
-    if skip:
-        coherence_df, power_df, res_df = load_saved_results(
-            decoding_loc,
-            lfp_len,
-            new_lfp,
-            groups,
-            choices,
-            oname_coherence,
-            oname_power_tmaze,
-            o_name_res,
+
+
+def compute_coherence_and_power(r, config):
+    sub_lfp, rsc_lfp, fs, duration = extract_lfp_info(r)
+    sig_dict = {"SUB": sub_lfp, "RSC": rsc_lfp}
+
+    group = compute_per_trial_coherence_power(r, config, fs, duration, sig_dict)
+
+    if do_decoding:
+        groups.append(group)
+        choices.append(str(r.passed).strip())
+
+
+def compute_per_trial_coherence_power(r, config, fs, duration, sig_dict):
+    coherence_res = calculate_coherence(sig_dict["SUB"], sig_dict["RSC"], fs, config)
+    results_list, coherence_list, pxx_list = [], [], []
+
+    for i, trial_type in zip(range(1, 3), ("forced", "choice")):
+        lfp_portions, final_trial_type, group = setup_recording_info(
+            r, fs, duration, i, trial_type, config
         )
+        for k, bounds in lfp_portions.items():
+            res_list = copy(coherence_res)
+            fn_params = [r, config, fs, sig_dict, final_trial_type, group, k, bounds]
+            compute_power_per_trial(*fn_params, pxx_list, res_list)
+            sub_lfp, rsc_lfp, f, Cxy = compute_coherence_per_trial(
+                *fn_params, coherence_list, res_list
+            )
+            results_list.append(res_list)
 
-    if not skip:
-        for r in rc.load_iter():
-            sub_lfp, rsc_lfp, fs, duration = extract_lfp_info(r)
-            fig, ax = plt.subplots()
+        plot_results_intermittent(r, sub_lfp, rsc_lfp, f, Cxy)
+    return results_list, coherence_list, pxx_list
 
-            if do_coherence:
-                max_theta_coherence_, max_delta_coherence_ = calculate_coherence(
-                    sub_lfp, rsc_lfp, fs, config
-                )
 
-            for i in range(1, 3):
-                t1, t2, t3, lfpt1, lfpt2, lfpt3, time_dict = extract_times_and_lfp(
-                    r, fs, duration, i
-                )
-                lfp_portions = {}
-                for k, max_len in max_lfp_lengths_seconds.items():
-                    start_time, end_time = extract_start_choice_end(
-                        max_lfp_lengths_seconds, fs, time_dict, k, max_len
-                    )
-                    end_time = verify_start_end(fs, duration, start_time, end_time)
-                    lfp_portions[k] = (start_time, end_time)
+def compute_coherence_per_trial(
+    r,
+    config,
+    fs,
+    sig_dict,
+    final_trial_type,
+    group,
+    k,
+    bounds,
+    coherence_list,
+    res_list,
+):
+    sub_lfp, rsc_lfp, f, Cxy = coherence_from_bounds(config, fs, sig_dict, bounds)
+    coherence_list.extend(
+        make_coherence_tuple(r, final_trial_type, group, k, f_, cxy_)
+        for f_, cxy_ in zip(f, Cxy)
+    )
+    extract_decoding_vals(config, k, f, Cxy)
+    res_list.extend(theta_delta(f, Cxy, config))
+    res_list.append(group)
+    return sub_lfp, rsc_lfp, f, Cxy
 
-                if do_coherence:
-                    res_dict = {}
-                    for k, bounds in lfp_portions.items():
-                        for region, signal in sig_dict.items():
-                            lfp = convert_signal_to_nc(bounds, signal)
-                            delta_power = lfp.bandpower(
-                                [config["delta_min"], config["delta_max"]],
-                                window_sec=window_sec,
-                                band_total=True,
-                            )
-                            theta_power = lfp.bandpower(
-                                [config["theta_min"], config["theta_max"]],
-                                window_sec=window_sec,
-                                band_total=True,
-                            )
-                            res_dict["{}-{}_delta".format(region, k)] = delta_power[
-                                "relative_power"
-                            ]
-                            res_dict["{}-{}_theta".format(region, k)] = theta_power[
-                                "relative_power"
-                            ]
 
-                        sub_s = sig_dict["SUB"]
-                        rsc_s = sig_dict["RSC"]
-                        x = np.array(sub_s.samples[lfpt1:lfpt2].to(u.mV))
-                        y = np.array(rsc_s.samples[lfpt1:lfpt2].to(u.mV))
+def compute_power_per_trial(
+    r,
+    config,
+    fs,
+    sig_dict,
+    final_trial_type,
+    group,
+    k,
+    bounds,
+    pxx_list,
+    res_list,
+):
+    res_dict = {}
+    for region, signal in sig_dict.items():
+        lfp = convert_signal_to_nc(bounds, signal, fs)
+        bandpowers(config, res_dict, k, region, lfp)
+    res_list.extend(list_results(r, res_dict, final_trial_type, k))
+    f_welch, Pxx = compute_power(fs, sig_dict["SUB"], config)
+    pxx_list.extend(
+        make_power_tuple(r, final_trial_type, group, k, p_val, f_val)
+        for p_val, f_val in zip(Pxx, f_welch)
+    )
 
-                        f, Cxy = coherence(x, y, fs, nperseg=window_sec * 250, nfft=256)
-                        f = f[np.nonzero((f >= fmin) & (f <= fmax))]
-                        Cxy = Cxy[np.nonzero((f >= fmin) & (f <= fmax))]
 
-                        if do_decoding:
-                            if k == "choice":
-                                coherence_vals_for_decode = Cxy[
-                                    np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))
-                                ]
-                                s, e = (k_) * hf, (k_ + 1) * hf
-                                new_lfp[j, s:e] = coherence_vals_for_decode
+def make_power_tuple(r, final_trial_type, group, k, p_val, f_val):
+    return [
+        f_val,
+        p_val,
+        r.passed.strip(),
+        group,
+        k,
+        final_trial_type,
+    ]
 
-                        theta_co = Cxy[np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))]
-                        delta_co = Cxy[np.nonzero((f >= config["delta_min"]) & (f <= config["delta_max"]))]
-                        max_theta_coherence = np.nanmean(theta_co)
-                        max_delta_coherence = np.nanmean(delta_co)
 
-                        theta_co_peak = Cxy[np.nonzero((f >= 11.0) & (f <= 13.0))]
-                        peak_theta_coherence = np.nanmax(theta_co_peak)
+def make_coherence_tuple(r, final_trial_type, group, k, f_, cxy_):
+    return (
+        f_,
+        cxy_,
+        r.attrs["passed"],
+        group,
+        r.attrs["trial"],
+        r.attrs["session"],
+        k,
+        final_trial_type,
+    )
 
-                        if trial_type == "forced":
-                            final_trial_type = "Forced"
-                        else:
-                            if r.passed.strip().upper() == "Y":
-                                final_trial_type = "Correct"
-                            elif r.passed.strip().upper() == "N":
-                                final_trial_type = "Incorrect"
-                            else:
-                                final_trial_type = "ERROR IN ANALYSIS"
 
-                        res_list = [
-                            r.location,
-                            r.session,
-                            r.animal,
-                            r.test,
-                            r.passed.strip(),
-                            k,
-                            final_trial_type,
-                        ]
-                        res_list += [
-                            res_dict[f"SUB-{k}_delta"],
-                            res_dict[f"SUB-{k}_theta"],
-                            res_dict[f"RSC-{k}_delta"],
-                            res_dict[f"RSC-{k}_theta"],
-                        ]
-                        res_list += [max_theta_coherence, max_delta_coherence]
-                        res_list += [
-                            max_theta_coherence_,
-                            max_delta_coherence_,
-                            peak_theta_coherence,
-                        ]
+def setup_recording_info(r, fs, duration, i, trial_type, config):
+    max_lfp_lengths_seconds = config.get("max_lfp_lengths")
+    time_dict = extract_times_for_lfp(r, fs, duration, i)
+    lfp_portions = extract_lfp_portions(
+        max_lfp_lengths_seconds, fs, duration, time_dict
+    )
+    final_trial_type = convert_trial_type(r, trial_type)
+    group = get_group(r)
+    return lfp_portions, final_trial_type, group
 
-                        if no_pass is False:
-                            group = (
-                                "Control"
-                                if r.animal.lower().startswith("c")
-                                else "Lesion (ATNx)"
-                            )
-                            if do_coherence:
-                                for f_, cxy_ in zip(f, Cxy):
-                                    coherence_df_list.append(
-                                        (
-                                            f_,
-                                            cxy_,
-                                            r.passed.strip(),
-                                            group,
-                                            r.test,
-                                            r.session,
-                                            k,
-                                            final_trial_type,
-                                        )
-                                    )
 
-                                f_welch, Pxx = welch(
-                                    x,
-                                    fs=fs,
-                                    nperseg=window_sec * 250,
-                                    return_onesided=True,
-                                    scaling="density",
-                                    average="mean",
-                                )
+def compute_power(fs, x, config):
+    f_welch, Pxx = welch(
+        x,
+        fs=fs,
+        nperseg=config["tmaze_winsec"] * 250,
+        return_onesided=True,
+        scaling="density",
+        average="mean",
+    )
 
-                                f_welch = f_welch[
-                                    np.nonzero((f_welch >= fmin) & (f_welch <= fmax))
-                                ]
-                                Pxx = Pxx[
-                                    np.nonzero((f_welch >= fmin) & (f_welch <= fmax))
-                                ]
-
-                                # Convert to full scale relative dB (so max at 0)
-                                Pxx_max = np.max(Pxx)
-                                Pxx = 10 * np.log10(Pxx / Pxx_max)
-                                for p_val, f_val in zip(Pxx, f_welch):
-                                    pxx_arr.append(
-                                        [
-                                            f_val,
-                                            p_val,
-                                            r.passed.strip(),
-                                            group,
-                                            k,
-                                            final_trial_type,
-                                        ]
-                                    )
-                        res_list += [group]
-                        results.append(res_list)
-
-                    name = os.path.splitext(r.location)[0]
-                    if plot_individual_sessions:
-                        fig2, ax2 = plt.subplots(3, 1)
-                        ax2[0].plot(f, Cxy, c="k")
-                        ax2[1].plot([i / 250 for i in range(len(x))], x, c="k")
-                        ax2[2].plot([i / 250 for i in range(len(y))], y, c="k")
-                        base_dir_new = os.path.dirname(excel_location)
-                        fig2.savefig(
-                            os.path.join(
-                                base_dir_new,
-                                "coherence_{}_{}_{}.png".format(
-                                    row1.location, r.session, r.test
-                                ),
-                            )
-                        )
-                        plt.close(fig2)
-
-            if do_decoding:
-                groups.append(group)
-                choices.append(str(r.passed).strip())
-
-            if plot_individual_sessions:
-                ax.invert_yaxis()
-                ax.legend()
-                base_dir_new = os.path.dirname(excel_location)
-                figname = os.path.join(base_dir_new, name) + "_tmaze.png"
-                fig.savefig(figname, dpi=400)
-                plt.close(fig)
-
-    if do_coherence and not skip:
-        # Save the results
-        headers = [
-            "location",
-            "session",
-            "animal",
-            "test",
-            "choice",
-            "part",
-            "trial",
-            "SUB_delta",
-            "SUB_theta",
-            "RSC_delta",
-            "RSC_theta",
-            "Theta_coherence",
-            "Delta_coherence",
-            "Full_theta_coherence",
-            "Full_delta_coherence",
-            "Peak 12Hz Theta coherence",
-            "Group",
-        ]
-
-        res_df = pd.DataFrame(results, columns=headers)
-
-        split = os.path.splitext(os.path.basename(excel_location))
-        out_name = os.path.join(
-            here, "..", "sim_results", "tmaze", split[0] + "_results" + split[1]
+    f_welch = f_welch[
+        np.nonzero(
+            (f_welch >= config["tmaze_minf"]) & (f_welch <= config["tmaze_maxf"])
         )
-        df_to_file(res_df, out_name, index=False)
+    ]
+    Pxx = Pxx[
+        np.nonzero(
+            (f_welch >= config["tmaze_minf"]) & (f_welch <= config["tmaze_maxf"])
+        )
+    ]
 
-        # Plot difference between pass and fail trials
-        headers = [
+    Pxx_max = np.max(Pxx)
+    Pxx = 10 * np.log10(Pxx / Pxx_max)
+    return f_welch, Pxx
+
+
+def plot_results_intermittent(r, x, y, f, Cxy):
+    every_few_iters = random()
+    if every_few_iters < 0.05:
+        fig2, ax2 = plt.subplots(3, 1)
+        ax2[0].plot(f, Cxy, c="k")
+        ax2[1].plot([i / 250 for i in range(len(x))], x, c="k")
+        ax2[2].plot([i / 250 for i in range(len(y))], y, c="k")
+        base_dir_new = os.path.dirname(excel_location)
+        fig2.savefig(
+            os.path.join(
+                base_dir_new,
+                "coherence_{}_{}_{}.png".format(row1.location, r.session, r.test),
+            )
+        )
+        plt.close(fig2)
+
+
+def get_group(r):
+    group = "Control" if r.attrs["animal"].lower().startswith("c") else "Lesion (ATNx)"
+    return group
+
+
+def save_computed_info():
+    headers = get_result_headers()
+
+    res_df = pd.DataFrame(results, columns=headers)
+
+    split = os.path.splitext(os.path.basename(excel_location))
+    out_name = os.path.join(
+        here, "..", "sim_results", "tmaze", split[0] + "_results" + split[1]
+    )
+    df_to_file(res_df, out_name, index=False)
+
+    headers = get_coherence_headers()
+    coherence_df = list_to_df(coherence_df_list, headers=headers)
+
+    df_to_file(coherence_df, oname_coherence, index=False)
+
+    power_df = list_to_df(
+        pxx_arr,
+        headers=[
             "Frequency (Hz)",
-            "Coherence",
+            "Power (dB)",
             "Passed",
             "Group",
-            "Test",
-            "Session",
             "Part",
             "Trial",
-        ]
-        coherence_df = list_to_df(coherence_df_list, headers=headers)
+        ],
+    )
 
-        df_to_file(coherence_df, oname_coherence, index=False)
-
-        power_df = list_to_df(
-            pxx_arr,
-            headers=[
-                "Frequency (Hz)",
-                "Power (dB)",
-                "Passed",
-                "Group",
-                "Part",
-                "Trial",
-            ],
-        )
-
-        df_to_file(power_df, oname_power_tmaze, index=False)
+    df_to_file(power_df, oname_power_tmaze, index=False)
 
     if do_coherence or skip:
 
@@ -494,17 +444,141 @@ def main(
             new_lfp, groups, labels, os.path.join(here, "..", "sim_results", "tmaze")
         )
 
-def convert_signal_to_nc(bounds, signal):
+def get_coherence_headers()():
+    return [
+        "Frequency (Hz)",
+        "Coherence",
+        "Passed",
+        "Group",
+        "Test",
+        "Session",
+        "Part",
+        "Trial",
+    ]
+    
+
+def get_result_headers():
+    # TODO fix the order of these
+    return [
+        "location",
+        "session",
+        "animal",
+        "test",
+        "choice",
+        "part",
+        "trial",
+        "SUB_delta",
+        "SUB_theta",
+        "RSC_delta",
+        "RSC_theta",
+        "Theta_coherence",
+        "Delta_coherence",
+        "Full_theta_coherence",
+        "Full_delta_coherence",
+        "Peak 12Hz Theta coherence",
+        "Group",
+    ]
+
+
+def list_results(r, res_dict, final_trial_type, k):
+    res_list = [
+        r.location,
+        r.session,
+        r.animal,
+        r.test,
+        r.passed,
+        k,
+        final_trial_type,
+    ]
+    res_list += [
+        res_dict[f"SUB-{k}_delta"],
+        res_dict[f"SUB-{k}_theta"],
+        res_dict[f"RSC-{k}_delta"],
+        res_dict[f"RSC-{k}_theta"],
+    ]
+
+    return res_list
+
+
+def convert_trial_type(r, trial_type):
+    if trial_type == "forced":
+        final_trial_type = "Forced"
+    else:
+        if r.passed.strip().upper() == "Y":
+            final_trial_type = "Correct"
+        elif r.passed.strip().upper() == "N":
+            final_trial_type = "Incorrect"
+        else:
+            final_trial_type = "ERROR IN ANALYSIS"
+    return final_trial_type
+
+
+def theta_delta(f, Cxy, config):
+    theta_co = Cxy[np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))]
+    delta_co = Cxy[np.nonzero((f >= config["delta_min"]) & (f <= config["delta_max"]))]
+    max_theta_coherence = np.nanmean(theta_co)
+    max_delta_coherence = np.nanmean(delta_co)
+
+    theta_co_peak = Cxy[np.nonzero((f >= 11.0) & (f <= 13.0))]
+    peak_theta_coherence = np.nanmax(theta_co_peak)
+    return max_theta_coherence, max_delta_coherence, peak_theta_coherence
+
+
+def extract_decoding_vals(do_decoding, config, k, f, Cxy):
+    if do_decoding:
+        if k == "choice":
+            coherence_vals_for_decode = Cxy[
+                np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))
+            ]
+            s, e = (k_) * hf, (k_ + 1) * hf
+            new_lfp[j, s:e] = coherence_vals_for_decode
+
+
+def coherence_from_bounds(config, fs, sig_dict, bounds):
+    sub_s = sig_dict["SUB"]
+    rsc_s = sig_dict["RSC"]
+    x = np.array(sub_s[bounds[0] : bounds[1]].to(u.mV))
+    y = np.array(rsc_s[bounds[0] : bounds[1]].to(u.mV))
+
+    f, Cxy = coherence(x, y, fs, nperseg=config["tmaze_winsec"] * fs, nfft=256)
+    f = f[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
+    Cxy = Cxy[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
+    return x, y, f, Cxy
+
+
+def bandpowers(config, res_dict, k, region, lfp):
+    delta_power = lfp.bandpower(
+        [config["delta_min"], config["delta_max"]],
+        window_sec=config["tmaze_winsec"],
+        band_total=True,
+    )
+    theta_power = lfp.bandpower(
+        [config["theta_min"], config["theta_max"]],
+        window_sec=config["tmaze_winsec"],
+        band_total=True,
+    )
+    res_dict["{}-{}_delta".format(region, k)] = delta_power["relative_power"]
+    res_dict["{}-{}_theta".format(region, k)] = theta_power["relative_power"]
+
+
+def extract_lfp_portions(max_lfp_lengths_seconds, fs, duration, time_dict):
+    lfp_portions = {}
+    for k, max_len in max_lfp_lengths_seconds.items():
+        start_time, end_time = extract_start_choice_end(
+            max_lfp_lengths_seconds, fs, time_dict, k, max_len
+        )
+        end_time = verify_start_end(fs, duration, start_time, end_time)
+        lfp_portions[k] = (start_time, end_time)
+    return lfp_portions
+
+
+def convert_signal_to_nc(bounds, signal, fs):
     lfp_t1, lfp_t2 = bounds
     lfp = NLfp()
     lfp.set_channel_id(signal.channel)
-    lfp._timestamp = np.array(
-                                signal.timestamps[lfp_t1:lfp_t2].to(u.s)
-                            )
-    lfp._samples = np.array(
-                                signal.samples[lfp_t1:lfp_t2].to(u.mV)
-                            )
-    lfp._record_info["Sampling rate"] = signal.sampling_rate
+    lfp._timestamp = np.array(signal.timestamps[lfp_t1:lfp_t2].to(u.s))
+    lfp._samples = np.array(signal.samples[lfp_t1:lfp_t2].to(u.mV))
+    lfp._record_info["Sampling rate"] = fs
     return lfp
 
 
@@ -585,13 +659,13 @@ def extract_first_times(ct, fs, max_len, start_time, end_time):
     return start_time, end_time
 
 
-def extract_times_and_lfp(r, fs, duration, i):
+def extract_times_for_lfp(r, fs, duration, i):
     t1 = r.attrs[f"start{i}"]
     t2 = r.attrs[f"choice{i}"]
     t3 = r.attrs[f"end{i}"]
 
     if t3 > duration:
-        raise RuntimeError("Last time {} greater than duration {}".format(t3, duration))
+        raise RuntimeError(f"Last time {t3} greater than duration {duration}")
 
     lfpt1 = int(floor(t1 * fs))
     lfpt2 = int(ceil(t2 * fs))
@@ -602,7 +676,7 @@ def extract_times_and_lfp(r, fs, duration, i):
         "choice": (lfpt1, lfpt2, lfpt3),
         "end": (lfpt2, lfpt3, lfpt3),
     }
-    return t1, t2, t3, lfpt1, lfpt2, lfpt3, time_dict
+    return time_dict
 
 
 def extract_lfp_info(r):
@@ -619,7 +693,9 @@ def calculate_coherence(x, y, fs, config):
     Cxy = Cxy[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
 
     theta_co = Cxy[np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))]
-    delta_co = Cxy[np.nonzero((f >= config["delta_min"]) & (f <= config[config["delta_max"]]))]
+    delta_co = Cxy[
+        np.nonzero((f >= config["delta_min"]) & (f <= config[config["delta_max"]]))
+    ]
     theta_coherence = np.nanmean(theta_co)
     delta_coherence = np.nanmean(delta_co)
     return theta_coherence, delta_coherence

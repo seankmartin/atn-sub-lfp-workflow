@@ -20,7 +20,9 @@ here = Path(__file__).resolve().parent
 module_logger = logging.getLogger("simuran.custom.convert_to_nwb")
 
 
-def main(table, config, filter_, output_directory, out_name, overwrite=False):
+def main(
+    table, config, filter_, output_directory, out_name, overwrite=False, debug=False
+):
     filtered_table = filter_table(table, filter_) if filter_ is not None else table
     loader = smr.loader(config["loader"], **config["loader_kwargs"])
     rc = smr.RecordingContainer.from_table(filtered_table, loader)
@@ -28,10 +30,16 @@ def main(table, config, filter_, output_directory, out_name, overwrite=False):
 
     for i in range(len(rc)):
         module_logger.info(f"Converting {rc[i].source_file} to NWB")
-        fname = convert_to_nwb_and_save(
-            rc, i, output_directory, config["cfg_base_dir"], overwrite
-        )
-        filenames.append(fname)
+        try:
+            fname = convert_to_nwb_and_save(
+                rc, i, output_directory, config["cfg_base_dir"], overwrite
+            )
+        except Exception as err:
+            module_logger.exception(f"Could not write nwbfile from {rc[i].source_file}")
+            if debug:
+                breakpoint()
+        else:
+            filenames.append(fname)
 
     filtered_table["nwb_file"] = filenames
     df_to_file(filtered_table, output_directory / out_name)
@@ -121,7 +129,6 @@ def add_position_data_to_nwb(recording, nwbfile):
         unit="centimeters",
     )
     position_obj = Position(spatial_series=spatial_series)
-
     recording.data["spatial"].direction
     hd_series = SpatialSeries(
         name="SpatialSeries",

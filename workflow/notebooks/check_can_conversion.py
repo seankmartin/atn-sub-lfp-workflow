@@ -1,4 +1,6 @@
 # %%
+%load_ext autoreload
+%autoreload 2
 import sys
 from pathlib import Path
 
@@ -7,8 +9,6 @@ from skm_pyutils.table import df_from_file, filter_table
 
 parent = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(parent / "scripts"))
-
-from convert_to_nwb import main
 
 # %%
 
@@ -33,8 +33,35 @@ if "directory_x" in filtered_table.columns:
     filtered_table.drop("directory_x", inplace=True)
 
 # %%
-output_dir = Path(r"E:\Repos\atn-sub-lfp-workflow")
-out_name = r"test-can-convert.csv"
-main(filtered_table, config, None, output_dir, out_name, overwrite=False)
+config["loader_kwargs"]["pos_extension"] = ".pos"
+loader = smr.loader("neurochat", **config["loader_kwargs"])
+rc = smr.RecordingContainer.from_table(filtered_table, loader=loader)
+r = rc.load(0)
+print(r.data)
+
+# %%
+r.data["spatial"].direction
+
+# %%
+from convert_to_nwb import convert_recording_to_nwb
+# %%
+from simuran.loaders.nc_loader import NCLoader
+
+# %%
+
+convert_recording_to_nwb(r, config["cfg_base_dir"])
+
+# %%
+pth = r"E:\Repos\atn-sub-lfp-workflow\test.csv"
+df = df_from_file(pth)
+rc = smr.RecordingContainer.from_table(df, loader=loader)
+
+# %%
+r = rc.load(0)
+print(r.data)
+r.data["spatial"].direction
+
+# %%
+convert_recording_to_nwb(r, config["cfg_base_dir"])
 
 # %%

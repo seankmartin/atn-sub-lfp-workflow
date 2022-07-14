@@ -33,9 +33,10 @@ def convert_tmaze_data(
         merged_df,
         cfg,
         filter_=None,
-        output_dir=output_dir,
+        output_directory=output_dir,
         out_name=out_name,
         overwrite=overwrite,
+        debug=False,
     )
 
 

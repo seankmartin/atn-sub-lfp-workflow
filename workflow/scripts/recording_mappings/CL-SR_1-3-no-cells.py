@@ -38,21 +38,7 @@ def setup_signals():
 def setup_units():
     """Set up the single unit data."""
     # The number of tetrodes, probes, etc - any kind of grouping
-    num_groups = 0
-
-    # The region that each group belongs to
-    regions = ["SUB"] * num_groups
-
-    # A group number for each group, for example the tetrode number
-    groups = []
-
-    output_dict = {
-        "num_groups": num_groups,
-        "region": regions,
-        "group": groups,
-    }
-
-    return output_dict
+    return None
 
 
 def setup_spatial():

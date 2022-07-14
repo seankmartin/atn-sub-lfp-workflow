@@ -37,3 +37,4 @@ max_lfp_lengths:
     3.5
     0.5
   end: 10
+tmaze_lfp_len: 6

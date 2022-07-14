@@ -2,6 +2,7 @@ from copy import copy
 import logging
 import os
 from math import floor, ceil
+from pathlib import Path
 from pprint import pprint
 import csv
 import argparse
@@ -25,9 +26,7 @@ module_logger = logging.getLogger("simuran.custom.tmaze_analyse")
 
 
 def decoding(lfp_array, groups, labels, base_dir):
-
     for group in ["Control", "Lesion (ATNx)"]:
-
         correct_groups = groups == group
         lfp_to_use = lfp_array[correct_groups, :]
         labels_ = labels[correct_groups]
@@ -39,11 +38,9 @@ def decoding(lfp_array, groups, labels, base_dir):
             cv_params={"n_splits": 100},
         )
         out = decoder.decode()
-
         print(decoder.decoding_accuracy(out[2], out[1]))
 
         print("\n----------Cross Validation-------------")
-
         decoder.cross_val_decode(shuffle=False)
         pprint(decoder.cross_val_result)
         pprint(decoder.confidence_interval_estimate("accuracy"))
@@ -62,6 +59,7 @@ def decoding(lfp_array, groups, labels, base_dir):
 def main(
     tmaze_times_filepath,
     config_filepath,
+    out_dir,
     do_coherence=True,
     do_decoding=True,
     overwrite=False,
@@ -70,40 +68,47 @@ def main(
     datatable = df_from_file(tmaze_times_filepath)
     rc = smr.RecordingContainer.from_table(datatable, smr.loader("nwb"))
 
-    if should_skip():
-        dfs = load_saved_results(config)
-    else:
-        results, coherence_df_list = [], []
-        for r in rc.load_iter():
-            module_logger.info(f"Analysing t_maze for {r.source_file}")
-            if do_coherence:
-                result, coherence = compute_coherence_and_power(r, config)
-                results.append(result)
-                coherence_df_list.extend(coherence)
-    if do_decoding:
-        pass
-
-
-def should_skip(decoding_loc, overwrite, oname_coherence):
-    return (
-        (os.path.exists(decoding_loc))
-        and (not overwrite)
-        and (os.path.exists(oname_coherence))
+    if not should_skip(out_dir, overwrite):
+        compute_and_save_coherence(out_dir, do_coherence, config, rc)
+    coh_df, power_df, res_df, groups, choices, new_lfp = load_saved_results(
+        out_dir, config
     )
+    
+    if do_coherence:
+        plot_coherence_results(res_df, coh_df, power_df, out_dir)
+    if do_decoding:
+        groups = np.array(groups)
+        labels = np.array(choices)
+        decoding(new_lfp, groups, labels, out_dir)
+
+def compute_and_save_coherence(out_dir, config, rc):
+    results, coherence_df_list = [], []
+    for r in rc.load_iter():
+        module_logger.info(f"Analysing t_maze for {r.source_file}")
+        result, coherence = compute_coherence_and_power(r, config, out_dir)
+        results.append(result)
+        coherence_df_list.extend(coherence)
+    save_computed_info()
 
 
-def compute_coherence_and_power(r, config):
+def should_skip(out_dir: "Path", overwrite):
+    decoding_loc = out_dir / "decoding.csv"
+    coherence_loc = out_dir / "coherence.csv"
+    return decoding_loc.is_file() and (not overwrite) and coherence_loc.is_file()
+
+
+def compute_coherence_and_power(r, config, out_dir):
     sub_lfp, rsc_lfp, fs, duration = extract_lfp_info(r)
     sig_dict = {"SUB": sub_lfp, "RSC": rsc_lfp}
 
-    group = compute_per_trial_coherence_power(r, config, fs, duration, sig_dict)
+    compute_per_trial_coherence_power(r, config, fs, duration, sig_dict, out_dir)
 
     if do_decoding:
         groups.append(group)
         choices.append(str(r.passed).strip())
 
 
-def compute_per_trial_coherence_power(r, config, fs, duration, sig_dict):
+def compute_per_trial_coherence_power(r, config, fs, duration, sig_dict, out_dir):
     coherence_res = calculate_coherence(sig_dict["SUB"], sig_dict["RSC"], fs, config)
     results_list, coherence_list, pxx_list = [], [], []
 
@@ -120,7 +125,7 @@ def compute_per_trial_coherence_power(r, config, fs, duration, sig_dict):
             )
             results_list.append(res_list)
 
-        plot_results_intermittent(r, sub_lfp, rsc_lfp, f, Cxy)
+        plot_results_intermittent(r, sub_lfp, rsc_lfp, f, Cxy, out_dir)
     return results_list, coherence_list, pxx_list
 
 
@@ -232,200 +237,49 @@ def compute_power(fs, x, config):
     return f_welch, Pxx
 
 
-def plot_results_intermittent(r, x, y, f, Cxy):
+def plot_results_intermittent(r, x, y, f, Cxy, out_dir):
     every_few_iters = random()
     if every_few_iters < 0.05:
         fig2, ax2 = plt.subplots(3, 1)
         ax2[0].plot(f, Cxy, c="k")
         ax2[1].plot([i / 250 for i in range(len(x))], x, c="k")
         ax2[2].plot([i / 250 for i in range(len(y))], y, c="k")
-        base_dir_new = os.path.dirname(excel_location)
         fig2.savefig(
-            os.path.join(
-                base_dir_new,
-                "coherence_{}_{}_{}.png".format(row1.location, r.session, r.test),
-            )
+            out_dir
+            / f'coherence_{r.attrs["rat"]}_{r.attrs["session"]}_{r.attrs["trial"]}.png'
         )
+
         plt.close(fig2)
 
 
 def get_group(r):
-    group = "Control" if r.attrs["animal"].lower().startswith("c") else "Lesion (ATNx)"
-    return group
+    return "Control" if r.attrs["animal"].lower().startswith("c") else "Lesion (ATNx)"
 
 
-def save_computed_info():
+def save_computed_info(results_list, coherence_df_list, pxx_list, out_dir):
     headers = get_result_headers()
-
-    res_df = pd.DataFrame(results, columns=headers)
-
-    split = os.path.splitext(os.path.basename(excel_location))
-    out_name = os.path.join(
-        here, "..", "sim_results", "tmaze", split[0] + "_results" + split[1]
-    )
+    res_df = pd.DataFrame(results_list, columns=headers)
     df_to_file(res_df, out_name, index=False)
 
     headers = get_coherence_headers()
     coherence_df = list_to_df(coherence_df_list, headers=headers)
-
     df_to_file(coherence_df, oname_coherence, index=False)
 
-    power_df = list_to_df(
-        pxx_arr,
-        headers=[
-            "Frequency (Hz)",
-            "Power (dB)",
-            "Passed",
-            "Group",
-            "Part",
-            "Trial",
-        ],
-    )
-
+    headers = get_power_headers()
+    power_df = list_to_df(pxx_list, headers)
     df_to_file(power_df, oname_power_tmaze, index=False)
+    smr.set_plot_style()
 
-    if do_coherence or skip:
 
-        smr.set_plot_style()
-        # res_df["ID"] = res_df["trial"] + "_" + res_df["part"]
-        res_df = res_df[res_df["part"] == "choice"]
-        sns.barplot(
-            data=res_df,
-            x="trial",
-            y="Theta_coherence",
-            hue="Group",
-            estimator=np.median,
-        )
-        plt.xlabel("Trial result")
-        plt.ylabel("Theta coherence")
-        plt.tight_layout()
-        plt.savefig(
-            os.path.join(here, "..", "sim_results", "tmaze", f"bar--coherence.pdf"),
-            dpi=400,
-        )
-        plt.close("all")
+def plot_coherence_results(res_df, coherence_df, power_df, out_dir):
+    plot_banded_coherence(out_dir, res_df)
+    plot_grouped_power_coherence(out_dir, coherence_df, power_df)
+    plot_choice_power(power_df, out_dir)
+    plot_coherence_choice(coherence_df, out_dir)
 
-        sns.barplot(
-            data=res_df,
-            x="trial",
-            y="Delta_coherence",
-            hue="Group",
-            estimator=np.median,
-        )
-        plt.xlabel("Trial result")
-        plt.ylabel("Delta coherence")
-        plt.tight_layout()
-        plt.savefig(
-            os.path.join(
-                here, "..", "sim_results", "tmaze", f"bar--coherence--delta.pdf"
-            ),
-            dpi=400,
-        )
-        plt.close("all")
 
-        for group in ("Control", "Lesion (ATNx)"):
-            coherence_df_sub = coherence_df[coherence_df["Group"] == group]
-            power_df_sub = power_df[power_df["Group"] == group]
-            sns.lineplot(
-                data=coherence_df_sub,
-                x="Frequency (Hz)",
-                y="Coherence",
-                hue="Part",
-                style="Trial",
-                ci=None,
-                estimator=np.median,
-            )
-            plt.ylim(0, 1)
-            smr.despine()
-            plt.savefig(
-                os.path.join(
-                    here, "..", "sim_results", "tmaze", f"{group}--coherence.pdf"
-                ),
-                dpi=400,
-            )
-            plt.close("all")
-
-            sns.lineplot(
-                data=coherence_df_sub,
-                x="Frequency (Hz)",
-                y="Coherence",
-                hue="Part",
-                style="Trial",
-                ci=95,
-                estimator=np.median,
-            )
-            plt.ylim(0, 1)
-            smr.despine()
-            plt.savefig(
-                os.path.join(
-                    here, "..", "sim_results", "tmaze", f"{group}--coherence_ci.pdf"
-                ),
-                dpi=400,
-            )
-            plt.close("all")
-
-            sns.lineplot(
-                data=power_df_sub,
-                x="Frequency (Hz)",
-                y="Power (dB)",
-                hue="Part",
-                style="Trial",
-                ci=95,
-                estimator=np.median,
-            )
-            plt.xlim(0, 40)
-            smr.despine()
-            plt.savefig(
-                os.path.join(
-                    here, "..", "sim_results", "tmaze", f"{group}--power_ci.pdf"
-                ),
-                dpi=400,
-            )
-            plt.close("all")
-
-        # Choice - lesion vs ctrl coherence when Incorrect and correct
-        power_df["Trial result"] = power_df["Trial"]
-        power_df_sub_bit = power_df[
-            (power_df["Part"] == "choice") & (power_df["Trial"] != "Forced")
-        ]
-        sns.lineplot(
-            data=power_df_sub_bit,
-            x="Frequency (Hz)",
-            y="Power (dB)",
-            hue="Group",
-            style="Trial result",
-            estimator=np.median,
-        )
-        smr.despine()
-        plt.savefig(
-            os.path.join(here, "..", "sim_results", "tmaze", "choice_power_ci.pdf"),
-            dpi=400,
-        )
-        plt.close("all")
-
-        coherence_df["Trial result"] = coherence_df["Trial"]
-        coherence_df_sub_bit = coherence_df[
-            (coherence_df["Part"] == "choice") & (coherence_df["Trial"] != "Forced")
-        ]
-
-        sns.lineplot(
-            data=coherence_df_sub_bit,
-            x="Frequency (Hz)",
-            y="Coherence",
-            hue="Group",
-            style="Trial result",
-            ci=95,
-            estimator=np.median,
-        )
-        plt.ylim(0, 1)
-        smr.despine()
-        plt.savefig(
-            os.path.join(here, "..", "sim_results", "tmaze", "choice_coherence_ci.pdf"),
-            dpi=400,
-        )
-        plt.close("all")
-
-    # Try to decode pass and fail trials.
+def save_decoding_values(out_dir, overwrite, groups, choices, new_lfp):
+    decoding_loc = out_dir / "decoding.csv"
     if not os.path.exists(decoding_loc) or overwrite:
         with open(decoding_loc, "w") as f:
             for i in range(len(groups)):
@@ -437,14 +291,126 @@ def save_computed_info():
                 line = line[:-1] + "\n"
                 f.write(line)
 
-    if do_decoding:
-        groups = np.array(groups)
-        labels = np.array(choices)
-        decoding(
-            new_lfp, groups, labels, os.path.join(here, "..", "sim_results", "tmaze")
-        )
 
-def get_coherence_headers()():
+def plot_coherence_choice(coherence_df):
+    coherence_df["Trial result"] = coherence_df["Trial"]
+    coherence_df_sub_bit = coherence_df[
+        (coherence_df["Part"] == "choice") & (coherence_df["Trial"] != "Forced")
+    ]
+
+    sns.lineplot(
+        data=coherence_df_sub_bit,
+        x="Frequency (Hz)",
+        y="Coherence",
+        hue="Group",
+        style="Trial result",
+        ci=95,
+        estimator=np.median,
+    )
+    plt.ylim(0, 1)
+    smr.despine()
+    plt.savefig(
+        os.path.join(here, "..", "sim_results", "tmaze", "choice_coherence_ci.pdf"),
+        dpi=400,
+    )
+    plt.close("all")
+
+
+def plot_choice_power(power_df):
+    power_df["Trial result"] = power_df["Trial"]
+    power_df_sub_bit = power_df[
+        (power_df["Part"] == "choice") & (power_df["Trial"] != "Forced")
+    ]
+    sns.lineplot(
+        data=power_df_sub_bit,
+        x="Frequency (Hz)",
+        y="Power (dB)",
+        hue="Group",
+        style="Trial result",
+        estimator=np.median,
+        ci=95,
+    )
+    smr.despine()
+    plt.savefig(
+        os.path.join(here, "..", "sim_results", "tmaze", "choice_power_ci.pdf"),
+        dpi=400,
+    )
+    plt.close("all")
+
+
+def plot_banded_coherence(out_dir, res_df):
+    res_df = res_df[res_df["part"] == "choice"]
+    plot_bar_coherence(res_df, "Theta", out_dir)
+    plot_bar_coherence(res_df, "Delta", out_dir)
+
+
+def plot_grouped_power_coherence(out_dir, coherence_df, power_df):
+    for group in ("Control", "Lesion (ATNx)"):
+        coherence_df_sub = coherence_df[coherence_df["Group"] == group]
+        power_df_sub = power_df[power_df["Group"] == group]
+        plot_group_coherence(group, coherence_df_sub, out_dir)
+        plot_group_power(group, power_df_sub, out_dir)
+
+
+def plot_group_power(group, power_df_sub, out_dir):
+    fig, ax = plt.subplots()
+    sns.lineplot(
+        data=power_df_sub,
+        x="Frequency (Hz)",
+        y="Power (dB)",
+        hue="Part",
+        style="Trial",
+        ci=95,
+        estimator=np.median,
+        ax=ax,
+    )
+    ax.set_xlim(0, 40)
+    smr.despine()
+    fig = smr.SimuranFigure(fig=fig, name=out_dir / f"{group}_power_ci")
+    fig.save()
+
+
+def plot_group_coherence(group, coherence_df_sub, out_dir):
+    fig, ax = plt.subplots()
+    for ci, ci_name in zip((None, 95), ("", "_ci")):
+        sns.lineplot(
+            data=coherence_df_sub,
+            x="Frequency (Hz)",
+            y="Coherence",
+            hue="Part",
+            style="Trial",
+            ci=ci,
+            estimator=np.median,
+            ax=ax,
+        )
+        ax.set_ylim(0, 1)
+        smr.despine()
+        fig = smr.SimuranFigure(fig=fig, name=out_dir / f"{group}_coherence{ci_name}")
+        fig.save()
+
+
+def plot_bar_coherence(res_df, band: str, out_dir):
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=res_df,
+        x="trial",
+        y=f"{band}_coherence",
+        hue="Group",
+        estimator=np.median,
+        ax=ax,
+    )
+    ax.set_xlabel("Trial result")
+    ax.set_ylabel(f"{band} coherence")
+    plt.tight_layout()
+    fig = smr.SimuranFigure(fig=fig, name=out_dir / f"{band} coherence")
+    fig.save()
+
+
+def get_power_headers():
+    return ["Frequency (Hz)", "Power (dB)", "Passed", "Group", "Part", "Trial"]
+
+
+def get_coherence_headers():
     return [
         "Frequency (Hz)",
         "Coherence",
@@ -455,7 +421,7 @@ def get_coherence_headers()():
         "Part",
         "Trial",
     ]
-    
+
 
 def get_result_headers():
     # TODO fix the order of these
@@ -502,15 +468,13 @@ def list_results(r, res_dict, final_trial_type, k):
 
 def convert_trial_type(r, trial_type):
     if trial_type == "forced":
-        final_trial_type = "Forced"
+        return "Forced"
+    elif r.passed.strip().upper() == "Y":
+        return "Correct"
+    elif r.passed.strip().upper() == "N":
+        return "Incorrect"
     else:
-        if r.passed.strip().upper() == "Y":
-            final_trial_type = "Correct"
-        elif r.passed.strip().upper() == "N":
-            final_trial_type = "Incorrect"
-        else:
-            final_trial_type = "ERROR IN ANALYSIS"
-    return final_trial_type
+        return "ERROR IN ANALYSIS"
 
 
 def theta_delta(f, Cxy, config):
@@ -701,29 +665,26 @@ def calculate_coherence(x, y, fs, config):
     return theta_coherence, delta_coherence
 
 
-def load_saved_results(
-    decoding_loc,
-    lfp_len,
-    new_lfp,
-    groups,
-    choices,
-    oname_coherence,
-    oname_power_tmaze,
-    o_name_res,
-):
+def load_saved_results(out_dir,config):
+    lfp_len = config["tmaze_lfp_len"]
+    decoding_loc = out_dir / "decoding.csv"
+    groups, choices, new_lfp = []
     with open(decoding_loc, "r") as f:
         csvreader = csv.reader(f, delimiter=",")
-        for i, row in enumerate(csvreader):
+        for row in csvreader:
             groups.append(row[0])
             choices.append(row[1])
             vals = row[2:]
-            new_lfp[i] = np.array([float(v) for v in vals[:lfp_len]])
+            new_lfp.append(np.array([float(v) for v in vals[:lfp_len]]))
 
-    coherence_df = df_from_file(oname_coherence)
-    power_df = df_from_file(oname_power_tmaze)
-    res_df = df_from_file(o_name_res)
+    coh_loc = out_dir / "coherence.csv"
+    power_loc = out_dir / "power.csv"
+    results_loc = out_dir / "results.csv"
+    coherence_df = df_from_file(coh_loc)
+    power_df = df_from_file(power_loc)
+    res_df = df_from_file(results_loc)
 
-    return coherence_df, power_df, res_df
+    return coherence_df, power_df, res_df, groups, choices, np.array(new_lfp)
 
 
 if __name__ == "__main__":

@@ -73,22 +73,13 @@ def main(
     coh_df, power_df, res_df, groups, choices, new_lfp = load_saved_results(
         out_dir, config
     )
-    
+
     if do_coherence:
         plot_coherence_results(res_df, coh_df, power_df, out_dir)
     if do_decoding:
         groups = np.array(groups)
         labels = np.array(choices)
         decoding(new_lfp, groups, labels, out_dir)
-
-def compute_and_save_coherence(out_dir, config, rc):
-    results, coherence_df_list = [], []
-    for r in rc.load_iter():
-        module_logger.info(f"Analysing t_maze for {r.source_file}")
-        result, coherence = compute_coherence_and_power(r, config, out_dir)
-        results.append(result)
-        coherence_df_list.extend(coherence)
-    save_computed_info()
 
 
 def should_skip(out_dir: "Path", overwrite):
@@ -97,19 +88,33 @@ def should_skip(out_dir: "Path", overwrite):
     return decoding_loc.is_file() and (not overwrite) and coherence_loc.is_file()
 
 
-def compute_coherence_and_power(r, config, out_dir):
-    sub_lfp, rsc_lfp, fs, duration = extract_lfp_info(r)
-    sig_dict = {"SUB": sub_lfp, "RSC": rsc_lfp}
+def compute_and_save_coherence(out_dir, config, rc):
+    results, coherence_df_list, power_list = [], [], []
+    groups, choices = [], []
+    new_lfp = np.zeros(shape=(len(rc), config["tmaze_lfp_len"]), dtype=np.float32)
+    for r in rc.load_iter():
+        module_logger.info(f"Analysing t_maze for {r.source_file}")
+        sub_lfp, rsc_lfp, fs, duration = extract_lfp_info(r)
+        sig_dict = {"SUB": sub_lfp, "RSC": rsc_lfp}
+        result, coherence, power = compute_per_trial_coherence_power(
+            r, config, fs, duration, sig_dict, out_dir, new_lfp
+        )
+        results.append(result)
+        coherence_df_list.extend(coherence)
+        power_list.extend(power)
+        groups.append(get_group(r))
+        choices.append(r.attrs["choice"])
 
-    compute_per_trial_coherence_power(r, config, fs, duration, sig_dict, out_dir)
-
-    if do_decoding:
-        groups.append(group)
-        choices.append(str(r.passed).strip())
+    save_computed_info(results, coherence_df_list, power_list, out_dir)
+    save_decoding_values(out_dir, groups, choices, new_lfp)
 
 
-def compute_per_trial_coherence_power(r, config, fs, duration, sig_dict, out_dir):
-    coherence_res = calculate_coherence(sig_dict["SUB"], sig_dict["RSC"], fs, config)
+def compute_per_trial_coherence_power(
+    r, config, fs, duration, sig_dict, out_dir, new_lfp
+):
+    coherence_res = calculate_banded_coherence(
+        sig_dict["SUB"], sig_dict["RSC"], fs, config
+    )
     results_list, coherence_list, pxx_list = [], [], []
 
     for i, trial_type in zip(range(1, 3), ("forced", "choice")):
@@ -117,15 +122,18 @@ def compute_per_trial_coherence_power(r, config, fs, duration, sig_dict, out_dir
             r, fs, duration, i, trial_type, config
         )
         for k, bounds in lfp_portions.items():
-            res_list = copy(coherence_res)
+            res_list = copy(list(coherence_res))
             fn_params = [r, config, fs, sig_dict, final_trial_type, group, k, bounds]
             compute_power_per_trial(*fn_params, pxx_list, res_list)
             sub_lfp, rsc_lfp, f, Cxy = compute_coherence_per_trial(
                 *fn_params, coherence_list, res_list
             )
+            extract_decoding_vals(
+                config, k, f, Cxy, new_lfp, pxx_list, sig_dict, res_list
+            )
             results_list.append(res_list)
 
-        plot_results_intermittent(r, sub_lfp, rsc_lfp, f, Cxy, out_dir)
+        plot_results_intermittent(r, sub_lfp, rsc_lfp, f, Cxy, out_dir, fs)
     return results_list, coherence_list, pxx_list
 
 
@@ -146,7 +154,6 @@ def compute_coherence_per_trial(
         make_coherence_tuple(r, final_trial_type, group, k, f_, cxy_)
         for f_, cxy_ in zip(f, Cxy)
     )
-    extract_decoding_vals(config, k, f, Cxy)
     res_list.extend(theta_delta(f, Cxy, config))
     res_list.append(group)
     return sub_lfp, rsc_lfp, f, Cxy
@@ -180,7 +187,7 @@ def make_power_tuple(r, final_trial_type, group, k, p_val, f_val):
     return [
         f_val,
         p_val,
-        r.passed.strip(),
+        r.attrs["passed"],
         group,
         k,
         final_trial_type,
@@ -215,7 +222,7 @@ def compute_power(fs, x, config):
     f_welch, Pxx = welch(
         x,
         fs=fs,
-        nperseg=config["tmaze_winsec"] * 250,
+        nperseg=config["tmaze_winsec"] * fs,
         return_onesided=True,
         scaling="density",
         average="mean",
@@ -237,13 +244,13 @@ def compute_power(fs, x, config):
     return f_welch, Pxx
 
 
-def plot_results_intermittent(r, x, y, f, Cxy, out_dir):
+def plot_results_intermittent(r, x, y, f, Cxy, out_dir, fs):
     every_few_iters = random()
     if every_few_iters < 0.05:
         fig2, ax2 = plt.subplots(3, 1)
         ax2[0].plot(f, Cxy, c="k")
-        ax2[1].plot([i / 250 for i in range(len(x))], x, c="k")
-        ax2[2].plot([i / 250 for i in range(len(y))], y, c="k")
+        ax2[1].plot([i / fs for i in range(len(x))], x, c="k")
+        ax2[2].plot([i / fs for i in range(len(y))], y, c="k")
         fig2.savefig(
             out_dir
             / f'coherence_{r.attrs["rat"]}_{r.attrs["session"]}_{r.attrs["trial"]}.png'
@@ -259,16 +266,15 @@ def get_group(r):
 def save_computed_info(results_list, coherence_df_list, pxx_list, out_dir):
     headers = get_result_headers()
     res_df = pd.DataFrame(results_list, columns=headers)
-    df_to_file(res_df, out_name, index=False)
+    df_to_file(res_df, out_dir / "results.csv", index=False)
 
     headers = get_coherence_headers()
     coherence_df = list_to_df(coherence_df_list, headers=headers)
-    df_to_file(coherence_df, oname_coherence, index=False)
+    df_to_file(coherence_df, out_dir / "coherence.csv", index=False)
 
     headers = get_power_headers()
     power_df = list_to_df(pxx_list, headers)
-    df_to_file(power_df, oname_power_tmaze, index=False)
-    smr.set_plot_style()
+    df_to_file(power_df, out_dir / "power.csv", index=False)
 
 
 def plot_coherence_results(res_df, coherence_df, power_df, out_dir):
@@ -292,13 +298,15 @@ def save_decoding_values(out_dir, overwrite, groups, choices, new_lfp):
                 f.write(line)
 
 
-def plot_coherence_choice(coherence_df):
+def plot_coherence_choice(coherence_df, out_dir):
     coherence_df["Trial result"] = coherence_df["Trial"]
     coherence_df_sub_bit = coherence_df[
         (coherence_df["Part"] == "choice") & (coherence_df["Trial"] != "Forced")
     ]
 
+    fig, ax = plt.subplots()
     sns.lineplot(
+        ax=ax,
         data=coherence_df_sub_bit,
         x="Frequency (Hz)",
         y="Coherence",
@@ -307,21 +315,20 @@ def plot_coherence_choice(coherence_df):
         ci=95,
         estimator=np.median,
     )
-    plt.ylim(0, 1)
+    ax.set_ylim(0, 1)
     smr.despine()
-    plt.savefig(
-        os.path.join(here, "..", "sim_results", "tmaze", "choice_coherence_ci.pdf"),
-        dpi=400,
-    )
-    plt.close("all")
+    fig = smr.SimuranFigure(fig=fig, name=out_dir / "choice_coherence_ci")
+    fig.save()
 
 
-def plot_choice_power(power_df):
+def plot_choice_power(power_df, out_dir):
     power_df["Trial result"] = power_df["Trial"]
     power_df_sub_bit = power_df[
         (power_df["Part"] == "choice") & (power_df["Trial"] != "Forced")
     ]
+    fig, ax = plt.subplots()
     sns.lineplot(
+        ax=ax,
         data=power_df_sub_bit,
         x="Frequency (Hz)",
         y="Power (dB)",
@@ -331,11 +338,8 @@ def plot_choice_power(power_df):
         ci=95,
     )
     smr.despine()
-    plt.savefig(
-        os.path.join(here, "..", "sim_results", "tmaze", "choice_power_ci.pdf"),
-        dpi=400,
-    )
-    plt.close("all")
+    fig = smr.SimuranFigure(fig=fig, name=out_dir / "choice_power_ci")
+    fig.save()
 
 
 def plot_banded_coherence(out_dir, res_df):
@@ -488,9 +492,12 @@ def theta_delta(f, Cxy, config):
     return max_theta_coherence, max_delta_coherence, peak_theta_coherence
 
 
-def extract_decoding_vals(do_decoding, config, k, f, Cxy):
-    if do_decoding:
+def extract_decoding_vals(config, k, f, Cxy, new_lfp, power_list, sig_dict, results):
+    """TODO decide what should actually be in the decoding signal"""
+    method = "coherence"
+    if method == "coherence":
         if k == "choice":
+            # TODO how do I know if Cxy is for first or second part of trial
             coherence_vals_for_decode = Cxy[
                 np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))
             ]
@@ -521,8 +528,8 @@ def bandpowers(config, res_dict, k, region, lfp):
         window_sec=config["tmaze_winsec"],
         band_total=True,
     )
-    res_dict["{}-{}_delta".format(region, k)] = delta_power["relative_power"]
-    res_dict["{}-{}_theta".format(region, k)] = theta_power["relative_power"]
+    res_dict[f"{region}-{k}_delta"] = delta_power["relative_power"]
+    res_dict[f"{region}-{k}_theta"] = theta_power["relative_power"]
 
 
 def extract_lfp_portions(max_lfp_lengths_seconds, fs, duration, time_dict):
@@ -635,12 +642,11 @@ def extract_times_for_lfp(r, fs, duration, i):
     lfpt2 = int(ceil(t2 * fs))
     lfpt3 = int(ceil(t3 * fs))
 
-    time_dict = {
+    return {
         "start": (lfpt1, lfpt2, lfpt2),
         "choice": (lfpt1, lfpt2, lfpt3),
         "end": (lfpt2, lfpt3, lfpt3),
     }
-    return time_dict
 
 
 def extract_lfp_info(r):
@@ -651,8 +657,8 @@ def extract_lfp_info(r):
     return sub_lfp, rsc_lfp, fs, duration
 
 
-def calculate_coherence(x, y, fs, config):
-    f, Cxy = coherence(x, y, fs, nperseg=config["tmaze_winsec"] * 250)
+def calculate_banded_coherence(x, y, fs, config):
+    f, Cxy = coherence(x, y, fs, nperseg=config["tmaze_winsec"] * fs)
     f = f[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
     Cxy = Cxy[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
 
@@ -665,7 +671,7 @@ def calculate_coherence(x, y, fs, config):
     return theta_coherence, delta_coherence
 
 
-def load_saved_results(out_dir,config):
+def load_saved_results(out_dir, config):
     lfp_len = config["tmaze_lfp_len"]
     decoding_loc = out_dir / "decoding.csv"
     groups, choices, new_lfp = []
@@ -688,52 +694,12 @@ def load_saved_results(out_dir,config):
 
 
 if __name__ == "__main__":
-    here_main = os.path.dirname(os.path.abspath(__file__))
-    main_output_location = os.path.join(here_main, "results")
-
-    main_xls_location = os.path.join(main_output_location, "tmaze-times.csv")
-
-    parser = argparse.ArgumentParser(description="Tmaze arguments")
-    parser.add_argument(
-        "--config",
-        "-cfg",
-        type=str,
-        default="default.py",
-        help="path to the configuration file, default.py by default.",
-    )
-    parser.add_argument(
-        "--main_dir",
-        "-d",
-        type=str,
-        default="",
-        help="The name of the base directory for the data.",
-    )
-    parser.add_argument(
-        "--overwrite",
-        "-o",
-        action="store_true",
-        help="Whether to overwrite existing output",
-    )
-    parsed = parse_args(parser, verbose=False)
-
-    cfg_name = parsed.config
-
-    if not os.path.exists(cfg_name):
-        cfg_path = os.path.abspath(os.path.join(here_main, "..", "configs", cfg_name))
-    else:
-        cfg_path = cfg_name
-    main_base_dir = parsed.main_dir
-
-    main_plot_individual_sessions = False
-    main_do_coherence = True
-    main_do_decoding = False
-
-    main_overwrite = parsed.overwrite
     main(
-        main_xls_location,
-        main_base_dir,
-        main_plot_individual_sessions,
-        main_do_coherence,
-        main_do_decoding,
-        main_overwrite,
+        snakemake.input[0],
+        snakemake.config["simuran_config"],
+        Path(snakemake.output[0]).parent, 
+        snakemake.params["overwrite"],
+        snakemake.params["do_coherence"],
+        snakemake.params["do_decoding"],
+        snakemake.params["overwrite"],
     )

@@ -28,3 +28,13 @@ max_psd_freq: 30
 speed_theta_samples_per_second: 5
 max_speed: 40
 num_spike_shuffles: 40
+tmaze_minf: 2.0
+tmaze_maxf: 40.0
+tmaze_winsec: 0.5
+max_lfp_lengths:
+  start: 20
+  choice:
+    3.5
+    0.5
+  end: 10
+tmaze_lfp_len: 6

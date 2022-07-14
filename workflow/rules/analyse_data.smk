@@ -14,3 +14,16 @@ rule process_lfp:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/process_lfp.py"
+
+
+rule process_tmaze:
+    input:
+        "results/tmaze-times_nwb.csv"
+    output:
+        directory("results/tmaze")
+    log:
+        "logs/process_tmaze.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/t_maze_analyse.py"

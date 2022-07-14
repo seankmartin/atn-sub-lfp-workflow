@@ -115,3 +115,18 @@ rule plot_musc_spike_lfp:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/plot_spike_lfp.py"
+
+rule plot_tmaze:
+    input:
+        directory("results/tmaze")
+    output:
+        directory("results/plots/tmaze")
+    log:
+        "logs/plot_tmaze.log"
+    params:
+        do_coherence=True
+        do_decoding=True
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/t_maze_plot.py"

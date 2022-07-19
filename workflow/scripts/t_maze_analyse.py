@@ -18,7 +18,7 @@ module_logger = logging.getLogger("simuran.custom.tmaze_analyse")
 
 
 def main(tmaze_times_filepath, config_filepath, out_dir):
-    config = smr.parse_config(config_filepath)
+    config = smr.config_from_file(config_filepath)
     datatable = df_from_file(tmaze_times_filepath)
     rc = smr.RecordingContainer.from_table(datatable, smr.loader("nwb"))
 
@@ -480,9 +480,7 @@ def calculate_banded_coherence(x, y, fs, config):
     Cxy = Cxy[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
 
     theta_co = Cxy[np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))]
-    delta_co = Cxy[
-        np.nonzero((f >= config["delta_min"]) & (f <= config[config["delta_max"]]))
-    ]
+    delta_co = Cxy[np.nonzero((f >= config["delta_min"]) & (f <= config["delta_max"]))]
     theta_coherence = np.nanmean(theta_co)
     delta_coherence = np.nanmean(delta_co)
     return theta_coherence, delta_coherence
@@ -494,6 +492,4 @@ if __name__ == "__main__":
         snakemake.input[0],
         snakemake.config["simuran_config"],
         Path(snakemake.output[0]),
-        snakemake.params["do_coherence"],
-        snakemake.params["do_decoding"],
     )

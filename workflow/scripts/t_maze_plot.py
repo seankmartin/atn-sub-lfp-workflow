@@ -197,7 +197,7 @@ def load_saved_results(out_dir, config):
 if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
     main(
-        Path(snakemake.input[0]),
+        Path(snakemake.input[0]).parent,
         snakemake.config["simuran_config"],
         Path(snakemake.output[0]),
         snakemake.params["do_coherence"],

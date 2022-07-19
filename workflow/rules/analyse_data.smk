@@ -2,11 +2,13 @@ rule process_lfp:
     input:
         "results/openfield_nwb.csv",
         "results/openfield_cells_nwb.csv",
-        "results/muscimol_cells_nwb.csv"
+        "results/muscimol_cells_nwb.csv",
+        "results/tmaze_times_nwb.csv",
     output:
         "results/openfield_processed.csv",
         "results/openfield_cells_processed.csv",
         "results/muscimol_cells_processed.csv",
+        "results/tmaze_times_processed.csv",
         "results/processed_nwbfiles.csv",
     log:
         "logs/process_lfp.log"
@@ -16,11 +18,14 @@ rule process_lfp:
         "../scripts/process_lfp.py"
 
 
-rule process_tmaze:
+rule analyse_tmaze:
     input:
-        "results/tmaze-times_nwb.csv"
+        "results/tmaze_times_processed.csv"
     output:
-        directory("results/tmaze")
+        "results/tmaze/results.csv",
+        "results/tmaze/coherence.csv",
+        "results/tmaze/power.csv",
+        "results/tmaze/decoding.csv",
     log:
         "logs/process_tmaze.log"
     conda:

@@ -118,13 +118,13 @@ rule plot_musc_spike_lfp:
 
 rule plot_tmaze:
     input:
-        directory("results/tmaze")
+        "results/tmaze/results.csv"
     output:
         directory("results/plots/tmaze")
     log:
         "logs/plot_tmaze.log"
     params:
-        do_coherence=True
+        do_coherence=True,
         do_decoding=True
     conda:
         "../../envs/nwb_simuran.yml"

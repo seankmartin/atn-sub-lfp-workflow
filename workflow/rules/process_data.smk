@@ -39,9 +39,9 @@ rule convert_to_nwb:
 rule convert_tmaze:
     input:
         "results/subret_recordings.csv",
-        "workflow/sheets/tmaze-times.csv"
+        "workflow/sheets/tmaze_times.csv"
     output:
-        "results/tmaze-times_nwb.csv"
+        "results/tmaze_times_nwb.csv"
     log:
         "logs/convert_tmaze.log"
     conda:

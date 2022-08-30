@@ -28,7 +28,7 @@ def main(tmaze_times_filepath, config_filepath, out_dir):
 def compute_and_save_coherence(out_dir, config, rc):
     results, coherence_df_list, power_list = [], [], []
     groups, choices = [], []
-    new_lfp = np.zeros(shape=(len(rc), config["tmaze_lfp_len"]), dtype=np.float32)
+    new_lfp = np.zeros(shape=(len(rc), 2 * config["tmaze_lfp_len"]), dtype=np.float32)
     for i, r in enumerate(rc.load_iter()):
         module_logger.info(f"Analysing t_maze for {r.source_file}")
         sub_lfp, rsc_lfp, fs, duration = extract_lfp_info(r)
@@ -36,11 +36,11 @@ def compute_and_save_coherence(out_dir, config, rc):
         result, coherence, power = compute_per_trial_coherence_power(
             r, i, config, fs, duration, sig_dict, out_dir, new_lfp
         )
-        results.append(result)
+        results.extend(result)
         coherence_df_list.extend(coherence)
         power_list.extend(power)
         groups.append(get_group(r))
-        choices.append(r.attrs["choice"])
+        choices.append(r.attrs["passed"])
 
     save_computed_info(results, coherence_df_list, power_list, out_dir)
     save_decoding_values(out_dir, groups, choices, new_lfp)
@@ -197,12 +197,12 @@ def plot_results_intermittent(r, x, y, f, Cxy, out_dir, fs):
 
 
 def get_group(r):
-    return "Control" if r.attrs["animal"].lower().startswith("c") else "Lesion (ATNx)"
+    return "Control" if r.attrs["rat"].lower().startswith("c") else "Lesion (ATNx)"
 
 
 def save_computed_info(results_list, coherence_df_list, pxx_list, out_dir):
     headers = get_result_headers()
-    res_df = pd.DataFrame(results_list, columns=headers)
+    res_df = list_to_df(results_list, headers=headers)
     df_to_file(res_df, out_dir / "results.csv", index=False)
 
     headers = get_coherence_headers()
@@ -269,11 +269,11 @@ def get_result_headers():
 
 def list_results(r, res_dict, final_trial_type, k):
     res_list = [
-        r.location,
-        r.session,
-        r.animal,
-        r.test,
-        r.passed,
+        r.source_file,
+        r.attrs["session"],
+        r.attrs["rat"],
+        r.attrs["trial"],
+        r.attrs["passed"],
         k,
         final_trial_type,
     ]
@@ -290,9 +290,9 @@ def list_results(r, res_dict, final_trial_type, k):
 def convert_trial_type(r, trial_type):
     if trial_type == "forced":
         return "Forced"
-    elif r.passed.strip().upper() == "Y":
+    elif r.attrs["passed"].strip().upper() == "Y":
         return "Correct"
-    elif r.passed.strip().upper() == "N":
+    elif r.attrs["passed"].strip().upper() == "N":
         return "Incorrect"
     else:
         return "ERROR IN ANALYSIS"
@@ -315,20 +315,19 @@ def extract_decoding_vals(
     method = "coherence"
     if method == "coherence":
         if k == "choice":
-            # TODO how do I know if Cxy is for first or second part of trial
             coherence_vals_for_decode = Cxy[
                 np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))
             ]
-            hf = new_lfp.shape[0] // 2
-            s, e = i * hf, (i + 1) * hf
+            hf = new_lfp.shape[1] // 2
+            s, e = (i - 1) * hf, i * hf
             new_lfp[j, s:e] = coherence_vals_for_decode
 
 
 def coherence_from_bounds(config, fs, sig_dict, bounds):
     sub_s = sig_dict["SUB"]
     rsc_s = sig_dict["RSC"]
-    x = np.array(sub_s[bounds[0] : bounds[1]].to(u.mV))
-    y = np.array(rsc_s[bounds[0] : bounds[1]].to(u.mV))
+    x = np.array(sub_s[bounds[0] : bounds[1]])
+    y = np.array(rsc_s[bounds[0] : bounds[1]])
 
     f, Cxy = coherence(x, y, fs, nperseg=config["tmaze_winsec"] * fs, nfft=256)
     f = f[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
@@ -358,16 +357,15 @@ def extract_lfp_portions(max_lfp_lengths_seconds, fs, duration, time_dict):
             max_lfp_lengths_seconds, fs, time_dict, k, max_len
         )
         end_time = verify_start_end(fs, duration, start_time, end_time)
-        lfp_portions[k] = (start_time, end_time)
+        lfp_portions[k] = [start_time, end_time]
     return lfp_portions
 
 
 def convert_signal_to_nc(bounds, signal, fs):
     lfp_t1, lfp_t2 = bounds
     lfp = NLfp()
-    lfp.set_channel_id(signal.channel)
-    lfp._timestamp = np.array(signal.timestamps[lfp_t1:lfp_t2].to(u.s))
-    lfp._samples = np.array(signal.samples[lfp_t1:lfp_t2].to(u.mV))
+    lfp._samples = np.array(signal[lfp_t1:lfp_t2])
+    lfp._timestamp = np.array(list(range(len(lfp._samples)))) / fs
     lfp._record_info["Sampling rate"] = fs
     return lfp
 
@@ -375,7 +373,7 @@ def convert_signal_to_nc(bounds, signal, fs):
 def verify_start_end(fs, duration, start_time, end_time):
     """Make sure have at least 1 second and not > duration."""
     if (end_time - start_time) < fs:
-        end_time = start_time + fs
+        end_time = ceil(start_time + fs)
 
     if end_time > int(ceil(duration * 250)):
         raise RuntimeError(f"End time {end_time} greater than duration {duration}")
@@ -390,48 +388,21 @@ def extract_start_choice_end(max_lfp_lengths_seconds, fs, time_dict, k, max_len)
     end_time = time_dict[k][2]
 
     if k == "start":
-        st = max_lfp_lengths_seconds["choice"][0]
+        ct = max_lfp_lengths_seconds["choice"][0]
         start_time, end_time = extract_first_times(
-            st, fs, max_len, start_time, end_time
+            ct, fs, max_len, start_time, end_time
         )
     elif k == "choice":
+        ct = max_lfp_lengths_seconds["choice"]
         start_time, end_time = extract_choice_times(
-            fs, start_time, choice_time, end_time
+            ct, fs, start_time, choice_time, end_time
         )
     elif k == "end":
         ct = max_lfp_lengths_seconds["choice"][1]
         start_time, end_time = extract_end_times(ct, fs, max_len, start_time, end_time)
     else:
         raise RuntimeError(f"Unsupported key {k}")
-    return start_time, choice_time, end_time
-
-
-def extract_end_times(ct, fs, max_len, start_time, end_time):
-    """
-    Get end times.
-
-    For the end time, if the end is longer than max_len
-    take the first X seconds after the choice data
-    """
-    start_time = min(start_time + int(ceil(ct * fs)), end_time)
-    natural_end_time = start_time + max_len * fs
-    end_time = min(natural_end_time, end_time)
-    return start_time, end_time
-
-
-def extract_choice_times(fs, start_time, choice_time, end_time):
-    """
-    Get choice times.
-
-    For the choice, take (max_len[0], max_len[1]) seconds
-    of data around the point.
-    """
-    left_push = int(floor(v[0] * fs))
-    right_push = int(ceil(v[1] * fs))
-
-    start_time = max(choice_time - left_push, start_time)
-    end_time = min(choice_time + right_push, end_time)
-    return start_time, end_time
+    return [floor(start_time), ceil(end_time)]
 
 
 def extract_first_times(ct, fs, max_len, start_time, end_time):
@@ -442,8 +413,36 @@ def extract_first_times(ct, fs, max_len, start_time, end_time):
     seconds before the choice data
     """
     end_time = max(end_time - int(floor(ct * fs)), start_time)
-    natural_start_time = end_time - max_len * fs
+    natural_start_time = end_time - (max_len * fs)
     start_time = max(natural_start_time, start_time)
+    return start_time, end_time
+
+
+def extract_choice_times(ct, fs, start_time, choice_time, end_time):
+    """
+    Get choice times.
+
+    For the choice, take (max_len[0], max_len[1]) seconds
+    of data around the point.
+    """
+    left_push = int(floor(ct[0] * fs))
+    right_push = int(ceil(ct[1] * fs))
+
+    start_time = max(choice_time - left_push, start_time)
+    end_time = min(choice_time + right_push, end_time)
+    return start_time, end_time
+
+
+def extract_end_times(ct, fs, max_len, start_time, end_time):
+    """
+    Get end times.
+
+    For the end time, if the end is longer than max_len
+    take the first X seconds after the choice data
+    """
+    start_time = min(start_time + int(ceil(ct * fs)), end_time)
+    natural_end_time = start_time + (max_len * fs)
+    end_time = min(natural_end_time, end_time)
     return start_time, end_time
 
 
@@ -491,5 +490,5 @@ if __name__ == "__main__":
     main(
         snakemake.input[0],
         snakemake.config["simuran_config"],
-        Path(snakemake.output[0]),
+        Path(snakemake.output[0]).parent,
     )

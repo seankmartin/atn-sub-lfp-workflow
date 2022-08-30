@@ -5,10 +5,8 @@ from math import ceil, floor
 from pathlib import Path
 from random import random
 
-import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import simuran as smr
 from neurochat.nc_lfp import NLfp
 from scipy.signal import coherence, welch

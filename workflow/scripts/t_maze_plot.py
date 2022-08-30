@@ -1,4 +1,5 @@
 import csv
+from pathlib import Path
 from pprint import pprint
 
 import matplotlib.pyplot as plt
@@ -10,6 +11,7 @@ from skm_pyutils.table import df_from_file
 
 
 def main(input_dir, config, out_dir, do_coherence, do_decoding):
+    config = smr.config_from_file(config)
     coh_df, power_df, res_df, groups, choices, new_lfp = load_saved_results(
         input_dir, config
     )
@@ -27,7 +29,7 @@ def plot_coherence_choice(coherence_df, out_dir):
     coherence_df_sub_bit = coherence_df[
         (coherence_df["Part"] == "choice") & (coherence_df["Trial"] != "Forced")
     ]
-
+    smr.set_plot_style()
     fig, ax = plt.subplots()
     sns.lineplot(
         ax=ax,
@@ -50,6 +52,7 @@ def plot_choice_power(power_df, out_dir):
     power_df_sub_bit = power_df[
         (power_df["Part"] == "choice") & (power_df["Trial"] != "Forced")
     ]
+    smr.set_plot_style()
     fig, ax = plt.subplots()
     sns.lineplot(
         ax=ax,
@@ -82,6 +85,7 @@ def plot_grouped_power_coherence(out_dir, coherence_df, power_df):
 
 def plot_group_power(group, power_df_sub, out_dir):
     fig, ax = plt.subplots()
+    smr.set_plot_style()
     sns.lineplot(
         data=power_df_sub,
         x="Frequency (Hz)",
@@ -99,6 +103,7 @@ def plot_group_power(group, power_df_sub, out_dir):
 
 
 def plot_group_coherence(group, coherence_df_sub, out_dir):
+    smr.set_plot_style()
     fig, ax = plt.subplots()
     for ci, ci_name in zip((None, 95), ("", "_ci")):
         sns.lineplot(
@@ -119,6 +124,7 @@ def plot_group_coherence(group, coherence_df_sub, out_dir):
 
 def plot_bar_coherence(res_df, band: str, out_dir):
     fig, ax = plt.subplots()
+    smr.set_plot_style()
     sns.barplot(
         data=res_df,
         x="trial",
@@ -142,6 +148,7 @@ def plot_coherence_results(res_df, coherence_df, power_df, out_dir):
 
 
 def decoding(lfp_array, groups, labels, base_dir):
+    smr.set_plot_style()
     for group in ["Control", "Lesion (ATNx)"]:
         correct_groups = groups == group
         lfp_to_use = lfp_array[correct_groups, :]
@@ -175,7 +182,7 @@ def decoding(lfp_array, groups, labels, base_dir):
 def load_saved_results(out_dir, config):
     lfp_len = config["tmaze_lfp_len"]
     decoding_loc = out_dir / "decoding.csv"
-    groups, choices, new_lfp = []
+    groups, choices, new_lfp = [], [], []
     with open(decoding_loc, "r") as f:
         csvreader = csv.reader(f, delimiter=",")
         for row in csvreader:

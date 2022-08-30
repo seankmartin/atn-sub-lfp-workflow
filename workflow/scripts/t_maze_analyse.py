@@ -214,18 +214,17 @@ def save_computed_info(results_list, coherence_df_list, pxx_list, out_dir):
     df_to_file(power_df, out_dir / "power.csv", index=False)
 
 
-def save_decoding_values(out_dir, overwrite, groups, choices, new_lfp):
+def save_decoding_values(out_dir, groups, choices, new_lfp):
     decoding_loc = out_dir / "decoding.csv"
-    if not os.path.exists(decoding_loc) or overwrite:
-        with open(decoding_loc, "w") as f:
-            for i in range(len(groups)):
-                line = ""
-                line += f"{groups[i]},"
-                line += f"{choices[i]},"
-                for v in new_lfp[i]:
-                    line += f"{v},"
-                line = line[:-1] + "\n"
-                f.write(line)
+    with open(decoding_loc, "w") as f:
+        for i in range(len(groups)):
+            line = ""
+            line += f"{groups[i]},"
+            line += f"{choices[i]},"
+            for v in new_lfp[i]:
+                line += f"{v},"
+            line = line[:-1] + "\n"
+            f.write(line)
 
 
 def get_power_headers():

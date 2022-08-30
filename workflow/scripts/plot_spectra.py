@@ -9,8 +9,6 @@ import simuran as smr
 from skm_pyutils.plot import GridFig
 from skm_pyutils.table import df_from_file, list_to_df
 
-from common import rename_rat
-
 module_logger = logging.getLogger("simuran.custom.plot_spectra")
 
 
@@ -204,28 +202,12 @@ def main(df_path, config_path, out_dir):
 def summary(df_path, config_path, out_dir, order=0):
     """Order 0, average PSDs, order 1, average signals"""
     config = smr.ParamHandler(source_file=config_path)
-    datatable = df_from_file(df_path)
-    datatable.loc[:, "rat"] = datatable["rat"].map(lambda x: rename_rat(x))
-    loader = smr.loader("nwb")
-    rc = smr.RecordingContainer.from_table(datatable, loader=loader)
-    per_animal_psds = []
     max_frequency = config["max_psd_freq"]
-
-    smr.set_plot_style()
-    for r in rc.load_iter():
-        rat_name = r.attrs["rat"]
-        if order == 0:
-            psd_df = create_psd_table(r.data)
-            clean_df = psd_df[psd_df["Type"] == "Clean"]
-        else:
-            clean_df = convert_df_to_averages(grab_psds(r.data)[0])
-        clean_df = clean_df.assign(Rat=rat_name)
-        clean_df = clean_df.assign(Group=group_type_from_rat_name(rat_name))
-        per_animal_psds.append(clean_df)
+    full_df = df_from_file(df_path)
 
     end_bit = "averaged_psds" if order == 0 else "averaged_signals"
-    full_df = pd.concat(per_animal_psds, ignore_index=True)
     path = out_dir / f"per_animal_psds--{end_bit}"
+    smr.set_plot_style()
     plot_per_animal_psd(full_df, path, max_frequency)
     path = out_dir / f"per_group_psds--{end_bit}"
     plot_control_vs_lesion_psd(full_df, path, max_frequency)
@@ -237,7 +219,7 @@ if __name__ == "__main__":
     if snakemake.params.get("mode") == "summary":
         for order in (0, 1):
             summary(
-                snakemake.input[0],
+                snakemake.input[order],
                 snakemake.config["simuran_config"],
                 Path(snakemake.output[0]).parent.parent,
                 order,

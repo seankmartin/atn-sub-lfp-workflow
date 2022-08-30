@@ -19,7 +19,8 @@ rule plot_lfp_spectra:
 
 rule plot_spectra_summary:
     input:
-        "results/openfield_processed.csv"
+        "results/summary/averaged_psds_psd.csv",
+        "results/summary/averaged_signals_psd.csv"
     output:
         report("results/plots/summary/png/per_animal_psds--averaged_psds--SUB.png", category="Comparison"),
         report("results/plots/summary/png/per_animal_psds--averaged_psds--RSC.png", category="Comparison"),
@@ -54,7 +55,7 @@ rule plot_fooof:
 
 rule plot_coherence:
     input:
-        "results/openfield_processed.csv"
+        "results/summary/openfield_coherence.csv"
     output:
         report("results/plots/summary/png/coherence.png", category="Summary")
     log:

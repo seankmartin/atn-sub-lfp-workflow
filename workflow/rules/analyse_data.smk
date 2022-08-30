@@ -32,3 +32,31 @@ rule analyse_tmaze:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/t_maze_analyse.py"
+
+
+rule create_dfs:
+    input:
+        "results/openfield_processed.csv"
+    output:
+        "results/summary/averaged_signals_psd.csv",
+        "results/summary/averaged_psds_psd.csv",
+        "results/summary/openfield_coherence.csv"
+    log:
+        "logs/create_dfs.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/create_dfs.py"
+
+
+rule hypothesis_tests:
+    input:
+        ""
+    output:
+        ""
+    log:
+        "logs/stats_tests.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/stats_tests.py"

@@ -1,27 +1,16 @@
-import csv
 from pathlib import Path
-from pprint import pprint
 
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import simuran as smr
-from neuronal import LFPDecoder
 from skm_pyutils.table import df_from_file
 
 
-def main(input_dir, config, out_dir, do_coherence, do_decoding):
+def main(input_dir, config, out_dir):
     config = smr.config_from_file(config)
-    coh_df, power_df, res_df, groups, choices, new_lfp = load_saved_results(
-        input_dir, config
-    )
-
-    if do_coherence:
-        plot_coherence_results(res_df, coh_df, power_df, out_dir)
-    if do_decoding:
-        groups = np.array(groups)
-        labels = np.array(choices)
-        decoding(new_lfp, groups, labels, out_dir)
+    coh_df, power_df, res_df = load_saved_results(input_dir, config)
+    plot_coherence_results(res_df, coh_df, power_df, out_dir)
 
 
 def plot_coherence_choice(coherence_df, out_dir):
@@ -147,58 +136,15 @@ def plot_coherence_results(res_df, coherence_df, power_df, out_dir):
     plot_coherence_choice(coherence_df, out_dir)
 
 
-def decoding(lfp_array, groups, labels, base_dir):
-    smr.set_plot_style()
-    for group in ["Control", "Lesion (ATNx)"]:
-        correct_groups = groups == group
-        lfp_to_use = lfp_array[correct_groups, :]
-        labels_ = labels[correct_groups]
-
-        decoder = LFPDecoder(
-            labels=labels_,
-            mne_epochs=None,
-            features=lfp_to_use,
-            cv_params={"n_splits": 100},
-        )
-        out = decoder.decode()
-        print(decoder.decoding_accuracy(out[2], out[1]))
-
-        print("\n----------Cross Validation-------------")
-        decoder.cross_val_decode(shuffle=False)
-        pprint(decoder.cross_val_result)
-        pprint(decoder.confidence_interval_estimate("accuracy"))
-
-        print("\n----------Cross Validation Control (shuffled)-------------")
-        decoder.cross_val_decode(shuffle=True)
-        pprint(decoder.cross_val_result)
-        pprint(decoder.confidence_interval_estimate("accuracy"))
-
-        random_search = decoder.hyper_param_search(verbose=True, set_params=False)
-        print("Best params:", random_search.best_params_)
-
-        decoder.visualise_features(output_folder=base_dir, name=f"_{group}")
-
-
-def load_saved_results(out_dir, config):
-    lfp_len = config["tmaze_lfp_len"]
-    decoding_loc = out_dir / "decoding.csv"
-    groups, choices, new_lfp = [], [], []
-    with open(decoding_loc, "r") as f:
-        csvreader = csv.reader(f, delimiter=",")
-        for row in csvreader:
-            groups.append(row[0])
-            choices.append(row[1])
-            vals = row[2:]
-            new_lfp.append(np.array([float(v) for v in vals[:lfp_len]]))
-
-    coh_loc = out_dir / "coherence.csv"
-    power_loc = out_dir / "power.csv"
-    results_loc = out_dir / "results.csv"
+def load_saved_results(input_dir):
+    coh_loc = input_dir / "coherence.csv"
+    power_loc = input_dir / "power.csv"
+    results_loc = input_dir / "results.csv"
     coherence_df = df_from_file(coh_loc)
     power_df = df_from_file(power_loc)
     res_df = df_from_file(results_loc)
 
-    return coherence_df, power_df, res_df, groups, choices, np.array(new_lfp)
+    return coherence_df, power_df, res_df
 
 
 if __name__ == "__main__":
@@ -207,6 +153,4 @@ if __name__ == "__main__":
         Path(snakemake.input[0]).parent,
         snakemake.config["simuran_config"],
         Path(snakemake.output[0]),
-        snakemake.params["do_coherence"],
-        snakemake.params["do_decoding"],
     )

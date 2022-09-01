@@ -54,7 +54,7 @@ rule plot_fooof:
         "../scripts/plot_fooof.py"
 
 rule plot_coherence:
-    input:
+    input: 
         "results/summary/openfield_coherence.csv"
     output:
         report("results/plots/summary/png/coherence.png", category="Summary")
@@ -67,7 +67,7 @@ rule plot_coherence:
 
 rule plot_speed_lfp:
     input:
-        "results/openfield_processed.csv"
+        "results/summary/openfield_speed.csv"
     output:
         report(
             expand(
@@ -94,7 +94,8 @@ rule plot_lfp:
 
 rule plot_open_spike_lfp:
     input:
-        "results/openfield_cells_processed.csv",
+        "results/summary/openfield_sta.csv",
+        "results/summary/openfield_sfc.csv",
     output:
         directory("results/plots/spike_lfp/")
     log:
@@ -106,8 +107,8 @@ rule plot_open_spike_lfp:
 
 rule plot_musc_spike_lfp:
     input:
-        "results/muscimol_cells_processed.csv",
-        "workflow/sheets/muscimol_cells.csv"
+        "results/summary/muscimol_sta.csv",
+        "results/summary/muscimol_sfc.csv",
     output:
         directory("results/plots/spike_lfp_musc/")
     log:
@@ -119,14 +120,11 @@ rule plot_musc_spike_lfp:
 
 rule plot_tmaze:
     input:
-        "results/tmaze/results.csv"
+        "results/tmaze/decoding.csv"
     output:
         directory("results/plots/tmaze")
     log:
         "logs/plot_tmaze.log"
-    params:
-        do_coherence=True,
-        do_decoding=True
     conda:
         "../../envs/nwb_simuran.yml"
     script:

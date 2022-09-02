@@ -407,7 +407,7 @@ def main(input_paths, plot_dir, config_path, show_quartiles=False):
 if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
     main(
-        Path(snakemake.input[0]).parent,
+        snakemake.input,
         Path(snakemake.output[0]),
         snakemake.config["simuran_config"],
         snakemake.params["show_quartiles"],

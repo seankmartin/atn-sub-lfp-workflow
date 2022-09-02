@@ -163,24 +163,24 @@ def openfield_coherence(rc, out_dir, config):
             ].to_dataframe()
             region = coherence_df["label"].values[0]
             group = recording.attrs["treatment"]
-            l.extend(
+            this_bit = [
                 [group, region, f_val, c_val]
                 for f_val, c_val in zip(
                     coherence_df["frequency"].values[0],
                     coherence_df["coherence"].values[0],
                 )
-            )
-            theta_coherence = coherence_df[
-                (coherence_df["frequency"] >= theta_min)
-                & (coherence_df["frequency"] <= theta_max)
             ]
-            peak_theta_coherence = max(theta_coherence["coherence"])
-            delta_coherence = coherence_df[
-                (coherence_df["frequency"] >= delta_min)
-                & (coherence_df["frequency"] <= delta_max)
+            this_df = list_to_df(this_bit, headers=["G", "R", "F", "C"])
+            l.extend(this_bit)
+            theta_coherence = this_df[
+                (this_df["F"] >= theta_min) & (this_df["F"] <= theta_max)
             ]
-            peak_delta_coherence = max(delta_coherence["coherence"])
-            peak_coherences.append(peak_theta_coherence, peak_delta_coherence)
+            peak_theta_coherence = max(theta_coherence["C"])
+            delta_coherence = this_df[
+                (this_df["F"] >= delta_min) & (this_df["F"] <= delta_max)
+            ]
+            peak_delta_coherence = max(delta_coherence["C"])
+            peak_coherences.append([peak_theta_coherence, peak_delta_coherence])
         headers = ["Group", "Regions", "Frequency (Hz)", "Coherence"]
         headers2 = ["Peak Theta Coherence", "Peak Delta Coherence"]
         return list_to_df(l, headers), list_to_df(peak_coherences, headers2)
@@ -359,7 +359,7 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
                     theta_min,
                     theta_max,
                 )
-                peak_vals.append(peak_theta_coh, animal, region, type_)
+                peak_vals.append([peak_theta_coh, animal, region, type_])
 
     headers = ["Region", "Group", "Spatial", "STA", "Time (s)", "Shuffled STA"]
     sta_df = list_to_df(sta_list, headers=headers)

@@ -37,19 +37,19 @@ def main(inputs, output_dir, config_path):
     datatable.loc[:, "rat"] = datatable["rat"].map(lambda x: rename_rat(x))
     rc = smr.RecordingContainer.from_table(datatable, loader=loader)
     power_spectra_summary(rc, output_dir, config)
-    openfield_coherence(rc, output_dir)
+    openfield_coherence(rc, output_dir, config)
     openfield_speed(rc, output_dir)
 
     n_shuffles = config["num_spike_shuffles"]
     open_df = df_from_file(inputs[1])
     open_df.loc[:, "rat"] = open_df["rat"].map(lambda x: rename_rat(x))
     cells_rc = smr.RecordingContainer.from_table(open_df, loader=loader)
-    openfield_spike_lfp(cells_rc, output_dir, n_shuffles)
+    openfield_spike_lfp(cells_rc, output_dir, n_shuffles, config)
 
     musc_df = df_from_file(inputs[2])
     musc_df.loc[:, "rat"] = musc_df["rat"].map(lambda x: rename_rat(x))
     musc_rc = smr.RecordingContainer.from_table(musc_df, loader=loader)
-    muscimol_spike_lfp(musc_rc, output_dir, n_shuffles)
+    muscimol_spike_lfp(musc_rc, output_dir, n_shuffles, config)
 
 
 def power_spectra_summary(rc, out_dir, config):
@@ -132,7 +132,7 @@ def power_spectra_summary(rc, out_dir, config):
         for region in regions:
             headers.append(f"{region} Theta (mV)")
             headers.append(f"{region} Theta Rel")
-        sum_dfs.append(list_to_df(rel_power, headers=headers))
+        sum_dfs.append(list_to_df([rel_power], headers=headers))
 
         psd_df = create_psd_table(r.data)
         clean_df = psd_df[psd_df["Type"] == "Clean"]
@@ -149,9 +149,13 @@ def power_spectra_summary(rc, out_dir, config):
     df_to_file(sum_df, out_dir / "theta_power.csv")
 
 
-def openfield_coherence(rc, out_dir):
+def openfield_coherence(rc, out_dir, config):
+    theta_min, theta_max = config["theta_min"], config["theta_max"]
+    delta_min, delta_max = config["delta_min"], config["delta_max"]
+
     def create_coherence_df(recording_container):
         l = []
+        peak_coherences = []
         for recording in recording_container.load_iter():
             nwbfile = recording.data
             coherence_df = nwbfile.processing["lfp_coherence"][
@@ -166,11 +170,24 @@ def openfield_coherence(rc, out_dir):
                     coherence_df["coherence"].values[0],
                 )
             )
+            theta_coherence = coherence_df[
+                (coherence_df["frequency"] >= theta_min)
+                & (coherence_df["frequency"] <= theta_max)
+            ]
+            peak_theta_coherence = max(theta_coherence["coherence"])
+            delta_coherence = coherence_df[
+                (coherence_df["frequency"] >= delta_min)
+                & (coherence_df["frequency"] <= delta_max)
+            ]
+            peak_delta_coherence = max(delta_coherence["coherence"])
+            peak_coherences.append(peak_theta_coherence, peak_delta_coherence)
         headers = ["Group", "Regions", "Frequency (Hz)", "Coherence"]
-        return list_to_df(l, headers)
+        headers2 = ["Peak Theta Coherence", "Peak Delta Coherence"]
+        return list_to_df(l, headers), list_to_df(peak_coherences, headers2)
 
-    coherence_df = create_coherence_df(rc)
+    coherence_df, stats_df = create_coherence_df(rc)
     df_to_file(coherence_df, out_dir / "openfield_coherence.csv")
+    df_to_file(stats_df, out_dir / "coherence_stats.csv")
 
 
 def openfield_speed(rc, out_dir):
@@ -189,21 +206,34 @@ def openfield_speed(rc, out_dir):
     df_to_file(speed_df, out_dir / "openfield_speed.csv")
 
 
-def openfield_spike_lfp(rc, out_dir, n_shuffles):
-    sta_df, sfc_df = convert_spike_lfp(rc, n_shuffles)
-    df_to_file(sta_df, out_dir / "openfield_sta.csv")
-    df_to_file(sfc_df, out_dir / "openfield_sfc.csv")
+def openfield_spike_lfp(rc, output_dir, n_shuffles, config):
+    theta_min, theta_max = config["theta_min"], config["theta_max"]
+    sta_df, sfc_df, peak_df = convert_spike_lfp(rc, n_shuffles, theta_min, theta_max)
+    df_to_file(sta_df, output_dir / "openfield_sta.csv")
+    df_to_file(sfc_df, output_dir / "openfield_sfc.csv")
+    df_to_file(peak_df, output_dir / "openfield_peak_sfc.csv")
 
 
-def muscimol_spike_lfp(rc, output_dir, n_shuffles):
-    sta_df, sfc_df = convert_spike_lfp(rc, n_shuffles)
+def muscimol_spike_lfp(rc, output_dir, n_shuffles, config):
+    theta_min, theta_max = config["theta_min"], config["theta_max"]
+    sta_df, sfc_df, peak_df = convert_spike_lfp(rc, n_shuffles, theta_min, theta_max)
     df_to_file(sta_df, output_dir / "muscimol_sta.csv")
     df_to_file(sfc_df, output_dir / "muscimol_sfc.csv")
+    df_to_file(peak_df, output_dir / "muscimol_peak_sfc.csv")
 
 
-def convert_spike_lfp(recording_container, n_shuffles):
+def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
     def add_spike_lfp_info(
-        sta_list, sfc_list, recording, animal, type_, spike_train, region, n_shuffles
+        sta_list,
+        sfc_list,
+        recording,
+        animal,
+        type_,
+        spike_train,
+        region,
+        n_shuffles,
+        theta_min,
+        theta_max,
     ):
         signal = recording.data.processing["average_lfp"][f"{region}_avg"]
         lfp = numpy_to_nc(signal.data[:], sample_rate=signal.rate)
@@ -227,6 +257,9 @@ def convert_spike_lfp(recording_container, n_shuffles):
                 for (sfc_i, f_i, r) in zip(sfc, f, sfc_mean)
             ]
         )
+
+        theta_part = np.nonzero(np.logical_and(f >= theta_min, f <= theta_max))
+        return np.nanmax(theta_part)
 
     def compute_spike_lfp(lfp, spike_train, nrep=500):
         g_data = lfp.plv(spike_train, mode="bs", fwin=[0, 20], nrep=nrep)
@@ -287,6 +320,7 @@ def convert_spike_lfp(recording_container, n_shuffles):
 
     sta_list = []
     sfc_list = []
+    peak_vals = []
     for i in range(len((recording_container))):
         to_log = recording_container[i].attrs["nwb_file"]
         units = recording_container[i].attrs["units"]
@@ -313,7 +347,7 @@ def convert_spike_lfp(recording_container, n_shuffles):
                 avg_lfp = recording.data.processing["average_lfp"]
                 if f"{region}_avg" not in avg_lfp.data_interfaces:
                     continue
-                add_spike_lfp_info(
+                peak_theta_coh = add_spike_lfp_info(
                     sta_list,
                     sfc_list,
                     recording,
@@ -322,17 +356,23 @@ def convert_spike_lfp(recording_container, n_shuffles):
                     spike_train,
                     region,
                     n_shuffles,
+                    theta_min,
+                    theta_max,
                 )
+                peak_vals.append(peak_theta_coh, animal, region, type_)
 
     headers = ["Region", "Group", "Spatial", "STA", "Time (s)", "Shuffled STA"]
     sta_df = list_to_df(sta_list, headers=headers)
     headers = ["Region", "Group", "Spatial", "SFC", "Frequency (Hz)", "Shuffled SFC"]
     sfc_df = list_to_df(sfc_list, headers=headers)
+    headers = ["Peak Theta SFC", "Rat", "Region", "Spatial"]
+    peak_df = list_to_df(peak_vals, headers=headers)
 
     if sta_df["Group"].str.startswith("musc").any():
         sta_df["Treatment"] = sta_df["Spatial"]
         sfc_df["Treatment"] = sfc_df["Spatial"]
-    return sta_df, sfc_df
+        peak_df["Treatment"] = peak_df["Spatial"]
+    return sta_df, sfc_df, peak_df
 
 
 if __name__ == "__main__":

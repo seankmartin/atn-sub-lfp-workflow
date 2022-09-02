@@ -63,9 +63,7 @@ def compute_per_trial_coherence_power(
             sub_lfp, rsc_lfp, f, Cxy = compute_coherence_per_trial(
                 *fn_params, coherence_list, res_list
             )
-            extract_decoding_vals(
-                config, i, j, k, f, Cxy, new_lfp, pxx_list, sig_dict, res_list
-            )
+            extract_decoding_vals(config, i, j, k, f, Cxy, new_lfp)
             results_list.append(res_list)
 
         plot_results_intermittent(r, sub_lfp, rsc_lfp, f, Cxy, out_dir, fs)
@@ -259,7 +257,7 @@ def get_result_headers():
         "RSC_theta",
         "Theta_coherence",
         "Delta_coherence",
-        "Peak 12Hz Theta coherence",
+        "Peak Theta coherence",
         "Group",
     ]
 
@@ -301,14 +299,14 @@ def theta_delta(f, Cxy, config):
     max_theta_coherence = np.nanmean(theta_co)
     max_delta_coherence = np.nanmean(delta_co)
 
-    theta_co_peak = Cxy[np.nonzero((f >= 11.0) & (f <= 13.0))]
+    theta_co_peak = Cxy[
+        np.nonzero((f >= config["theta_min"]) & (f <= (config["theta_max"]) + 0.5))
+    ]
     peak_theta_coherence = np.nanmax(theta_co_peak)
     return max_theta_coherence, max_delta_coherence, peak_theta_coherence
 
 
-def extract_decoding_vals(
-    config, i, j, k, f, Cxy, new_lfp, power_list, sig_dict, results
-):
+def extract_decoding_vals(config, i, j, k, f, Cxy, new_lfp):
     method = "coherence"
     if method == "coherence":
         if k == "choice":

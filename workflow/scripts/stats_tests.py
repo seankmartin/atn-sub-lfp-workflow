@@ -78,6 +78,8 @@ class PathAndDataGetter(object):
 
     def process_fig(self, res, name):
         fig = res["figure"]
+        if not os.path.exists(self.plot_dir):
+            os.makedirs(self.plot_dir, exist_ok=True)
         fig.savefig(os.path.join(self.plot_dir, name), dpi=400)
         plt.close(fig)
 
@@ -91,7 +93,7 @@ def power_stats(input_path, overall_kwargs, get_obj):
         **{"value": "subicular relative theta powers (unitless)"},
     }
     res = mwu(
-        control_df["SUB_theta"], lesion_df["SUB_theta_rel"], t1_kwargs, do_plot=True
+        control_df["SUB Theta Rel"], lesion_df["SUB Theta Rel"], t1_kwargs, do_plot=True
     )
     get_obj.process_fig(res, "sub_theta_openfield.pdf")
 
@@ -100,7 +102,7 @@ def power_stats(input_path, overall_kwargs, get_obj):
         **{"value": "retrospenial relative theta powers (unitless)"},
     }
     res = mwu(
-        control_df["RSC_theta_rel"], lesion_df["RSC_theta_rel"], t2_kwargs, do_plot=True
+        control_df["RSC Theta Rel"], lesion_df["RSC Theta Rel"], t2_kwargs, do_plot=True
     )
     get_obj.process_fig(res, "rsc_theta_openfield.pdf")
 
@@ -114,8 +116,8 @@ def coherence_stats(input_path, overall_kwargs, get_obj):
         **{"value": "theta coherence (unitless)"},
     }
     res = mwu(
-        control_df["Peak_Theta_coherence"],
-        lesion_df["Peak_Theta_coherence"],
+        control_df["Peak Theta coherence"],
+        lesion_df["Peak Theta coherence"],
         t1_kwargs,
         do_plot=True,
     )
@@ -126,8 +128,8 @@ def coherence_stats(input_path, overall_kwargs, get_obj):
         **{"value": "delta coherence (unitless)"},
     }
     res = mwu(
-        control_df["Delta_Coherence"],
-        lesion_df["Delta_Coherence"],
+        control_df["Peak Delta Coherence"],
+        lesion_df["Peak Delta Coherence"],
         t2_kwargs,
         do_plot=True,
     )
@@ -147,10 +149,10 @@ def speed_stats(input_path, overall_kwargs, get_obj):
             "offset": 0,
         },
     }
-    speed_ctrl = speed_ctrl[speed_df["region"] == "SUB"]
+    speed_ctrl = speed_ctrl[speed_ctrl["region"] == "SUB"]
     res = corr(
-        speed_ctrl["Speed"],
-        speed_ctrl["LFP amplitude"],
+        speed_ctrl["speed"],
+        speed_ctrl["power"],
         test_kwargs,
         do_plot=False,
     )
@@ -165,23 +167,23 @@ def speed_stats(input_path, overall_kwargs, get_obj):
             "offset": 0,
         },
     }
-    speed_lesion = speed_lesion[speed_df["region"] == "SUB"]
+    speed_lesion = speed_lesion[speed_lesion["region"] == "SUB"]
     res = corr(
-        speed_lesion["Speed"],
-        speed_lesion["LFP amplitude"],
+        speed_lesion["speed"],
+        speed_lesion["power"],
         test_kwargs,
         do_plot=False,
     )
 
 
-def spike_lfp_stats(input_paths, overall_kwargs, get_obj):
+def spike_lfp_stats(input_path, overall_kwargs, get_obj, theta_min, theta_max):
     pt("Spike LFP openfield")
     df, control_df, lesion_df = get_obj.get_df(input_path)
     control_nspatial = control_df[control_df["Spatial"] == "Non-Spatial"]
     sub_control = control_nspatial[control_nspatial["Region"] == "SUB"]
+    rsc_control = control_nspatial[control_nspatial["Region"] == "RSC"]
     sub_lesion = lesion_df[lesion_df["Region"] == "SUB"]
-
-    in_theta_range
+    rsc_lesion = lesion_df[lesion_df["Region"] == "RSC"]
 
     t1_kwargs = {
         **overall_kwargs,
@@ -191,8 +193,8 @@ def spike_lfp_stats(input_paths, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_nspatial_spikes["SFC"],
-        lesion_df["SFC"],
+        sub_control["Peak Theta SFC"],
+        sub_lesion["Peak Theta SFC"],
         t1_kwargs,
         do_plot=True,
     )
@@ -206,43 +208,17 @@ def spike_lfp_stats(input_paths, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_nspatial_spikes["Theta_SFC_RSC"],
-        lesion_df["Theta_SFC_RSC"],
+        rsc_control["Peak Theta SFC"],
+        rsc_lesion["Peak Theta SFC"],
         t2_kwargs,
         do_plot=True,
     )
     get_obj.process_fig(res, "rsc_sfc.pdf")
 
-    t3_kwargs = {
-        **overall_kwargs,
-        **{"value": "subicular theta phase (degrees)"},
-    }
 
-    res = mwu(
-        control_nspatial_spikes["Mean_Phase_SUB"],
-        lesion_df["Mean_Phase_SUB"],
-        t3_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "sub_phase.pdf")
-
-    t4_kwargs = {
-        **overall_kwargs,
-        **{"value": "retrospenial theta phase (degrees)"},
-    }
-
-    res = mwu(
-        control_nspatial_spikes["Mean_Phase_RSC"],
-        lesion_df["Mean_Phase_RSC"],
-        t4_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "rsc_phase.pdf")
-
-
-def tmaze_stats(overall_kwargs, get_obj):
+def tmaze_stats(input_path, overall_kwargs, get_obj):
     pt("Tmaze stats")
-    df, control_df, lesion_df = get_obj.get_df("tmaze--tmaze-times_results.csv")
+    df, control_df, lesion_df = get_obj.get_df(input_path)
     bit_to_get = (control_df["part"] == "choice") & (control_df["trial"] == "Correct")
     control_choice = control_df[bit_to_get]
 
@@ -257,8 +233,8 @@ def tmaze_stats(overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice["Peak 12Hz Theta coherence"],
-        lesion_choice["Peak 12Hz Theta coherence"],
+        control_choice["Peak Theta coherence"],
+        lesion_choice["Peak Theta coherence"],
         t1_kwargs,
         do_plot=True,
     )
@@ -309,7 +285,7 @@ def tmaze_stats(overall_kwargs, get_obj):
         t2a_kwargs,
         do_plot=True,
     )
-    process_fig(res, "t-maze_subpower_incorrect.pdf")
+    get_obj.process_fig(res, "t-maze_subpower_incorrect.pdf")
 
     bit_to_get = (control_df["part"] == "choice") & (control_df["trial"] == "Correct")
     control_choice1 = control_df[bit_to_get]
@@ -354,11 +330,13 @@ def tmaze_stats(overall_kwargs, get_obj):
     get_obj.process_fig(res, "t-maze_coherence_lesion.pdf")
 
 
-def muscimol_stats(overall_kwargs, get_obj):
+def muscimol_stats(input_path, overall_kwargs, get_obj):
     pt("Spike LFP muscimol")
-    df, control_df, lesion_df = get_obj.get_df(
-        "spike_lfp--CTRL_Lesion_cells_filled_eeg_recording_spike_lfp_results.csv"
-    )
+    df, control_df, lesion_df = get_obj.get_musc_df(input_path)
+    sub_control = control_df[control_df["Region"] == "SUB"]
+    rsc_control = control_df[control_df["Region"] == "RSC"]
+    sub_lesion = lesion_df[lesion_df["Region"] == "SUB"]
+    rsc_lesion = lesion_df[lesion_df["Region"] == "RSC"]
 
     t1_kwargs = {
         **overall_kwargs,
@@ -366,8 +344,8 @@ def muscimol_stats(overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_df["Theta_SFC_SUB"],
-        lesion_df["Theta_SFC_SUB"],
+        sub_control["Theta Peak SFC"],
+        rsc_control["Theta Peak SFC"],
         t1_kwargs,
         do_plot=True,
     )
@@ -379,38 +357,12 @@ def muscimol_stats(overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_df["Theta_SFC_RSC"],
-        lesion_df["Theta_SFC_RSC"],
+        sub_lesion["Theta Peak SFC"],
+        rsc_lesion["Theta Peak SFC"],
         t2_kwargs,
         do_plot=True,
     )
     get_obj.process_fig(res, "rsc_sfc_musc.pdf")
-
-    t3_kwargs = {
-        **overall_kwargs,
-        **{"value": "subicular theta phase (degrees)"},
-    }
-
-    res = mwu(
-        control_df["Mean_Phase_SUB"],
-        lesion_df["Mean_Phase_SUB"],
-        t3_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "sub_phase_musc.pdf")
-
-    t4_kwargs = {
-        **overall_kwargs,
-        **{"value": "retrospenial theta phase (degrees)"},
-    }
-
-    res = mwu(
-        control_df["Mean_Phase_RSC"],
-        lesion_df["Mean_Phase_RSC"],
-        t4_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "rsc_phase_musc.pdf")
 
 
 def main(input_paths, plot_dir, config_path, show_quartiles=False):
@@ -443,13 +395,13 @@ def main(input_paths, plot_dir, config_path, show_quartiles=False):
     speed_stats(input_paths[2], overall_kwargs_corr, get_obj)
 
     # 5. STA in openfield
-    spike_lfp_stats(input_paths[3], overall_kwargs_ttest, get_obj)
+    spike_lfp_stats(input_paths[3], overall_kwargs_ttest, get_obj, theta_min, theta_max)
 
     # 6. T-maze
-    tmaze_stats(overall_kwargs_ttest)
+    tmaze_stats(input_paths[4], overall_kwargs_ttest)
 
     # 7. Muscimol stats
-    muscimol_stats(overall_kwargs_musc)
+    muscimol_stats(input_paths[5], overall_kwargs_musc)
 
 
 if __name__ == "__main__":

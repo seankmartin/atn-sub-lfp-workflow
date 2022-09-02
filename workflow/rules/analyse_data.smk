@@ -44,11 +44,14 @@ rule create_dfs:
         "results/summary/averaged_psds_psd.csv",
         "results/summary/theta_power.csv",
         "results/summary/openfield_coherence.csv",
+        "results/summary/coherence_stats.csv",
         "results/summary/openfield_speed.csv",
         "results/summary/openfield_sta.csv",
         "results/summary/openfield_sfc.csv",
+        "results/summary/openfield_peak_sfc.csv",
         "results/summary/muscimol_sta.csv",
         "results/summary/muscimol_sfc.csv",
+        "results/summary/muscimol_peak_sfc.csv",
     log:
         "logs/create_dfs.log"
     conda:
@@ -59,12 +62,14 @@ rule create_dfs:
 
 rule hypothesis_tests:
     input:
-        "results/summary/averaged_signals_psd.csv",
-        "results/summary/openfield_coherence.csv",
+        "results/summary/theta_power.csv",
+        "results/summary/coherence_stats.csv",
         "results/summary/openfield_speed.csv",
-        "results/summary/openfield_speed.csv",
+        "results/summary/openfield_peak_sfc.csv",
+        "results/tmaze/results.csv",
+        "results/summary/muscimol_peak_sfc.csv",
     output:
-        ""
+        directory("results/plots/stats")
     params:
         show_quartiles=True
     log:

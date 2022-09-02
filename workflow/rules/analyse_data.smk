@@ -42,6 +42,7 @@ rule create_dfs:
     output:
         "results/summary/averaged_signals_psd.csv",
         "results/summary/averaged_psds_psd.csv",
+        "results/summary/theta_power.csv",
         "results/summary/openfield_coherence.csv",
         "results/summary/openfield_speed.csv",
         "results/summary/openfield_sta.csv",
@@ -58,9 +59,14 @@ rule create_dfs:
 
 rule hypothesis_tests:
     input:
-        ""
+        "results/summary/averaged_signals_psd.csv",
+        "results/summary/openfield_coherence.csv",
+        "results/summary/openfield_speed.csv",
+        "results/summary/openfield_speed.csv",
     output:
         ""
+    params:
+        show_quartiles=True
     log:
         "logs/stats_tests.log"
     conda:

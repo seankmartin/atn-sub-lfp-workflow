@@ -14,13 +14,29 @@ from common import rename_rat
 module_logger = logging.getLogger("simuran.custom.create_dfs")
 
 
+def numpy_to_nc(data, sample_rate=None, timestamp=None):
+    if timestamp is None and sample_rate is None:
+        raise ValueError("Must provide either sample_rate or timestamp")
+    if timestamp is None:
+        timestamp = np.arange(0, len(data), dtype=np.float32) / sample_rate
+    elif sample_rate is None:
+        sample_rate = 1 / np.mean(np.diff(timestamp))
+
+    lfp = NLfp()
+    lfp._set_samples(data)
+    lfp._set_sampling_rate(sample_rate)
+    lfp._set_timestamp(timestamp)
+    lfp._set_total_samples(len(data))
+    return lfp
+
+
 def main(inputs, output_dir, config_path):
     config = smr.config_from_file(config_path)
     datatable = df_from_file(inputs[0])
     loader = smr.loader("nwb")
     datatable.loc[:, "rat"] = datatable["rat"].map(lambda x: rename_rat(x))
     rc = smr.RecordingContainer.from_table(datatable, loader=loader)
-    power_spectra_summary(rc, output_dir)
+    power_spectra_summary(rc, output_dir, config)
     openfield_coherence(rc, output_dir)
     openfield_speed(rc, output_dir)
 
@@ -36,7 +52,7 @@ def main(inputs, output_dir, config_path):
     muscimol_spike_lfp(musc_rc, output_dir, n_shuffles)
 
 
-def power_spectra_summary(rc, out_dir):
+def power_spectra_summary(rc, out_dir, config):
     def grab_psds(nwbfile):
         psd_table = nwbfile.processing["lfp_power"]["power_spectra"].to_dataframe()
         electrodes_table = nwbfile.electrodes.to_dataframe()
@@ -93,26 +109,44 @@ def power_spectra_summary(rc, out_dir):
         headers = ["Power (Db)", "Frequency (Hz)", "Type", "Brain Region"]
         return list_to_df(l, headers=headers)
 
-    per_group_dfs = []
-    per_animal_dfs = []
+    per_signal_dfs = []
+    per_psd_dfs = []
+    sum_dfs = []
 
+    theta_min, theta_max = config["theta_min"], config["theta_max"]
     for r in rc.load_iter():
         rat_name = r.attrs["rat"]
         clean_df = convert_df_to_averages(grab_psds(r.data)[0])
         clean_df = clean_df.assign(Rat=rat_name)
         clean_df = clean_df.assign(Group=group_type_from_rat_name(rat_name))
-        per_group_dfs.append(clean_df)
+        per_signal_dfs.append(clean_df)
+        regions = sorted(list(set(clean_df["Brain Region"])))
+
+        rel_power = []
+        for region in regions:
+            signal = r.data.processing["average_lfp"][f"{region}_avg"]
+            signal = numpy_to_nc(signal.data[:], signal.rate)
+            p = signal.bandpower([theta_min, theta_max], window_sec=4, unit="milli")
+            rel_power.extend([p["bandpower"], p["relative_power"]])
+        headers = []
+        for region in regions:
+            headers.append(f"{region} Theta (mV)")
+            headers.append(f"{region} Theta Rel")
+        sum_dfs.append(list_to_df(rel_power, headers=headers))
 
         psd_df = create_psd_table(r.data)
         clean_df = psd_df[psd_df["Type"] == "Clean"]
         clean_df = clean_df.assign(Rat=rat_name)
         clean_df = clean_df.assign(Group=group_type_from_rat_name(rat_name))
-        per_animal_dfs.append(clean_df)
+        per_psd_dfs.append(clean_df)
 
-    full_df = pd.concat(per_group_dfs, ignore_index=True)
-    animal_df = pd.concat(per_animal_dfs, ignore_index=True)
+    full_df = pd.concat(per_signal_dfs, ignore_index=True)
+    animal_df = pd.concat(per_psd_dfs, ignore_index=True)
+    sum_df = pd.concat(sum_dfs, ignore_index=True)
+
     df_to_file(full_df, out_dir / "averaged_signals_psd.csv")
     df_to_file(animal_df, out_dir / "averaged_psds_psd.csv")
+    df_to_file(sum_df, out_dir / "theta_power.csv")
 
 
 def openfield_coherence(rc, out_dir):
@@ -193,19 +227,6 @@ def convert_spike_lfp(recording_container, n_shuffles):
                 for (sfc_i, f_i, r) in zip(sfc, f, sfc_mean)
             ]
         )
-
-    def numpy_to_nc(data, sample_rate=None, timestamp=None):
-        if timestamp is None:
-            timestamp = np.arange(0, len(data), dtype=np.float32) / sample_rate
-        elif sample_rate is None:
-            sample_rate = 1 / np.mean(np.diff(timestamp))
-
-        lfp = NLfp()
-        lfp._set_samples(data)
-        lfp._set_sampling_rate(sample_rate)
-        lfp._set_timestamp(timestamp)
-        lfp._set_total_samples(len(data))
-        return lfp
 
     def compute_spike_lfp(lfp, spike_train, nrep=500):
         g_data = lfp.plv(spike_train, mode="bs", fwin=[0, 20], nrep=nrep)

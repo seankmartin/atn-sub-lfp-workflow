@@ -14,8 +14,8 @@ from simuran.loaders.nwb_loader import NWBLoader
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
 from convert_to_nwb import add_lfp_array_to_nwb, export_nwbfile
-from scripts.frequency_analysis import calculate_psd
-from scripts.lfp_clean import LFPAverageCombiner, NWBSignalSeries
+from frequency_analysis import calculate_psd
+from lfp_clean import LFPAverageCombiner, NWBSignalSeries
 
 here = Path(__file__).resolve().parent
 module_logger = logging.getLogger("simuran.custom.process_lfp")

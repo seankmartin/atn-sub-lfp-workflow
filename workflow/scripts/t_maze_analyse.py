@@ -242,8 +242,8 @@ def get_coherence_headers():
 
 def get_result_headers():
     return [
-        "Full_theta_coherence",
-        "Full_delta_coherence",
+        "Full Theta Coherence",
+        "Full Delta Coherence",
         "location",
         "session",
         "animal",
@@ -251,13 +251,13 @@ def get_result_headers():
         "choice",
         "part",
         "trial",
-        "SUB_delta",
-        "SUB_theta",
-        "RSC_delta",
-        "RSC_theta",
-        "Theta_coherence",
-        "Delta_coherence",
-        "Peak Theta coherence",
+        "SUB Delta",
+        "SUB Theta",
+        "RSC Delta",
+        "RSC Theta",
+        "Theta Coherence",
+        "Delta Coherence",
+        "Peak Theta Coherence",
         "Group",
     ]
 

@@ -23,17 +23,31 @@ def pt(title, n_dashes=20, start="\n"):
 
 @dataclass
 class PathAndDataGetter(object):
-    plot_location: Union[str, Path]
+    plot_dir: Union[str, Path]
+    control_name: str = "Control"
+    lesion_name: str = "Lesion"
+
+    def update_group(self, df):
+        def group_type(name):
+            ctrl = self.control_name
+            lesion = self.lesion_name
+            return lesion if name.lower().startswith("l") else ctrl
+
+        df["Condition"] = df["Condition"].apply(lambda x: group_type(x))
+        return df
 
     def get_df(self, filename, describe=False):
         df = df_from_file(filename)
+        if ("Group" in df.columns) and ("Condition" not in df.columns):
+            df.loc[:, "Condition"] = df["Group"]
         if describe:
             print(f"Processing {filename}")
             print("Overall")
             print(df.describe())
         try:
-            control_df = df[df["Condition"] == "Control"]
-            lesion_df = df[df["Condition"] == "Lesion"]
+            df = self.update_group(df)
+            control_df = df[df["Condition"] == self.control_name]
+            lesion_df = df[df["Condition"] == self.lesion_name]
         except KeyError:
             return df
         if describe:
@@ -46,28 +60,22 @@ class PathAndDataGetter(object):
             print(lesion_df.describe())
         return df, control_df, lesion_df
 
-    def get_musc_df(self, filename, describe=False):
-        def process_condition(row):
-            to_check = row["Spatial"]
-            return (
-                "Control"
-                if ("before" in to_check) or ("next" in to_check)
-                else "Muscimol"
-            )
-
+    def get_musc_df(self, filename, spatial=True, describe=False):
         df = df_from_file(filename)
         if describe:
-            print("Processing {}".format(filename))
+            print(f"Processing {filename}")
             print("Overall")
             print(df.describe())
-        df["group"] = df.apply(lambda row: process_condition(row), axis=1)
+        if ("Treatment" in df.columns) and ("Condition" not in df.columns):
+            df.loc[:, "Condition"] = df["Treatment"]
         try:
-            control_df = df[df["group"] == "Control"]
-            lesion_df = df[df["group"] == "Muscimol"]
+            if spatial:
+                control_df = df[df["Condition"] == "Control"]
+                lesion_df = df[df["Condition"] == "Muscimol"]
         except KeyError:
             return df
         if describe:
-            print("Processing {}".format(filename))
+            print(f"Processing {filename}")
             print("Overall")
             print(df.describe())
             print("Control")
@@ -97,6 +105,18 @@ def power_stats(input_path, overall_kwargs, get_obj):
     )
     get_obj.process_fig(res, "sub_theta_openfield.pdf")
 
+    t1_kwargs = {
+        **overall_kwargs,
+        **{"value": "subicular theta powers (mV)"},
+    }
+    res = mwu(
+        control_df["SUB Theta (mV)"],
+        lesion_df["SUB Theta (mV)"],
+        t1_kwargs,
+        do_plot=True,
+    )
+    get_obj.process_fig(res, "sub_theta_no_rel_openfield.pdf")
+
     t2_kwargs = {
         **overall_kwargs,
         **{"value": "retrospenial relative theta powers (unitless)"},
@@ -105,6 +125,18 @@ def power_stats(input_path, overall_kwargs, get_obj):
         control_df["RSC Theta Rel"], lesion_df["RSC Theta Rel"], t2_kwargs, do_plot=True
     )
     get_obj.process_fig(res, "rsc_theta_openfield.pdf")
+
+    t2_kwargs = {
+        **overall_kwargs,
+        **{"value": "retrospenial theta powers (mV)"},
+    }
+    res = mwu(
+        control_df["RSC Theta (mV)"],
+        lesion_df["RSC Theta (mV)"],
+        t2_kwargs,
+        do_plot=True,
+    )
+    get_obj.process_fig(res, "rsc_theta_no_rel_openfield.pdf")
 
 
 def coherence_stats(input_path, overall_kwargs, get_obj):
@@ -116,8 +148,8 @@ def coherence_stats(input_path, overall_kwargs, get_obj):
         **{"value": "theta coherence (unitless)"},
     }
     res = mwu(
-        control_df["Peak Theta coherence"],
-        lesion_df["Peak Theta coherence"],
+        control_df["Peak Theta Coherence"],
+        lesion_df["Peak Theta Coherence"],
         t1_kwargs,
         do_plot=True,
     )
@@ -176,7 +208,7 @@ def speed_stats(input_path, overall_kwargs, get_obj):
     )
 
 
-def spike_lfp_stats(input_path, overall_kwargs, get_obj, theta_min, theta_max):
+def spike_lfp_stats(input_path, overall_kwargs, get_obj):
     pt("Spike LFP openfield")
     df, control_df, lesion_df = get_obj.get_df(input_path)
     control_nspatial = control_df[control_df["Spatial"] == "Non-Spatial"]
@@ -233,8 +265,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice["Peak Theta coherence"],
-        lesion_choice["Peak Theta coherence"],
+        control_choice["Peak Theta Coherence"],
+        lesion_choice["Peak Theta Coherence"],
         t1_kwargs,
         do_plot=True,
     )
@@ -246,8 +278,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice["SUB_theta"],
-        lesion_choice["SUB_theta"],
+        control_choice["SUB Theta"],
+        lesion_choice["SUB Theta"],
         t1a_kwargs,
         do_plot=True,
     )
@@ -267,8 +299,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice["Peak 12Hz Theta coherence"],
-        lesion_choice["Peak 12Hz Theta coherence"],
+        control_choice["Peak Theta Coherence"],
+        lesion_choice["Peak Theta Coherence"],
         t2_kwargs,
         do_plot=True,
     )
@@ -280,8 +312,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice["SUB_theta"],
-        lesion_choice["SUB_theta"],
+        control_choice["SUB Theta"],
+        lesion_choice["SUB Theta"],
         t2a_kwargs,
         do_plot=True,
     )
@@ -301,8 +333,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice1["Peak 12Hz Theta coherence"],
-        control_choice2["Peak 12Hz Theta coherence"],
+        control_choice1["Peak Theta Coherence"],
+        control_choice2["Peak Theta Coherence"],
         t3_kwargs,
         do_plot=True,
     )
@@ -322,8 +354,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        lesion_choice1["Peak 12Hz Theta coherence"],
-        lesion_choice2["Peak 12Hz Theta coherence"],
+        lesion_choice1["Peak Theta Coherence"],
+        lesion_choice2["Peak Theta Coherence"],
         t4_kwargs,
         do_plot=True,
     )
@@ -344,8 +376,8 @@ def muscimol_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        sub_control["Theta Peak SFC"],
-        rsc_control["Theta Peak SFC"],
+        sub_control["Peak Theta SFC"],
+        rsc_control["Peak Theta SFC"],
         t1_kwargs,
         do_plot=True,
     )
@@ -357,16 +389,15 @@ def muscimol_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        sub_lesion["Theta Peak SFC"],
-        rsc_lesion["Theta Peak SFC"],
+        sub_lesion["Peak Theta SFC"],
+        rsc_lesion["Peak Theta SFC"],
         t2_kwargs,
         do_plot=True,
     )
     get_obj.process_fig(res, "rsc_sfc_musc.pdf")
 
 
-def main(input_paths, plot_dir, config_path, show_quartiles=False):
-    cfg = smr.config_from_file(config_path)
+def main(input_paths, plot_dir, show_quartiles=False):
     overall_kwargs_ttest = {
         "show_quartiles": show_quartiles,
         "group1": "control",
@@ -385,7 +416,6 @@ def main(input_paths, plot_dir, config_path, show_quartiles=False):
 
     get_obj = PathAndDataGetter(plot_dir)
     # 1. Power overall
-    theta_min, theta_max = cfg["theta_min"], cfg["theta_max"]
     power_stats(input_paths[0], overall_kwargs_ttest, get_obj)
 
     # 2. Coherence in the open-field
@@ -395,13 +425,13 @@ def main(input_paths, plot_dir, config_path, show_quartiles=False):
     speed_stats(input_paths[2], overall_kwargs_corr, get_obj)
 
     # 5. STA in openfield
-    spike_lfp_stats(input_paths[3], overall_kwargs_ttest, get_obj, theta_min, theta_max)
+    spike_lfp_stats(input_paths[3], overall_kwargs_ttest, get_obj)
 
     # 6. T-maze
-    tmaze_stats(input_paths[4], overall_kwargs_ttest)
+    tmaze_stats(input_paths[4], overall_kwargs_ttest, get_obj)
 
     # 7. Muscimol stats
-    muscimol_stats(input_paths[5], overall_kwargs_musc)
+    muscimol_stats(input_paths[5], overall_kwargs_musc, get_obj)
 
 
 if __name__ == "__main__":
@@ -409,6 +439,5 @@ if __name__ == "__main__":
     main(
         snakemake.input,
         Path(snakemake.output[0]),
-        snakemake.config["simuran_config"],
         snakemake.params["show_quartiles"],
     )

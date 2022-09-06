@@ -182,6 +182,8 @@ def calculate_and_store_lfp_power(config, nwb_proc):
             fmin=config["fmin"],
             fmax=config["fmax"],
         )
+        if max_psd == 0:
+            breakpoint()
         results_list.append([label, region, f, Pxx, max_psd])
     results_df = list_to_df(
         results_list, headers=["label", "region", "frequency", "power", "max_psd"]

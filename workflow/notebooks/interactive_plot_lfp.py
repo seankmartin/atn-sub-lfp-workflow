@@ -15,15 +15,15 @@ from skm_pyutils.table import list_to_df
 loader = smr.loader("nwb")
 # path_to_file = r"E:\Repos\atn-sub-lfp-workflow\results\processed\CSR6--screening_small sq--20032018--20032018_CSR6_screening_small sq_8.nwb"
 # path_to_file = r"E:\Repos\atn-sub-lfp-workflow\results\processed\LSubRet5--recording--Small sq up_small sq down--01122017--S2_small sq down--01122017_smallsqdownup_down_1_2.nwb"
-path_to_file = r"E:\Repos\atn-sub-lfp-workflow\results\processed\LSubRet4--recording--big sq_1 wall_2wall--28112017--S1_no wall--28112017_LSR4_bigsq_2_1.nwb"
+path_to_file = r"E:\Repos\atn-sub-lfp-workflow\results\nwbfiles\CSubRet4--recording--+maze--01122017_t3--S6--01122017_CSubRet4_+maze_t3_6.nwb"
 recording = smr.Recording(loader=loader, source_file=path_to_file)
 recording.load()
 nwbfile = recording.data
 
 # %% units
 
-units = nwbfile.units.to_dataframe()
-print(units)
+# units = nwbfile.units.to_dataframe()
+# print(units)
 # spike_train = units.
 
 # %%
@@ -42,30 +42,37 @@ plt.savefig("test2.png", dpi=150)
 plt.close()
 
 # %%
-def plot_all_signals(recording, output_path):
+def plot_all_signals(recording, output_path, show_bad=True, use_norm=True):
+    type_ = "normalised_lfp" if use_norm else "ecephys"
     eeg_array = smr.EEGArray()
     nwbfile = recording.data
     electrodes_table = nwbfile.electrodes.to_dataframe()
-    bad_chans = list(electrodes_table[electrodes_table["clean"] == "Outlier"].index)
     locations = electrodes_table["location"]
     ch_names = [f"{locations[i]}_{i}" for i in range(len(locations))]
-    bad_chans = [ch_names[i] for i in bad_chans]
+    if show_bad:
+        bad_chans = list(electrodes_table[electrodes_table["clean"] == "Outlier"].index)
+        bad_chans = [ch_names[i] for i in bad_chans]
+    else:
+        bad_chans = []
     sr = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
-    lfp_data = nwbfile.processing["normalised_lfp"]["LFP"]["ElectricalSeries"].data[:].T
+    lfp_data = nwbfile.processing[type_]["LFP"]["ElectricalSeries"].data[:].T
     for sig in lfp_data:
         eeg = smr.EEG.from_numpy(sig, sr)
         eeg.conversion = 0.0000001
         eeg_array.append(eeg)
-    average_signal = nwbfile.processing["average_lfp"]
-    names = []
-    for k in average_signal.data_interfaces:
-        sig = average_signal[k].data[:]
-        eeg = smr.EEG.from_numpy(sig, sr)
-        eeg.conversion = 0.0000001
-        eeg_array.append(eeg)
-        names.append(k)
+    try:
+        average_signal = nwbfile.processing["average_lfp"]
+        names = []
+        for k in average_signal.data_interfaces:
+            sig = average_signal[k].data[:]
+            eeg = smr.EEG.from_numpy(sig, sr)
+            eeg.conversion = 0.0000001
+            eeg_array.append(eeg)
+            names.append(k)
+        ch_names.extend(names)
+    except KeyError:
+        print("WARNING: No average signal found")
 
-    ch_names.extend(names)
     fig = eeg_array.plot(
         ch_names=ch_names,
         bad_chans=[str(i) for i in bad_chans],
@@ -77,7 +84,75 @@ def plot_all_signals(recording, output_path):
     plt.close(fig)
 
 
-plot_all_signals(recording, "test.png")
+plot_all_signals(recording, "test.png", False, False)
+
+# %%
+def detect_outlying_signals(signals, z_threshold=1.1):
+    """
+    Detect signals that are outliers from the average.
+
+    Parameters
+    ----------
+    signals : np.ndarray
+        Assumed to be an N_chans * N_samples iterable.
+    z_threshold : float
+        The threshold for the mean signal z-score to be an outlier.
+
+    Returns
+    -------
+    good : np.ndarray
+        The clean signals
+    outliers : np.ndarray
+        The outliers
+    good_idx : list
+        The indices of the good signals
+    outliers_idx : list
+        The indices of the bad signals
+    z_scores : np.ndarray
+        The array of z-scores.
+
+    """
+    avg_sig = np.mean(signals, axis=0)
+    std_sig = np.std(signals, axis=0)
+    std_sig = np.where(std_sig == 0, 1, std_sig)
+    z_scores, good, bad = _split_signals_by_zscore(
+        signals, z_threshold, avg_sig, std_sig
+    )
+    good_signals = np.array([signals[i] for i in good])
+    bad_signals = np.array([signals[i] for i in bad])
+
+    return good_signals, bad_signals, good, bad, z_scores
+
+
+def _split_signals_by_zscore(signals, z_threshold, avg_sig, std_sig):
+    """Split signals into those with z_scores above/below the z_threshold."""
+    z_scores = np.zeros(shape=(len(signals), len(signals[0])))
+    for i, s in enumerate(signals):
+        if np.sum(np.abs(s)) < 0.2:
+            z_scores[i] = np.zeros(shape=len(s))
+        else:
+            z_scores[i] = np.abs((s - avg_sig) / std_sig)
+    z_score_means = np.nanmean(z_scores, axis=1)
+    z_threshold = z_threshold * np.median(z_score_means[z_score_means != 0])
+
+    good, bad = [], []
+    for i, val in enumerate(z_score_means):
+        if val > z_threshold:
+            bad.append(i)
+        elif np.sum(np.abs(signals[i])) < 0.2:
+            bad.append(i)
+        else:
+            good.append(i)
+    if not good:
+        raise RuntimeError(f"No good signals found, bad were {bad}")
+
+    print(f"Excluded {len(bad)} signals with indices {bad}")
+    return z_scores, good, bad
+
+
+nwbfile = recording.data
+lfp_data = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].data[:].T
+res = detect_outlying_signals(lfp_data, z_threshold=1.2)
 
 # %%
 plt.show()

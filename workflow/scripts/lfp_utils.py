@@ -47,13 +47,18 @@ def _split_signals_by_zscore(signals, z_threshold, avg_sig, std_sig):
     """Split signals into those with z_scores above/below the z_threshold."""
     z_scores = np.zeros(shape=(len(signals), len(signals[0])))
     for i, s in enumerate(signals):
-        z_scores[i] = np.abs((s - avg_sig) / std_sig)
+        if np.sum(np.abs(s)) < 0.2:
+            z_scores[i] = np.zeros(shape=(len(s)))
+        else:
+            z_scores[i] = np.abs((s - avg_sig) / std_sig)
     z_score_means = np.nanmean(z_scores, axis=1)
-    z_threshold = z_threshold * np.median(z_score_means)
+    z_threshold = z_threshold * np.median(z_score_means[z_score_means != 0])
 
     good, bad = [], []
     for i, val in enumerate(z_score_means):
         if val > z_threshold:
+            bad.append(i)
+        elif np.sum(np.abs(signals[i])) < 0.2:
             bad.append(i)
         else:
             good.append(i)

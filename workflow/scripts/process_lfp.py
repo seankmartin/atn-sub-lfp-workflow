@@ -176,11 +176,13 @@ def calculate_and_store_lfp_power(config, nwb_proc):
     labels.extend(br_avg)
     results_list = []
     for (sig, region, label) in zip(all_sigs, regions, labels):
+        warn = True if label.endswith("_avg") else False
         f, Pxx, max_psd = calculate_psd(
             sig,
             scale="decibels",
             fmin=config["fmin"],
             fmax=config["fmax"],
+            warn=warn,
         )
         if max_psd == 0:
             breakpoint()

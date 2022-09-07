@@ -79,7 +79,8 @@ rule hypothesis_tests:
         "results/tmaze/results.csv",
         "results/summary/muscimol_peak_sfc.csv",
     output:
-        directory("results/plots/stats")
+        directory("results/plots/stats"),
+        "results/stats_output.txt"
     params:
         show_quartiles=True
     log:

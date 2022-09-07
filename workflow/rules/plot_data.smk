@@ -120,7 +120,8 @@ rule plot_musc_spike_lfp:
 
 rule plot_tmaze:
     input:
-        "results/tmaze/decoding.csv"
+        "results/tmaze/decoding.csv",
+        "results/tmaze/results.csv"
     output:
         directory("results/plots/tmaze")
     log:

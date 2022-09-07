@@ -26,6 +26,7 @@ class PathAndDataGetter(object):
     plot_dir: Union[str, Path]
     control_name: str = "Control"
     lesion_name: str = "Lesion"
+    full_str: str = ""
 
     def update_group(self, df):
         def group_type(name):
@@ -90,6 +91,17 @@ class PathAndDataGetter(object):
             os.makedirs(self.plot_dir, exist_ok=True)
         fig.savefig(os.path.join(self.plot_dir, name), dpi=400)
         plt.close(fig)
+
+        self.process_str(res)
+
+    def process_str(self, res):
+        str_bit = res["output"]
+        self.full_str = f"{self.full_str}\n{str_bit}"
+
+    def to_file(self, filename):
+        filename.parent.mkdir(parents=True, exist_ok=True)
+        with open(filename, "w") as f:
+            f.write(self.full_str)
 
 
 def power_stats(input_path, overall_kwargs, get_obj):
@@ -188,6 +200,7 @@ def speed_stats(input_path, overall_kwargs, get_obj):
         test_kwargs,
         do_plot=False,
     )
+    get_obj.process_str(res)
 
     test_kwargs = {
         **overall_kwargs,
@@ -206,6 +219,7 @@ def speed_stats(input_path, overall_kwargs, get_obj):
         test_kwargs,
         do_plot=False,
     )
+    get_obj.process_str(res)
 
 
 def spike_lfp_stats(input_path, overall_kwargs, get_obj):
@@ -397,7 +411,7 @@ def muscimol_stats(input_path, overall_kwargs, get_obj):
     get_obj.process_fig(res, "rsc_sfc_musc.pdf")
 
 
-def main(input_paths, plot_dir, show_quartiles=False):
+def main(input_paths, plot_dir, output_file, show_quartiles=False):
     overall_kwargs_ttest = {
         "show_quartiles": show_quartiles,
         "group1": "control",
@@ -433,11 +447,14 @@ def main(input_paths, plot_dir, show_quartiles=False):
     # 7. Muscimol stats
     muscimol_stats(input_paths[5], overall_kwargs_musc, get_obj)
 
+    get_obj.to_file(output_file)
+
 
 if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
     main(
         snakemake.input,
         Path(snakemake.output[0]),
+        Path(snakemake.output[1]),
         snakemake.params["show_quartiles"],
     )

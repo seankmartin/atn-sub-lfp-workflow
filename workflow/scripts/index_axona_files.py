@@ -7,16 +7,14 @@ from pathlib import Path
 import numpy as np
 import simuran
 from simuran.loaders.nc_loader import NCLoader
+from skm_pyutils.table import df_to_file
 
 
 def main(path_to_files: str, output_path: str) -> None:
-    simuran.index_ephys_files(
-        start_dir=path_to_files,
-        loader=NCLoader(system="Axona", loader_kwargs={"pos_extension": ".pos"}),
-        output_path=output_path,
-        overwrite=True,
-        post_process_fn=clean_data,
-    )
+    loader = NCLoader(system="Axona", pos_extension=".pos")
+    df = loader.index_files(path_to_files)
+    df = clean_data(df)
+    df_to_file(output_path)
 
 
 def get_rat_name(s):

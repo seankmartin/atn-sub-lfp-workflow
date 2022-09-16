@@ -14,7 +14,7 @@ def main(path_to_files: str, output_path: str) -> None:
     loader = NCLoader(system="Axona", pos_extension=".pos")
     df = loader.index_files(path_to_files)
     df = clean_data(df)
-    df_to_file(output_path)
+    df_to_file(df, output_path)
 
 
 def get_rat_name(s):

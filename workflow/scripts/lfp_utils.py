@@ -63,7 +63,9 @@ def _split_signals_by_zscore(signals, z_threshold, avg_sig, std_sig):
         else:
             good.append(i)
     if not good:
-        raise RuntimeError(f"No good signals found, bad were {bad}")
+        module_logger.warning(f"No good signals found, bad were {bad} - returning all")
+        good = bad
+        bad = []
 
     module_logger.debug(f"Excluded {len(bad)} signals with indices {bad}")
     return z_scores, good, bad

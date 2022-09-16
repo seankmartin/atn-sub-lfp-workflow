@@ -23,7 +23,7 @@ loader_kwargs:
   system: Axona
   pos_extension: [.txt, .pos]
 plot_psd: True
-z_score_threshold: 1.2
+z_score_threshold: 1.1
 max_psd_freq: 30
 speed_theta_samples_per_second: 5
 max_speed: 40

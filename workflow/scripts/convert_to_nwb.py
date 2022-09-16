@@ -114,12 +114,12 @@ def add_position_data_to_nwb(recording, nwbfile):
     position_data = np.transpose(
         np.array(
             [
-                recording.data["spatial"].position[0].value,
-                recording.data["spatial"].position[1].value,
+                recording.data["spatial"].position[0],
+                recording.data["spatial"].position[1],
             ]
         )
     )
-    position_timestamps = recording.data["spatial"].timestamps.value
+    position_timestamps = recording.data["spatial"].timestamps
     spatial_series = SpatialSeries(
         name="SpatialSeries",
         description="(x,y) position in open field",
@@ -133,7 +133,7 @@ def add_position_data_to_nwb(recording, nwbfile):
     hd_series = SpatialSeries(
         name="SpatialSeries",
         description="head direction",
-        data=recording.data["spatial"].direction.value,
+        data=recording.data["spatial"].direction,
         timestamps=position_timestamps,
         reference_frame="0 degrees is west, rotation is anti-clockwise",
         unit="degrees",
@@ -143,7 +143,7 @@ def add_position_data_to_nwb(recording, nwbfile):
     speed_ts = TimeSeries(
         name="running_speed",
         description="Running speed in openfield",
-        data=recording.data["spatial"].speed.value,
+        data=recording.data["spatial"].speed,
         timestamps=position_timestamps,
         unit="cm/s",
     )
@@ -191,9 +191,7 @@ def add_unit_data_to_nwb(recording, nwbfile):
 
 
 def add_lfp_data_to_nwb(recording, nwbfile, num_electrodes):
-    lfp_data = np.transpose(
-        np.array([s.samples.value for s in recording.data["signals"]])
-    )
+    lfp_data = np.transpose(np.array([s.samples for s in recording.data["signals"]]))
     add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data)
 
 
@@ -412,7 +410,7 @@ def convert_listed_data_to_nwb(
     for id_table_name in individual_tables:
         id_table = df_from_file(id_table_name)
         out_name = f"{Path(id_table_name).stem}_nwb.csv"
-        filter_ = {"filename": id_table["filename"].values}
+        filter_ = {"filename": id_table["filename"]}
         filtered_table = filter_table(table, filter_)
         merged_df = filtered_table.merge(
             id_table,

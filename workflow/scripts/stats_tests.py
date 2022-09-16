@@ -100,7 +100,7 @@ class PathAndDataGetter(object):
 
     def to_file(self, filename):
         filename.parent.mkdir(parents=True, exist_ok=True)
-        with open(filename, "w") as f:
+        with open(filename, "w", encoding="utf-8") as f:
             f.write(self.full_str)
 
 

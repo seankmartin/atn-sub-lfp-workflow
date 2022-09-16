@@ -3,7 +3,7 @@ from pathlib import Path
 
 import simuran as smr
 from pandas import DataFrame
-from skm_pyutils.table import df_from_file, df_to_file, filter_table, list_to_df
+from skm_pyutils.table import df_from_file, filter_table, list_to_df
 
 from convert_to_nwb import main
 

@@ -9,7 +9,7 @@ from skm_pyutils.table import df_from_file
 
 def main(input_dir, config, out_dir):
     config = smr.config_from_file(config)
-    coh_df, power_df, res_df = load_saved_results(input_dir, config)
+    coh_df, power_df, res_df = load_saved_results(input_dir)
     plot_coherence_results(res_df, coh_df, power_df, out_dir)
 
 
@@ -117,7 +117,7 @@ def plot_bar_coherence(res_df, band: str, out_dir):
     sns.barplot(
         data=res_df,
         x="trial",
-        y=f"{band}_coherence",
+        y=f"{band} Coherence",
         hue="Group",
         estimator=np.median,
         ax=ax,

@@ -2,11 +2,12 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import simuran as smr
+from simuran.bridges.mne_bridge import plot_signals
 from skm_pyutils.table import df_from_file
 
 
 def plot_all_signals(recording, output_path):
-    eeg_array = smr.EEGArray()
+    eeg_array = []
     nwbfile = recording.data
     electrodes_table = nwbfile.electrodes.to_dataframe()
     bad_chans = electrodes_table[electrodes_table["clean"] == "Outlier"].index
@@ -16,20 +17,21 @@ def plot_all_signals(recording, output_path):
     sr = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
     lfp_data = nwbfile.processing["normalised_lfp"]["LFP"]["ElectricalSeries"].data[:].T
     for sig in lfp_data:
-        eeg = smr.EEG.from_numpy(sig, sr)
+        eeg = smr.BaseSignal.from_numpy(sig, sr)
         eeg.conversion = 0.0000001
         eeg_array.append(eeg)
     average_signal = nwbfile.processing["average_lfp"]
     names = []
     for k in average_signal.data_interfaces:
         sig = average_signal[k].data[:]
-        eeg = smr.EEG.from_numpy(sig, sr)
+        eeg = smr.Eeg.from_numpy(sig, sr)
         eeg.conversion = 0.0000001
         eeg_array.append(eeg)
         names.append(k)
 
     ch_names.extend(names)
-    fig = eeg_array.plot(
+    fig = plot_signals(
+        eeg_array,
         ch_names=ch_names,
         bad_chans=bad_chans,
         title=recording.get_name_for_save(),

@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+
 # 1. create object to be worked on - like this
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
@@ -12,8 +13,11 @@ import simuran
 from mne.filter import filter_data
 from mne.preprocessing import ICA, read_ica
 
-from lfp_utils import (average_signals, detect_outlying_signals,
-                       z_score_normalise_signals)
+from lfp_utils import (
+    average_signals,
+    detect_outlying_signals,
+    z_score_normalise_signals,
+)
 
 if TYPE_CHECKING:
     import numpy as np
@@ -149,7 +153,7 @@ class LFPAverageCombiner(LFPCombiner):
     remove_outliers: bool = False
     z_normalise: bool = True
 
-    def combine(self, signals):
+    def combine(self, signals: "SignalSeries"):
         output_dict = OrderedDict()
 
         signals_grouped_by_region = signals.group_by_brain_region()

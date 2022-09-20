@@ -17,15 +17,15 @@ def plot_all_signals(recording, output_path):
     sr = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
     lfp_data = nwbfile.processing["normalised_lfp"]["LFP"]["ElectricalSeries"].data[:].T
     for sig in lfp_data:
-        eeg = smr.BaseSignal.from_numpy(sig, sr)
-        eeg.conversion = 0.0000001
+        eeg = smr.Eeg.from_numpy(sig, sr)
+        eeg.conversion = 0.0001
         eeg_array.append(eeg)
     average_signal = nwbfile.processing["average_lfp"]
     names = []
     for k in average_signal.data_interfaces:
         sig = average_signal[k].data[:]
         eeg = smr.Eeg.from_numpy(sig, sr)
-        eeg.conversion = 0.0000001
+        eeg.conversion = 0.0001
         eeg_array.append(eeg)
         names.append(k)
 

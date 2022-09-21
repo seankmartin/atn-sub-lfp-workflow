@@ -1,3 +1,4 @@
+from math import ceil
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -39,8 +40,8 @@ def plot_all_fooof(info_for_fooof, out_dir, fmax=40):
         for region in sorted(info_for_fooof[group].keys()):
             fg = FOOOFGroup(
                 peak_width_limits=[1.0, 8.0],
-                max_n_peaks=2,
-                min_peak_height=0.1,
+                max_n_peaks=4,
+                min_peak_height=0.2,
                 peak_threshold=2.0,
                 aperiodic_mode="fixed",
             )
@@ -62,8 +63,9 @@ def plot_fooof_peaks(peaks_data, out_dir):
 
     for r in sorted(list(set(peaks_df["Region"]))):
         fig, ax = plt.subplots()
+        data = peaks_df[peaks_df["Region"] == r]
         sns.histplot(
-            data=peaks_df[peaks_df["Region"] == r],
+            data=data,
             x="Peak frequency",
             hue="Group",
             multiple="stack",
@@ -73,7 +75,7 @@ def plot_fooof_peaks(peaks_data, out_dir):
         )
         smr.despine()
         ax.set_title(f"{r} Peak frequencies (Hz)")
-        ax.set_xlim(2, 20)
+        ax.set_xlim(0.5, ceil(max(data["Peak frequency"])))
         out_name = out_dir / f"{r}--fooof_combined"
         smr_fig = smr.SimuranFigure(fig, out_name)
         smr_fig.save()
@@ -85,7 +87,7 @@ def main(input_df_path, output_directory, config_path):
     rc = smr.RecordingContainer.from_table(df_from_file(input_df_path), loader)
 
     fooof_info = grab_fooof_info_from_container(rc)
-    peaks_data = plot_all_fooof(fooof_info, output_directory, cfg["max_psd_freq"])
+    peaks_data = plot_all_fooof(fooof_info, output_directory, cfg["max_fooof_freq"])
     plot_fooof_peaks(peaks_data, output_directory)
 
 

@@ -195,7 +195,9 @@ def add_lfp_data_to_nwb(recording, nwbfile, num_electrodes):
     add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data)
 
 
-def add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data, module=None):
+def add_lfp_array_to_nwb(
+    nwbfile, num_electrodes, lfp_data, module=None, conversion=0.001
+):
     all_table_region = nwbfile.create_electrode_table_region(
         region=list(range(num_electrodes)), description="all electrodes"
     )
@@ -207,7 +209,7 @@ def add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data, module=None):
         electrodes=all_table_region,
         starting_time=0.0,
         rate=250.0,
-        conversion=0.001,
+        conversion=conversion,
         filtering="Notch filter at 50Hz",
     )
     lfp = LFP(electrical_series=lfp_electrical_series)

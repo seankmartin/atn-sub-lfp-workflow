@@ -2,8 +2,6 @@
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-
-# 1. create object to be worked on - like this
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
@@ -71,10 +69,13 @@ class SignalSeries(ABC):
 class NWBSignalSeries(SignalSeries):
     """LFP is stored in mV units"""
 
-    def __init__(self, recording=None):
+    def __init__(self, recording=None, normalised=False):
         if recording is None:
             return
-        lfp = recording.data.processing["ecephys"]["LFP"]["ElectricalSeries"]
+        if normalised:
+            lfp = recording.data.processing["normalised_lfp"]["LFP"]["ElectricalSeries"]
+        else:
+            lfp = recording.data.processing["ecephys"]["LFP"]["ElectricalSeries"]
         self.data = lfp.data[:].T
         self.description = recording.data.electrodes.to_dataframe()
         self.conversion = lfp.conversion

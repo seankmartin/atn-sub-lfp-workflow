@@ -247,7 +247,7 @@ def store_normalised_lfp(ss, results_all, nwb_proc):
         description="The LFP signal matches others from this brain region or is an outlier",
         data=list(electrode_type),
     )
-    add_lfp_array_to_nwb(nwb_proc, len(ss.data), lfp_array.T, mod)
+    add_lfp_array_to_nwb(nwb_proc, len(ss.data), lfp_array.T, mod, conversion=1.0)
 
 
 def store_coherence(nwb_proc, flims=None):

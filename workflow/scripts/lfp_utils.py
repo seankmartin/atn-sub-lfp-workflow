@@ -52,7 +52,10 @@ def _split_signals_by_zscore(signals, z_threshold, avg_sig, std_sig):
         else:
             z_scores[i] = np.abs((s - avg_sig) / std_sig)
     z_score_means = np.nanmean(z_scores, axis=1)
-    z_threshold = z_threshold * np.median(z_score_means[z_score_means != 0])
+    if np.all(z_score_means == 0):
+        z_threshold = 10000
+    else:
+        z_threshold = z_threshold * np.median(z_score_means[z_score_means != 0])
 
     good, bad = [], []
     for i, val in enumerate(z_score_means):

@@ -5,8 +5,8 @@ clean_kwargs:
 can_clean_kwargs:
   pick_property: group_name
   options: [TT0, TT1, TT2, TT3, TT4, TT5, TT6, TT7, BE0, BE1]
-fmin: 1.0
-fmax: 100
+fmin: 0.5
+fmax: 120
 filter_kwargs:
   copy: True
 theta_min: 6

@@ -210,10 +210,10 @@ def store_average_lfp(results_picked, nwb_proc):
             name=f"{brain_region}_avg",
             data=result["average_signal"],
             unit="V",
-            conversion=0.001,
+            conversion=1.0,
             rate=250.0,
             starting_time=0.0,
-            description="A single averaged LFP signal per brain region",
+            description="A single averaged normalised LFP signal per brain region",
         )
         mod.add(ts)
 

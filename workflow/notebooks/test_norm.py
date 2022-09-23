@@ -56,6 +56,22 @@ axes[1].plot(f_nnorm, Pxx_nnorm)
 fig.savefig("test_psd.png", dpi=200)
 plt.close(fig)
 
+from math import isclose
+
+# %% Check power
+from scipy.integrate import simps
+
+f_norm, Pxx_norm, _ = calculate_psd(sig1, scale="volts")
+f_nnorm, Pxx_nnorm, _ = calculate_psd(sig2, scale="volts")
+total_power1 = simps(Pxx_norm, x=f_norm)
+total_power2 = simps(Pxx_nnorm, x=f_nnorm)
+idx_band = np.logical_and(f_norm >= 6, f_norm <= 12)
+abs_power1 = simps(Pxx_norm[idx_band], f_norm[idx_band])
+abs_power2 = simps(Pxx_nnorm[idx_band], f_nnorm[idx_band])
+
+print(1 /(total_power1 / abs_power1), 1 / (total_power2 / abs_power2))
+assert isclose(abs_power1 / total_power1, abs_power2 / total_power2)
+
 # %%
 rsc_norm = lfp_data[2]
 rsc_non_norm = filter_non_norm(non_norm_lfp_data[2])

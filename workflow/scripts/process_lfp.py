@@ -342,7 +342,23 @@ def main(table_paths, config_path, output_paths, num_cpus, overwrite=False):
     df_to_file(final_df, output_paths[-1])
 
 
+def test_main():
+    loader = smr.loader("nwb")
+    parent = Path(__file__).resolve().parent.parent
+    path_to_file = r"E:\Repos\atn-sub-lfp-workflow\results\nwbfiles\CSR6--screening_small sq--22022018--22022018_CSR6_screening_small sq_1.nwb"
+    recording = smr.Recording(loader=loader, source_file=path_to_file)
+    recording.load()
+    nwbfile = recording.data
+    config = smr.config_from_file(parent.parent / "config" / "simuran_params.yml")
+    nwbfile, _ = add_lfp_info(recording, config)
+    fname = Path(recording.source_file)
+    fname = fname.parent.parent / "processed" / fname.name
+    export_nwbfile(fname, recording, nwbfile, recording._nwb_io, debug=True)
+
+
 if __name__ == "__main__":
+    test_main()
+    exit(-1)
     smr.set_only_log_to_file(snakemake.log[0])
     main(
         snakemake.input,

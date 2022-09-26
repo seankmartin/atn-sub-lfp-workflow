@@ -239,8 +239,8 @@ def store_normalised_lfp(ss, results_all, nwb_proc):
             lfp_array[indices[idx]] = sig
             electrode_type[indices[idx]] = "Normal"
         for sig, idx in zip(outliers, outliers_idx):
-            lfp_array[indices[outliers_idx]] = sig
-            electrode_type[indices[outliers_idx]] = "Outlier"
+            lfp_array[indices[idx]] = sig
+            electrode_type[indices[idx]] = "Outlier"
 
     nwb_proc.add_electrode_column(
         name="clean",

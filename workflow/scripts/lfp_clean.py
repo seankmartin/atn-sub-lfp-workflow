@@ -1,7 +1,9 @@
 """Clean LFP signals."""
 
+import random
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
@@ -76,7 +78,7 @@ class NWBSignalSeries(SignalSeries):
             lfp = recording.data.processing["normalised_lfp"]["LFP"]["ElectricalSeries"]
         else:
             lfp = recording.data.processing["ecephys"]["LFP"]["ElectricalSeries"]
-        self.data = lfp.data[:].T
+        self.data = deepcopy(lfp.data[:].T)
         self.description = recording.data.electrodes.to_dataframe()
         self.conversion = lfp.conversion
         self.sampling_rate = lfp.rate
@@ -86,11 +88,18 @@ class NWBSignalSeries(SignalSeries):
 
     def select_electrodes(self, property_, options):
         """Select electrodes with electrode.property_ in options"""
-        to_use = [
-            i for i, row in self.description.iterrows() if row[property_] in options
-        ]
+        if property_ == "random":
+            dict_ = self.group_by_brain_region(index=True)
+            to_use = [random.choice(indices) for _, indices in dict_.iteritems()]
+        elif property_ == "first":
+            dict_ = self.group_by_brain_region(index=True)
+            to_use = [indices[0] for _, indices in dict_.iteritems()]
+        else:
+            to_use = [
+                i for i, row in self.description.iterrows() if row[property_] in options
+            ]
         nss = NWBSignalSeries()
-        nss.data = self.data[to_use]
+        nss.data = deepcopy(self.data[to_use])
         nss.description = self.description.loc[to_use]
         nss.conversion = self.conversion
         nss.sampling_rate = self.sampling_rate

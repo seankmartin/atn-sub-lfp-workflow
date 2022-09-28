@@ -13,6 +13,10 @@ theta_min: 6
 theta_max: 12
 delta_min: 1.5
 delta_max: 4
+low_gamma_min: 40
+low_gamma_max: 80
+high_gamma_min: 80
+high_gamma_max: 120
 psd_scale: decibels
 image_format: png
 cfg_base_dir: H:\SubRet_recordings_imaging

@@ -81,7 +81,10 @@ def power_spectra_summary(rc, out_dir, config):
     per_psd_dfs = []
     sum_dfs = []
 
+    delta_min, delta_max = config["delta_min"], config["delta_max"]
     theta_min, theta_max = config["theta_min"], config["theta_max"]
+    low_gamma_min, low_gamma_max = config["low_gamma_min"], config["low_gamma_max"]
+    high_gamma_min, high_gamma_max = config["high_gamma_min"], config["high_gamma_max"]
     for r in rc.load_iter():
         rat_name = r.attrs["rat"]
         group = group_type_from_rat_name(rat_name)
@@ -96,13 +99,22 @@ def power_spectra_summary(rc, out_dir, config):
         for region in regions:
             signal = r.data.processing["average_lfp"][f"{region}_avg"]
             signal = numpy_to_nc(signal.data[:], signal.rate)
-            p = signal.bandpower([theta_min, theta_max], window_sec=4, unit="milli")
-            rel_power.extend([p["bandpower"], p["relative_power"]])
+            bands = [
+                (delta_min, delta_max),
+                (theta_min, theta_max),
+                (low_gamma_min, low_gamma_max),
+                (high_gamma_min, high_gamma_max),
+            ]
+            for (l_band, h_band) in bands:
+                p = signal.bandpower([l_band, h_band], window_sec=4, unit="milli")
+                rel_power.append(p["relative_power"])
         rel_power.append(group)
         headers = []
         for region in regions:
-            headers.append(f"{region} Theta (mV)")
+            headers.append(f"{region} Delta Rel")
             headers.append(f"{region} Theta Rel")
+            headers.append(f"{region} Low Gamma Rel")
+            headers.append(f"{region} High Gamma Rel")
         headers.append("Condition")
         sum_dfs.append(list_to_df([rel_power], headers=headers))
 
@@ -118,8 +130,7 @@ def power_spectra_summary(rc, out_dir, config):
 
     df_to_file(full_df, out_dir / "averaged_signals_psd.csv")
     df_to_file(animal_df, out_dir / "averaged_psds_psd.csv")
-    # TODO implement gamma power
-    df_to_file(sum_df, out_dir / "theta_power.csv")
+    df_to_file(sum_df, out_dir / "signal_bandpowers.csv")
 
 
 def openfield_coherence(rc, out_dir, config):

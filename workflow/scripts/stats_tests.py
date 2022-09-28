@@ -108,47 +108,32 @@ def power_stats(input_path, overall_kwargs, get_obj):
     pt("Open field power", start="")
     df, control_df, lesion_df = get_obj.get_df(input_path)
 
-    t1_kwargs = {
-        **overall_kwargs,
-        **{"value": "subicular relative theta powers (unitless)"},
-    }
-    res = mwu(
-        control_df["SUB Theta Rel"], lesion_df["SUB Theta Rel"], t1_kwargs, do_plot=True
-    )
-    get_obj.process_fig(res, "sub_theta_openfield.pdf")
+    names = ["Delta", "Theta", "Low Gamma", "High Gamma"]
+    for name in names:
 
-    t1_kwargs = {
-        **overall_kwargs,
-        **{"value": "subicular theta powers (mV)"},
-    }
-    res = mwu(
-        control_df["SUB Theta (mV)"],
-        lesion_df["SUB Theta (mV)"],
-        t1_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "sub_theta_no_rel_openfield.pdf")
+        t1_kwargs = {
+            **overall_kwargs,
+            **{"value": f"subicular relative {name} powers (unitless)"},
+        }
+        res = mwu(
+            control_df[f"SUB {name} Rel"],
+            lesion_df[f"SUB {name} Rel"],
+            t1_kwargs,
+            do_plot=True,
+        )
+        get_obj.process_fig(res, f"sub_{name}_openfield.pdf")
 
-    t2_kwargs = {
-        **overall_kwargs,
-        **{"value": "retrospenial relative theta powers (unitless)"},
-    }
-    res = mwu(
-        control_df["RSC Theta Rel"], lesion_df["RSC Theta Rel"], t2_kwargs, do_plot=True
-    )
-    get_obj.process_fig(res, "rsc_theta_openfield.pdf")
-
-    t2_kwargs = {
-        **overall_kwargs,
-        **{"value": "retrospenial theta powers (mV)"},
-    }
-    res = mwu(
-        control_df["RSC Theta (mV)"],
-        lesion_df["RSC Theta (mV)"],
-        t2_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "rsc_theta_no_rel_openfield.pdf")
+        t2_kwargs = {
+            **overall_kwargs,
+            **{"value": f"retrospenial relative {name} powers (unitless)"},
+        }
+        res = mwu(
+            control_df[f"RSC {name} Rel"],
+            lesion_df[f"RSC {name} Rel"],
+            t2_kwargs,
+            do_plot=True,
+        )
+        get_obj.process_fig(res, f"rsc_{name}_openfield.pdf")
 
 
 def coherence_stats(input_path, overall_kwargs, get_obj):
@@ -167,6 +152,7 @@ def coherence_stats(input_path, overall_kwargs, get_obj):
     )
     get_obj.process_fig(res, "theta_coherence_openfield.pdf")
 
+    # TODO likely remove
     t2_kwargs = {
         **overall_kwargs,
         **{"value": "delta coherence (unitless)"},

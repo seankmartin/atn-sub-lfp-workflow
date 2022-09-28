@@ -58,7 +58,7 @@ rule create_dfs:
     output:
         "results/summary/averaged_signals_psd.csv",
         "results/summary/averaged_psds_psd.csv",
-        "results/summary/theta_power.csv",
+        "results/summary/signal_bandpowers.csv",
         "results/summary/openfield_coherence.csv",
         "results/summary/coherence_stats.csv",
         "results/summary/openfield_speed.csv",
@@ -72,7 +72,7 @@ rule create_dfs:
 
 rule hypothesis_tests:
     input:
-        "results/summary/theta_power.csv",
+        "results/summary/signal_bandpowers.csv",
         "results/summary/coherence_stats.csv",
         "results/summary/openfield_speed.csv",
         "results/summary/openfield_peak_sfc.csv",

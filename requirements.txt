@@ -2,3 +2,4 @@ simuran
 fooof
 pynwb
 python-picard
+pactools

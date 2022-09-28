@@ -8,6 +8,8 @@ from skm_pyutils.path import (
 )
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
+from .common import rsc_histology
+
 here = Path(__file__).resolve().parent
 
 
@@ -59,6 +61,8 @@ def main(dirname, path_to_csv, output_path):
         else:
             new_mapping.append(mapping)
     merged_df["mapping"] = new_mapping
+
+    merged_df["RSC location"] = merged_df["rat"].apply(rsc_histology)
 
     df_to_file(merged_df, output_path)
 

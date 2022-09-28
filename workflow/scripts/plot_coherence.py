@@ -7,6 +7,8 @@ import simuran as smr
 from skm_pyutils.table import df_from_file
 
 
+# TODO this needs to incorporate RSC histology
+# TODO is this open field, do I even need it?
 def plot_coherence(df, out_dir, max_frequency=40):
     smr.set_plot_style()
 

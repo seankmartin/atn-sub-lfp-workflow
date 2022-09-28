@@ -1,5 +1,4 @@
 import logging
-import os
 from copy import copy
 from math import ceil, floor
 from pathlib import Path
@@ -13,6 +12,8 @@ from scipy.signal import coherence, welch
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
 module_logger = logging.getLogger("simuran.custom.tmaze_analyse")
+
+# TODO implement gamma RSC and theta phase coupling
 
 
 def main(tmaze_times_filepath, config_filepath, out_dir):

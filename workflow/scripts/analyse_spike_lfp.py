@@ -83,7 +83,7 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
         return np.nanmax(theta_part)
 
     def compute_spike_lfp(lfp, spike_train, nrep=500):
-        g_data = lfp.plv(spike_train, mode="bs", fwin=[0, 20], nrep=nrep)
+        g_data = lfp.plv(spike_train, mode="bs", fwin=[0, 120], nrep=nrep)
         sta = g_data["STAm"]
         sfc = g_data["SFCm"]
         t = g_data["t"]

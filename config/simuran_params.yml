@@ -24,11 +24,11 @@ loader_kwargs:
   pos_extension: [.txt, .pos]
 plot_psd: True
 z_score_threshold: 1.1
-max_psd_freq: 90
-max_fooof_freq: 100
+max_psd_freq: 120
+max_fooof_freq: 120
 speed_theta_samples_per_second: 5
 max_speed: 40
-num_spike_shuffles: 40
+num_spike_shuffles: 50
 tmaze_minf: 2.0
 tmaze_maxf: 40.0
 tmaze_winsec: 0.5

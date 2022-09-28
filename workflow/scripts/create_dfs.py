@@ -118,6 +118,7 @@ def power_spectra_summary(rc, out_dir, config):
 
     df_to_file(full_df, out_dir / "averaged_signals_psd.csv")
     df_to_file(animal_df, out_dir / "averaged_psds_psd.csv")
+    # TODO implement gamma power
     df_to_file(sum_df, out_dir / "theta_power.csv")
 
 

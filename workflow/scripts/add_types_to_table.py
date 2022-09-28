@@ -8,7 +8,7 @@ from skm_pyutils.path import (
 )
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
-from .common import rsc_histology
+from common import rsc_histology
 
 here = Path(__file__).resolve().parent
 

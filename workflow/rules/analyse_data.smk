@@ -102,3 +102,13 @@ rule tmaze_decoding:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/t_maze_decode.py"
+
+rule ca1_lfp:
+    output:
+        directory("results/ca1_analysis")
+    log:
+        "logs/ca1_analysis.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/atnx_ca1_lfp.py"

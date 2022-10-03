@@ -1,5 +1,6 @@
 import csv
 import os
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,8 +12,8 @@ from lfp_atn_simuran.Scripts.frequency_analysis import powers
 
 
 def main(input_dir, out_dir, cfg_path):
-    index_location = os.path.join(out_dir, "index.csv")
-    os.makedirs(os.path.dirname(index_location), exist_ok=True)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     config = simuran.config_from_file(cfg_path)
 
     rc = load_rc(input_dir)
@@ -26,7 +27,8 @@ def main(input_dir, out_dir, cfg_path):
         fn_args = [r, input_dir, sm_figures]
         ah.add_fn(powers, *fn_args, **fn_kwargs)
     ah.run_all_fns(pbar=True)
-    simuran.save_figures(sm_figures, out_dir, verbose=True)
+    for f in sm_figures:
+        f.savefig(filename=out_dir / f.filename)
     ah.save_results_to_table(os.path.join(out_dir, "results.csv"))
     visualise(out_dir, config)
 
@@ -153,3 +155,8 @@ def visualise(out_dir, config):
     out_name = os.path.join(out_dir, "ca1_peaks_fooof.pdf")
     fig.savefig(out_name, dpi=400)
     plt.close(fig)
+
+
+if __name__ == "__main__":
+    simuran.set_only_log_to_file(snakemake.log[0])
+    main(snakemake.config["ca1_directory"], snakemake.output[0])

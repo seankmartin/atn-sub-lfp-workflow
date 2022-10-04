@@ -1,5 +1,5 @@
 data_directory: H:\SubRet_recordings_imaging
-ca1_directory: D:\ATNxStudy\ATNx_CA1
+ca1_directory: H:\ATN_CA1
 simuran_config: config\simuran_params.yml
 openfield_filter: config\openfield_recordings.yml
 tmaze_filter: config\tmaze_recordings.yml

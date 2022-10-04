@@ -118,8 +118,13 @@ class NWBSignalSeries(SignalSeries):
 
     def filter(self, min_f, max_f, **filter_kwargs):
         """Filters with MNE - kwargs are passed to mne.filter.filter_data"""
-        self.data = filter_data(
-            self.data_as_volts(), self.sampling_rate, min_f, max_f, **filter_kwargs
+        self.data = (
+            filter_data(
+                self.data_as_volts(), self.sampling_rate, min_f, max_f, **filter_kwargs
+            )
+            / self.conversion
+        )
+
         )
 
 

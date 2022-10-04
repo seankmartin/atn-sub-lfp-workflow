@@ -208,7 +208,7 @@ def store_average_lfp(results_picked, nwb_proc):
     for brain_region, result in results_picked.items():
         ts = TimeSeries(
             name=f"{brain_region}_avg",
-            data=result["average_signal"],
+            data=0.001 * result["average_signal"],
             unit="V",
             conversion=1.0,
             rate=250.0,
@@ -247,7 +247,9 @@ def store_normalised_lfp(ss, results_all, nwb_proc):
         description="The LFP signal matches others from this brain region or is an outlier",
         data=list(electrode_type),
     )
-    add_lfp_array_to_nwb(nwb_proc, len(ss.data), lfp_array.T, mod, conversion=1.0)
+    add_lfp_array_to_nwb(
+        nwb_proc, len(ss.data), 0.001 * lfp_array.T, mod, conversion=1.0
+    )
 
 
 def store_coherence(nwb_proc, flims=None):

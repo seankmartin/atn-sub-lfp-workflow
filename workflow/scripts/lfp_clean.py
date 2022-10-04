@@ -13,11 +13,8 @@ import simuran
 from mne.filter import filter_data
 from mne.preprocessing import ICA, read_ica
 
-from lfp_utils import (
-    average_signals,
-    detect_outlying_signals,
-    z_score_normalise_signals,
-)
+from lfp_utils import (average_signals, detect_outlying_signals,
+                       z_score_normalise_signals)
 
 if TYPE_CHECKING:
     import numpy as np
@@ -50,22 +47,6 @@ class SignalSeries(ABC):
     @abstractmethod
     def data_as_volts(self):
         """Return the data in volts unit (e.g. multiply by 1000)"""
-
-    @property
-    def data(self) -> "np.ndarray":
-        return self._data
-
-    @data.setter
-    def data(self, data: "np.ndarray"):
-        self._data = data
-
-    @property
-    def description(self) -> "pd.DataFrame":
-        return self._description
-
-    @description.setter
-    def description(self, description: "pd.DataFrame"):
-        self._description = description
 
 
 class NWBSignalSeries(SignalSeries):
@@ -125,6 +106,55 @@ class NWBSignalSeries(SignalSeries):
             / self.conversion
         )
 
+
+class NCSignalSeries(SignalSeries):
+    def __init__(self, recording=None, normalised=False):
+        if recording is None:
+            return
+        self.data = np.array([s.data.get_samples() for s in recording.data["signals"]])
+        self.regions = [s.region for s in recording.data["signals"]]
+        self.conversion = 1000
+        self.sampling_rate = recording.attrs["mapping"]["signals"]["sampling_rate"][0]
+
+    def data_as_volts(self):
+        return self.data * self.conversion
+
+    def select_electrodes(self, property_, options):
+        """Select electrodes with electrode.property_ in options"""
+        if property_ == "random":
+            dict_ = self.group_by_brain_region(index=True)
+            to_use = [random.choice(indices) for _, indices in dict_.iteritems()]
+        elif property_ == "first":
+            dict_ = self.group_by_brain_region(index=True)
+            to_use = [indices[0] for _, indices in dict_.iteritems()]
+        else:
+            to_use = [
+                i for i, row in self.description.iterrows() if row[property_] in options
+            ]
+        nss = NCSignalSeries()
+        nss.data = deepcopy(self.data[to_use])
+        nss.conversion = self.conversion
+        nss.sampling_rate = self.sampling_rate
+        return nss
+
+    def group_by_brain_region(self, index=False):
+        out_dict = {}
+        for i, data in enumerate(self.data):
+            location = self.regions[i]
+            if location not in out_dict:
+                out_dict[location] = []
+            to_append = i if index else data
+            out_dict[location].append(to_append)
+
+        return {k: np.array(v) for k, v in out_dict.items()}
+
+    def filter(self, min_f, max_f, **filter_kwargs):
+        """Filters with MNE - kwargs are passed to mne.filter.filter_data"""
+        self.data = (
+            filter_data(
+                self.data_as_volts(), self.sampling_rate, min_f, max_f, **filter_kwargs
+            )
+            / self.conversion
         )
 
 

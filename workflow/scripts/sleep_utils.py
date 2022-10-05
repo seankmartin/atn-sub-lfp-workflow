@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
+import simuran as smr
 import yasa
+from simuran.bridges.neurochat_bridge import signal_to_neurochat
 
 
-def mark_rest(speed, lfp_rate, speed_rate, tresh=2.5, window_sec=2):
+def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwargs):
     """Returns ones for the time windows where the animal was moving with a speed smaller than treshold
     Inputs:
         file(str): filename to be analysed
@@ -12,7 +14,11 @@ def mark_rest(speed, lfp_rate, speed_rate, tresh=2.5, window_sec=2):
         window_sec(int): Window in seconds to define resting epochs
     Returns:
         resting(arr): 1 (ones) for resting 0 (zeros) for movement
+        There is a sample for each lfp sample
     """
+    theta_min, theta_max = kwargs["theta_min"], kwargs["theta_max"]
+    delta_min, delta_max = kwargs["delta_min"], kwargs["delta_max"]
+
     lfp_samples_per_speed = lfp_rate / speed_rate
     moving = np.zeros(len(speed) * lfp_samples_per_speed)
     for i in range(len(speed)):
@@ -20,18 +26,17 @@ def mark_rest(speed, lfp_rate, speed_rate, tresh=2.5, window_sec=2):
             moving[lfp_samples_per_speed * i : lfp_samples_per_speed * (i + 1)] = 1
 
     window = window_sec * lfp_rate
-    resting = []
-
-    # TODO cut up nc signal into window_sec parts
-    for signal in lfp.get_data():
-        result = np.zeros(len(signal))
-        for i in range(0, len(signal) - window, window // 2):
-            bp = signal.bandpower_ratio([i : i + window], window_sec)
-            # running speed < 2.5cm/s , and theta/delta power ratio < 2
-            if sum(moving[i : i + window]) == 0 and bp < 2:
-                result[i : i + window] = 1
-        resting.append(result)
-    return np.asarray(resting)
+    result = np.zeros(len(lfp))
+    for i in range(0, len(lfp) - window, window // 2):
+        sig = smr.Eeg.from_numpy(lfp[i : i + window])
+        nc_sig = signal_to_neurochat(sig)
+        bp = nc_sig.bandpower_ratio(
+            [theta_min, theta_max], [delta_min, delta_max], window_sec
+        )
+        # running speed < 2.5cm/s , and theta/delta power ratio < 2
+        if sum(moving[i : i + window]) == 0 and bp < 2:
+            result[i : i + window] = 1
+    return result
 
 
 def create_events(record, events):
@@ -59,6 +64,7 @@ def mark_movement(speed, mne_array):
     resting = np.asarray(mark_rest(speed, tresh=2.5, mov=True))
     events = resting.reshape(n_channels, len(resting))
     return create_events(mne_array, events)
+
 
 def process_spindles(mne_data):
     sp = yasa.spindles_detect(

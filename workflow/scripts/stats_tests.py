@@ -41,32 +41,22 @@ class PathAndDataGetter(object):
         df = df_from_file(filename)
         if ("Group" in df.columns) and ("Condition" not in df.columns):
             df.loc[:, "Condition"] = df["Group"]
-        if describe:
-            print(f"Processing {filename}")
-            print("Overall")
-            print(df.describe())
         try:
             df = self.update_group(df)
             control_df = df[df["Condition"] == self.control_name]
             lesion_df = df[df["Condition"] == self.lesion_name]
         except KeyError:
+            if describe:
+                self.describe_df(filename, df)
             return df
         if describe:
-            print(f"Processing {filename}")
-            print("Overall")
-            print(df.describe())
-            print("Control")
-            print(control_df.describe())
-            print("Lesion")
-            print(lesion_df.describe())
+            self.describe_df_grouped(filename, df, control_df, lesion_df)
         return df, control_df, lesion_df
 
     def get_musc_df(self, filename, spatial=True, describe=False):
         df = df_from_file(filename)
         if describe:
-            print(f"Processing {filename}")
-            print("Overall")
-            print(df.describe())
+            self.describe_df(filename, df)
         if ("Treatment" in df.columns) and ("Condition" not in df.columns):
             df.loc[:, "Condition"] = df["Treatment"]
         try:
@@ -76,14 +66,20 @@ class PathAndDataGetter(object):
         except KeyError:
             return df
         if describe:
-            print(f"Processing {filename}")
-            print("Overall")
-            print(df.describe())
-            print("Control")
-            print(control_df.describe())
-            print("Lesion")
-            print(lesion_df.describe())
+            self.describe_df_grouped(filename, df, control_df, lesion_df)
         return df, control_df, lesion_df
+
+    def describe_df_grouped(self, filename, df, control_df, lesion_df):
+        self.describe_df(filename, df)
+        print("Control")
+        print(control_df.describe())
+        print("Lesion")
+        print(lesion_df.describe())
+
+    def describe_df(self, filename, df):
+        print(f"Processing {filename}")
+        print("Overall")
+        print(df.describe())
 
     def process_fig(self, res, name):
         fig = res["figure"]

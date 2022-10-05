@@ -52,6 +52,7 @@ rule analyse_spike_lfp:
     script:
         "../scripts/analyse_spike_lfp.py"
 
+
 rule create_dfs:
     input:
         "results/openfield_processed.csv",
@@ -103,6 +104,7 @@ rule tmaze_decoding:
     script:
         "../scripts/t_maze_decode.py"
 
+
 rule ca1_lfp:
     output:
         directory("results/ca1_analysis")
@@ -112,3 +114,14 @@ rule ca1_lfp:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/atnx_ca1_lfp.py"
+
+
+rule theta_gamma:
+    output:
+        directory("results/plots/theta_gamma")
+    log:
+        "logs/theta_gamma.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/analyse_theta_gamma.py"

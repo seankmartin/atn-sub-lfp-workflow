@@ -17,11 +17,6 @@ from skm_pyutils.table import df_from_file
 here = os.path.dirname(os.path.abspath(__file__))
 
 
-def pt(title, n_dashes=20, start="\n"):
-    str_ = "-" * n_dashes + title + "-" * n_dashes
-    print(start + str_)
-
-
 @dataclass
 class PathAndDataGetter(object):
     plot_dir: Union[str, Path]
@@ -100,12 +95,17 @@ class PathAndDataGetter(object):
         with open(filename, "w", encoding="utf-8") as f:
             f.write(self.full_str)
 
+    def pt(self, title, n_dashes=20, start="\n"):
+        str_ = "-" * n_dashes + title + "-" * n_dashes
+        print(start + str_)
+        self.full_str = f"{self.full_str}\n{str_}"
+
 
 def power_stats(input_path, overall_kwargs, get_obj):
-    pt("Open field power", start="")
+    get_obj.pt("Open field power", start="")
     df, control_df, lesion_df = get_obj.get_df(input_path)
 
-    names = ["Delta", "Theta", "Low Gamma", "High Gamma"]
+    names = ["Delta", "Theta", "Beta", "Low Gamma", "High Gamma"]
     for name in names:
 
         t1_kwargs = {
@@ -134,7 +134,7 @@ def power_stats(input_path, overall_kwargs, get_obj):
 
 
 def coherence_stats(input_path, overall_kwargs, get_obj):
-    pt("Open field coherence")
+    get_obj.pt("Open field coherence")
     df, control_df, lesion_df = get_obj.get_df(input_path)
     df = df[df["RSC on target"]]
     control_df = control_df[lesion_df["RSC on target"]]
@@ -178,7 +178,7 @@ def coherence_stats(input_path, overall_kwargs, get_obj):
 
 
 def speed_stats(input_path, overall_kwargs, get_obj):
-    pt("Open field Speed LFP power relationship")
+    get_obj.pt("Open field Speed LFP power relationship")
     speed_df, speed_ctrl, speed_lesion = get_obj.get_df(input_path)
 
     for region, name in zip(["SUB", "RSC"], ["subicular", "retrospenial"]):
@@ -225,7 +225,7 @@ def speed_stats(input_path, overall_kwargs, get_obj):
 
 
 def spike_lfp_stats(input_path, overall_kwargs, get_obj):
-    pt("Spike LFP openfield")
+    get_obj.pt("Spike LFP openfield")
     df, control_df, lesion_df = get_obj.get_df(input_path)
     control_nspatial = control_df[control_df["Spatial"] == "Non-Spatial"]
     sub_control = control_nspatial[control_nspatial["Region"] == "SUB"]
@@ -267,7 +267,7 @@ def spike_lfp_stats(input_path, overall_kwargs, get_obj):
 
 
 def tmaze_stats(input_path, overall_kwargs, get_obj):
-    pt("Tmaze stats")
+    get_obj.pt("Tmaze stats")
     df, control_df, lesion_df = get_obj.get_df(input_path)
     bit_to_get = (control_df["part"] == "choice") & (control_df["trial"] == "Correct")
     control_choice = control_df[bit_to_get]
@@ -381,7 +381,7 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
 
 
 def muscimol_stats(input_path, overall_kwargs, get_obj):
-    pt("Spike LFP muscimol")
+    get_obj.pt("Spike LFP muscimol")
     df, control_df, lesion_df = get_obj.get_musc_df(input_path)
     sub_control = control_df[control_df["Region"] == "SUB"]
     rsc_control = control_df[control_df["Region"] == "RSC"]

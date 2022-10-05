@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import simuran as smr
 from hdmf.backends.hdf5.h5_utils import H5DataIO
+from neurochat.nc_utils import RecPos
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from pynwb.ecephys import LFP, ElectricalSeries
@@ -111,6 +112,8 @@ def convert_recording_to_nwb(recording, rel_dir=None):
 
 
 def add_position_data_to_nwb(recording, nwbfile):
+    filename = recording.attrs["source_files"]["Spatial"]
+    rec_pos = RecPos(filename, load=True)
     position_data = np.transpose(
         np.array(
             [
@@ -122,7 +125,7 @@ def add_position_data_to_nwb(recording, nwbfile):
     position_timestamps = recording.data["spatial"].timestamps
     spatial_series = SpatialSeries(
         name="SpatialSeries",
-        description="(x,y) position in open field",
+        description="(x,y) position in camera",
         data=position_data,
         timestamps=position_timestamps,
         reference_frame="(0,0) is top left corner",
@@ -142,18 +145,33 @@ def add_position_data_to_nwb(recording, nwbfile):
 
     speed_ts = TimeSeries(
         name="running_speed",
-        description="Running speed in openfield",
+        description="Smoothed running speed calculated from position",
         data=recording.data["spatial"].speed,
         timestamps=position_timestamps,
         unit="cm/s",
+    )
+
+    raw_pos = rec_pos.get_raw_pos()
+    big_data = np.transpose(np.array([raw_pos[0], raw_pos[1], raw_pos[2], raw_pos[3]]))
+
+    big_led_ts = TimeSeries(
+        name="led_positions",
+        description="(x, y) position of big led, followed by (x,y) of small led. In raw pixel values, use conversion to get cm.",
+        data=big_data,
+        timestamps=position_timestamps,
+        unit="centimeters",
+        conversion=(1 / rec_pos.pixels_per_cm),
     )
 
     behavior_module = nwbfile.create_processing_module(
         name="behavior", description="processed behavior data"
     )
     behavior_module.add(position_obj)
-    behavior_module.add(compass_obj)
     behavior_module.add(speed_ts)
+    behavior_module.add(big_led_ts)
+
+    if filename.endswith(".pos"):
+        behavior_module.add(compass_obj)
 
 
 def add_unit_data_to_nwb(recording, nwbfile):

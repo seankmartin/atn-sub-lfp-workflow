@@ -94,7 +94,7 @@ def power_spectra_summary(rc, out_dir, config):
         clean_df = convert_df_to_averages(grab_psds(r.data)[0])
         clean_df = clean_df.assign(Rat=rat_name)
         clean_df = clean_df.assign(Group=group)
-        clean_df = clean_df.assign(RSC_on_target=on_target)
+        clean_df = clean_df.assign(**{"RSC on target": on_target})
         per_signal_dfs.append(clean_df)
         regions = sorted(list(set(clean_df["Brain Region"])))
 
@@ -127,7 +127,7 @@ def power_spectra_summary(rc, out_dir, config):
         clean_df = psd_df[psd_df["Type"] == "Clean"]
         clean_df = clean_df.assign(Rat=rat_name)
         clean_df = clean_df.assign(Group=group)
-        clean_df = clean_df.assign(RSC_on_target=on_target)
+        clean_df = clean_df.assign(**{"RSC on target": on_target})
         per_psd_dfs.append(clean_df)
 
     full_df = pd.concat(per_signal_dfs, ignore_index=True)

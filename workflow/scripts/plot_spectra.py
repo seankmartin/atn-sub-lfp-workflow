@@ -3,7 +3,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import seaborn as sns
 import simuran as smr
 from skm_pyutils.plot import GridFig
@@ -13,8 +12,8 @@ module_logger = logging.getLogger("simuran.custom.plot_spectra")
 
 
 def group_type_from_rat_name(name):
-    ctrl = "Control (ATN,   N = 6)"
-    lesion = "Lesion  (ATNx, N = 5)"
+    ctrl = "Control (ATN)"
+    lesion = "Lesion  (ATNx)"
     return lesion if name.lower().startswith("l") else ctrl
 
 
@@ -171,6 +170,8 @@ def plot_control_vs_lesion_psd(per_animal_df, output_path, max_frequency):
     paths = []
     for region in regions:
         df = per_animal_df[per_animal_df["Brain Region"] == region]
+        # Only use ipsilateral recordings
+        df = df[df["RSC on target"]] if region == "RSC" else df
         fig, ax = plt.subplots()
         sns.lineplot(
             ax=ax,

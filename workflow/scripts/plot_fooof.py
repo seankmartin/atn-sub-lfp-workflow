@@ -22,6 +22,8 @@ def grab_fooof_info_from_container(recording_container):
         ].to_dataframe()
 
         for region in brain_regions:
+            if region == "RSC" and not recording.attrs["RSC on target"]:
+                continue
             psd_row = psd_table.loc[psd_table["label"] == f"{region}_avg"]
             max_psd = psd_row["max_psd"].values[0]
             power = np.array(psd_row["power"].values[0]).astype(np.float64)

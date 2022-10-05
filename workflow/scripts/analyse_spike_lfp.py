@@ -57,6 +57,7 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
         theta_max,
     ):
         signal = recording.data.processing["average_lfp"][f"{region}_avg"]
+        on_target = recording.attrs["RSC on target"]
         lfp = numpy_to_nc(signal.data[:], sample_rate=signal.rate)
         sta, sfc, t, f = compute_spike_lfp(lfp, spike_train, n_shuffles * 4)
         sfc = sfc / 100
@@ -68,13 +69,13 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
 
         sta_list.extend(
             [
-                [region, animal, type_, sta_i, t_i, r]
+                [region, animal, type_, on_target, sta_i, t_i, r]
                 for (sta_i, t_i, r) in zip(sta, t, sta_mean)
             ]
         )
         sfc_list.extend(
             [
-                [region, animal, type_, sfc_i, f_i, r]
+                [region, animal, type_, on_target, sfc_i, f_i, r]
                 for (sfc_i, f_i, r) in zip(sfc, f, sfc_mean)
             ]
         )
@@ -156,6 +157,7 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
         unit_table = recording.data.units.to_dataframe()
         electrodes = recording.data.electrodes.to_dataframe()
         brain_regions = sorted(list(set(electrodes["location"])))
+        on_target = recording.attrs["RSC on target"]
         for unit, type_ in zip(units, unit_types):
             spike_train = unit_table.loc[unit_table["tname"] == unit].spike_times
             if len(spike_train) == 0:
@@ -180,13 +182,29 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
                     theta_min,
                     theta_max,
                 )
-                peak_vals.append([peak_theta_coh, treatment, region, type_])
+                peak_vals.append([peak_theta_coh, treatment, region, on_target, type_])
 
-    headers = ["Region", "Group", "Spatial", "STA", "Time (s)", "Shuffled STA"]
+    headers = [
+        "Region",
+        "Group",
+        "Spatial",
+        "RSC on target",
+        "STA",
+        "Time (s)",
+        "Shuffled STA",
+    ]
     sta_df = list_to_df(sta_list, headers=headers)
-    headers = ["Region", "Group", "Spatial", "SFC", "Frequency (Hz)", "Shuffled SFC"]
+    headers = [
+        "Region",
+        "Group",
+        "Spatial",
+        "RSC on target",
+        "SFC",
+        "Frequency (Hz)",
+        "Shuffled SFC",
+    ]
     sfc_df = list_to_df(sfc_list, headers=headers)
-    headers = ["Peak Theta SFC", "Group", "Region", "Spatial"]
+    headers = ["Peak Theta SFC", "Group", "Region", "RSC on target", "Spatial"]
     peak_df = list_to_df(peak_vals, headers=headers)
 
     if sta_df["Group"].str.startswith("musc").any():

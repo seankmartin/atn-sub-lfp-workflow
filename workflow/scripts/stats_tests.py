@@ -6,6 +6,7 @@ See jasp folder for JASP tests (though the data in these tests may be old).
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from turtle import speed
 from typing import Union
 
 import matplotlib.pyplot as plt
@@ -124,8 +125,8 @@ def power_stats(input_path, overall_kwargs, get_obj):
             **{"value": f"retrospenial relative {name} powers (unitless)"},
         }
         res = mwu(
-            control_df[f"RSC {name} Rel"],
-            lesion_df[f"RSC {name} Rel"],
+            control_df[control_df["RSC_on_target"]][f"RSC {name} Rel"],
+            lesion_df[lesion_df["RSC_on_target"]][f"RSC {name} Rel"],
             t2_kwargs,
             do_plot=True,
         )
@@ -135,6 +136,9 @@ def power_stats(input_path, overall_kwargs, get_obj):
 def coherence_stats(input_path, overall_kwargs, get_obj):
     pt("Open field coherence")
     df, control_df, lesion_df = get_obj.get_df(input_path)
+    df = df[df["RSC on target"]]
+    control_df = control_df[lesion_df["RSC on target"]]
+    lesion_df = lesion_df[lesion_df["RSC on target"]]
 
     t1_kwargs = {
         **overall_kwargs,
@@ -148,7 +152,6 @@ def coherence_stats(input_path, overall_kwargs, get_obj):
     )
     get_obj.process_fig(res, "theta_coherence_openfield.pdf")
 
-    # TODO likely remove
     t2_kwargs = {
         **overall_kwargs,
         **{"value": "delta coherence (unitless)"},
@@ -161,47 +164,64 @@ def coherence_stats(input_path, overall_kwargs, get_obj):
     )
     get_obj.process_fig(res, "delta_coherence_openfield.pdf")
 
+    t2_kwargs = {
+        **overall_kwargs,
+        **{"value": "beta coherence (unitless)"},
+    }
+    res = mwu(
+        control_df["Peak Beta Coherence"],
+        lesion_df["Peak Beta Coherence"],
+        t2_kwargs,
+        do_plot=True,
+    )
+    get_obj.process_fig(res, "beta_coherence_openfield.pdf")
+
 
 def speed_stats(input_path, overall_kwargs, get_obj):
     pt("Open field Speed LFP power relationship")
     speed_df, speed_ctrl, speed_lesion = get_obj.get_df(input_path)
-    test_kwargs = {
-        **overall_kwargs,
-        **{
-            "group": "in control",
-            "value1": "mean speed (cm/s)",
-            "value2": "relative subicular theta power (unitless)",
-            "trim": True,
-            "offset": 0,
-        },
-    }
-    speed_ctrl = speed_ctrl[speed_ctrl["region"] == "SUB"]
-    res = corr(
-        speed_ctrl["speed"],
-        speed_ctrl["power"],
-        test_kwargs,
-        do_plot=False,
-    )
-    get_obj.process_str(res)
 
-    test_kwargs = {
-        **overall_kwargs,
-        **{
-            "group": "in ATNx",
-            "value1": "mean speed (cm/s)",
-            "value2": "relative subicular theta power (unitless)",
-            "trim": True,
-            "offset": 0,
-        },
-    }
-    speed_lesion = speed_lesion[speed_lesion["region"] == "SUB"]
-    res = corr(
-        speed_lesion["speed"],
-        speed_lesion["power"],
-        test_kwargs,
-        do_plot=False,
-    )
-    get_obj.process_str(res)
+    for region, name in zip(["SUB", "RSC"], ["subicular", "retrospenial"]):
+        if region == "RSC":
+            speed_ctrl = speed_ctrl[speed_ctrl["RSC on target"]]
+            speed_lesion = speed_lesion[speed_lesion["RSC on target"]]
+        test_kwargs = {
+            **overall_kwargs,
+            **{
+                "group": "in control",
+                "value1": "mean speed (cm/s)",
+                "value2": f"relative {name} theta power (unitless)",
+                "trim": True,
+                "offset": 0,
+            },
+        }
+        speed_ctrl = speed_ctrl[speed_ctrl["region"] == region]
+        res = corr(
+            speed_ctrl["speed"],
+            speed_ctrl["power"],
+            test_kwargs,
+            do_plot=False,
+        )
+        get_obj.process_str(res)
+
+        test_kwargs = {
+            **overall_kwargs,
+            **{
+                "group": "in ATNx",
+                "value1": "mean speed (cm/s)",
+                "value2": f"relative {name} theta power (unitless)",
+                "trim": True,
+                "offset": 0,
+            },
+        }
+        speed_lesion = speed_lesion[speed_lesion["region"] == "SUB"]
+        res = corr(
+            speed_lesion["speed"],
+            speed_lesion["power"],
+            test_kwargs,
+            do_plot=False,
+        )
+        get_obj.process_str(res)
 
 
 def spike_lfp_stats(input_path, overall_kwargs, get_obj):
@@ -212,6 +232,8 @@ def spike_lfp_stats(input_path, overall_kwargs, get_obj):
     rsc_control = control_nspatial[control_nspatial["Region"] == "RSC"]
     sub_lesion = lesion_df[lesion_df["Region"] == "SUB"]
     rsc_lesion = lesion_df[lesion_df["Region"] == "RSC"]
+    rsc_control = rsc_control[rsc_control["RSC on target"]]
+    rsc_lesion = rsc_lesion[rsc_lesion["RSC on target"]]
 
     t1_kwargs = {
         **overall_kwargs,
@@ -261,8 +283,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice["Peak Theta Coherence"],
-        lesion_choice["Peak Theta Coherence"],
+        control_choice[control_choice["RSC_on_target"]]["Peak Theta Coherence"],
+        lesion_choice[lesion_choice["RSC_on_target"]]["Peak Theta Coherence"],
         t1_kwargs,
         do_plot=True,
     )
@@ -295,8 +317,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice["Peak Theta Coherence"],
-        lesion_choice["Peak Theta Coherence"],
+        control_choice[control_choice["RSC_on_target"]]["Peak Theta Coherence"],
+        lesion_choice[lesion_choice["RSC_on_target"]]["Peak Theta Coherence"],
         t2_kwargs,
         do_plot=True,
     )
@@ -329,8 +351,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice1["Peak Theta Coherence"],
-        control_choice2["Peak Theta Coherence"],
+        control_choice1[control_choice1["RSC_on_target"]]["Peak Theta Coherence"],
+        control_choice2[control_choice2["RSC_on_target"]]["Peak Theta Coherence"],
         t3_kwargs,
         do_plot=True,
     )
@@ -350,8 +372,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        lesion_choice1["Peak Theta Coherence"],
-        lesion_choice2["Peak Theta Coherence"],
+        lesion_choice1[lesion_choice1["RSC_on_target"]]["Peak Theta Coherence"],
+        lesion_choice2[lesion_choice2["RSC_on target"]]["Peak Theta Coherence"],
         t4_kwargs,
         do_plot=True,
     )
@@ -365,6 +387,8 @@ def muscimol_stats(input_path, overall_kwargs, get_obj):
     rsc_control = control_df[control_df["Region"] == "RSC"]
     sub_lesion = lesion_df[lesion_df["Region"] == "SUB"]
     rsc_lesion = lesion_df[lesion_df["Region"] == "RSC"]
+    rsc_control = rsc_control[rsc_control["RSC on target"]]
+    rsc_lesion = rsc_lesion[rsc_lesion["RSC on target"]]
 
     t1_kwargs = {
         **overall_kwargs,

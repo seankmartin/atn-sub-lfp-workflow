@@ -1,17 +1,16 @@
 from pathlib import Path
 
 from skm_pyutils.config import read_python
-from skm_pyutils.path import (
-    get_all_files_in_dir,
-    get_dirs_matching_regex,
-    remove_empty_dirs_and_caches,
-)
+from skm_pyutils.path import (get_all_files_in_dir, get_dirs_matching_regex,
+                              remove_empty_dirs_and_caches)
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
 from common import rsc_histology
 
 here = Path(__file__).resolve().parent
 
+def on_target(v):
+    return v == "ispsilateral"
 
 def main(dirname, path_to_csv, output_path):
     fnames = get_all_files_in_dir(here / "batch_params", ext=".py")
@@ -63,6 +62,7 @@ def main(dirname, path_to_csv, output_path):
     merged_df["mapping"] = new_mapping
 
     merged_df["RSC location"] = merged_df["rat"].apply(rsc_histology)
+    merged_df["RSC on target"] = merged_df["RSC location"].apply(on_target)
 
     df_to_file(merged_df, output_path)
 

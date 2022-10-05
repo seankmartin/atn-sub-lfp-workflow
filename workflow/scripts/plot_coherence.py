@@ -7,13 +7,12 @@ import simuran as smr
 from skm_pyutils.table import df_from_file
 
 
-# TODO this needs to incorporate RSC histology
-# TODO is this open field, do I even need it?
 def plot_coherence(df, out_dir, max_frequency=40):
     smr.set_plot_style()
 
-    df.replace("Control", "Control (ATN,   N = 6)", inplace=True)
-    df.replace("Lesion", "Lesion  (ATNx, N = 5)", inplace=True)
+    df = df[df["RSC on target"]]
+    df.replace("Control", "Control (ATN)", inplace=True)
+    df.replace("Lesion", "Lesion  (ATNx)", inplace=True)
 
     fig, ax = plt.subplots()
     sns.lineplot(

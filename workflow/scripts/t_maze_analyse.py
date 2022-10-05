@@ -90,6 +90,7 @@ def compute_coherence_per_trial(
     )
     res_list.extend(theta_delta(f, Cxy, config))
     res_list.append(group)
+    res_list.append(r.attrs["RSC on target"])
     return sub_lfp, rsc_lfp, f, Cxy
 
 
@@ -125,6 +126,7 @@ def make_power_tuple(r, final_trial_type, group, k, p_val, f_val):
         group,
         k,
         final_trial_type,
+        r.attrs["RSC on target"],
     ]
 
 
@@ -138,6 +140,7 @@ def make_coherence_tuple(r, final_trial_type, group, k, f_, cxy_):
         r.attrs["session"],
         k,
         final_trial_type,
+        r.attrs["RSC on target"],
     )
 
 
@@ -225,7 +228,15 @@ def save_decoding_values(out_dir, groups, choices, new_lfp):
 
 
 def get_power_headers():
-    return ["Frequency (Hz)", "Power (dB)", "Passed", "Group", "Part", "Trial"]
+    return [
+        "Frequency (Hz)",
+        "Power (dB)",
+        "Passed",
+        "Group",
+        "Part",
+        "Trial",
+        "RSC on target",
+    ]
 
 
 def get_coherence_headers():
@@ -238,6 +249,7 @@ def get_coherence_headers():
         "Session",
         "Part",
         "Trial",
+        "RSC on target",
     ]
 
 
@@ -260,6 +272,7 @@ def get_result_headers():
         "Delta Coherence",
         "Peak Theta Coherence",
         "Group",
+        "RSC on target",
     ]
 
 

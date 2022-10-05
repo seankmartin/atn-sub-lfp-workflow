@@ -15,6 +15,7 @@ def plot_sta(sta_df, out_dir):
     name_iter = zip(["", "_shuffled"], ["STA", "Shuffled STA"])
     for region, (name, y) in itertools.product(brain_regions, name_iter):
         df_part = sta_df[sta_df["Region"] == region]
+        df_part = df_part[df_part["RSC on target"]] if region == "RSC" else df_part
         smr.set_plot_style()
         fig, ax = plt.subplots()
         sns.lineplot(
@@ -41,6 +42,7 @@ def plot_sfc(sfc_df, out_dir):
     name_iter = zip(["", "_shuffled"], ["SFC", "Shuffled SFC"])
     for region, (name, y) in itertools.product(brain_regions, name_iter):
         df_part = sfc_df[sfc_df["Region"] == region]
+        df_part = df_part[df_part["RSC on target"]] if region == "RSC" else df_part
         smr.set_plot_style()
         fig, ax = plt.subplots()
         sns.lineplot(

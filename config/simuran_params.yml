@@ -17,6 +17,8 @@ low_gamma_min: 40
 low_gamma_max: 80
 high_gamma_min: 80
 high_gamma_max: 120
+beta_min: 23
+beta_max: 30
 psd_scale: decibels
 image_format: png
 cfg_base_dir: H:\SubRet_recordings_imaging

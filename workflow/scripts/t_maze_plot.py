@@ -14,6 +14,7 @@ def main(input_dir, config, out_dir):
 
 
 def plot_coherence_choice(coherence_df, out_dir):
+    coherence_df = coherence_df[coherence_df["RSC on target"]]
     coherence_df["Trial result"] = coherence_df["Trial"]
     coherence_df_sub_bit = coherence_df[
         (coherence_df["Part"] == "choice") & (coherence_df["Trial"] != "Forced")
@@ -94,6 +95,7 @@ def plot_group_power(group, power_df_sub, out_dir):
 def plot_group_coherence(group, coherence_df_sub, out_dir):
     smr.set_plot_style()
     fig, ax = plt.subplots()
+    coherence_df_sub = coherence_df_sub[coherence_df_sub["RSC on target"]]
     for ci, ci_name in zip((None, 95), ("", "_ci")):
         sns.lineplot(
             data=coherence_df_sub,
@@ -112,6 +114,7 @@ def plot_group_coherence(group, coherence_df_sub, out_dir):
 
 
 def plot_bar_coherence(res_df, band: str, out_dir):
+    res_df = res_df[res_df["RSC on target"]]
     fig, ax = plt.subplots()
     smr.set_plot_style()
     sns.barplot(

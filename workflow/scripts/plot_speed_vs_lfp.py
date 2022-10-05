@@ -12,14 +12,15 @@ module_logger = logging.getLogger("simuran.custom.speed_vs_lfp")
 
 def plot_speed_vs_lfp(df, out_dir, max_speed):
     smr.set_plot_style()
-    df.replace("Control", "Control (ATN,   N = 6)", inplace=True)
-    df.replace("Lesion", "Lesion  (ATNx, N = 5)", inplace=True)
+    df.replace("Control", "Control (ATN)", inplace=True)
+    df.replace("Lesion", "Lesion  (ATNx)", inplace=True)
 
     brain_regions = sorted(list(set(df["region"])))
     for region in brain_regions:
+        sub_df = df[df["RSC on target"]] if region == "RSC" else df
         fig, ax = plt.subplots()
         sns.lineplot(
-            data=df[(df["region"] == region) & (df["speed"] <= max_speed)],
+            data=sub_df[(sub_df["region"] == region) & (sub_df["speed"] <= max_speed)],
             x="speed",
             y="power",
             style="Group",

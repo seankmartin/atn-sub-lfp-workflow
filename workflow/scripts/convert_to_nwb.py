@@ -1,6 +1,7 @@
 """Process openfield LFP into power spectra etc. saved to NWB"""
 
 import logging
+import os
 import traceback
 from pathlib import Path
 
@@ -8,6 +9,7 @@ import numpy as np
 import pandas as pd
 import simuran as smr
 from hdmf.backends.hdf5.h5_utils import H5DataIO
+from neurochat.nc_lfp import NLfp
 from neurochat.nc_utils import RecPos
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
@@ -20,7 +22,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 here = Path(__file__).resolve().parent
 module_logger = logging.getLogger("simuran.custom.convert_to_nwb")
 
-
+# TODO revise experiment info and metadata
 def main(
     table, config, filter_, output_directory, out_name, overwrite=False, debug=False
 ):
@@ -112,7 +114,7 @@ def convert_recording_to_nwb(recording, rel_dir=None):
 
 
 def add_position_data_to_nwb(recording, nwbfile):
-    filename = recording.attrs["source_files"]["Spatial"]
+    filename = os.path.join(recording.attrs["directory"], recording.attrs["filename"])
     rec_pos = RecPos(filename, load=True)
     position_data = np.transpose(
         np.array(
@@ -208,13 +210,39 @@ def add_unit_data_to_nwb(recording, nwbfile):
             )
 
 
+def convert_eeg_path_to_egf(p):
+    p = Path(p)
+    return p.with_suffix(f".egf{p.suffix[4:]}")
+
+
 def add_lfp_data_to_nwb(recording, nwbfile, num_electrodes):
+    egf_files = [
+        convert_eeg_path_to_egf(f) for f in recording.attrs["source_files"]["Signal"]
+    ]
+    data = []
+    for f in egf_files:
+        lfp = NLfp()
+        lfp.load(f, system="Axona")
+        data.append(lfp.get_samples())
+    rate = float(lfp.get_sampling_rate())
+    lfp_data = np.transpose(np.array(data))
+    module = nwbfile.create_processing_module(
+        name="high_rate_ecephys",
+        description="High sampling rate extracellular electrophysiology data",
+    )
+    add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data, rate=rate, module=module)
+
     lfp_data = np.transpose(np.array([s.samples for s in recording.data["signals"]]))
-    add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data)
+    add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data, rate=250.0)
 
 
 def add_lfp_array_to_nwb(
-    nwbfile, num_electrodes, lfp_data, module=None, conversion=0.001
+    nwbfile,
+    num_electrodes,
+    lfp_data,
+    module=None,
+    conversion=0.001,
+    rate=250.0,
 ):
     all_table_region = nwbfile.create_electrode_table_region(
         region=list(range(num_electrodes)), description="all electrodes"
@@ -226,7 +254,7 @@ def add_lfp_array_to_nwb(
         data=compressed_data,
         electrodes=all_table_region,
         starting_time=0.0,
-        rate=250.0,
+        rate=rate,
         conversion=conversion,
         filtering="Notch filter at 50Hz",
     )

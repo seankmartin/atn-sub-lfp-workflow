@@ -1,12 +1,14 @@
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
+import pandas as pd
 import simuran as smr
-import yasa
 from simuran.bridges.neurochat_bridge import signal_to_neurochat
 
 
-def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwargs):
+def mark_rest(
+    speed, lfp, lfp_rate, lfp_rate2, speed_rate, tresh=2.5, window_sec=2, **kwargs
+):
     """Returns ones for the time windows where the animal was moving with a speed smaller than treshold
     Inputs:
         file(str): filename to be analysed
@@ -25,8 +27,9 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
         if speed[i] > tresh:
             moving[lfp_samples_per_speed * i : lfp_samples_per_speed * (i + 1)] = 1
 
-    window = window_sec * lfp_rate
+    window = int(window_sec * lfp_rate)
     result = np.zeros(len(lfp))
+    result2 = np.zeros(int(len(lfp) * (lfp_rate2 / lfp_rate)))
     for i in range(0, len(lfp) - window, window // 2):
         sig = smr.Eeg.from_numpy(lfp[i : i + window])
         nc_sig = signal_to_neurochat(sig)
@@ -36,7 +39,35 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
         # running speed < 2.5cm/s , and theta/delta power ratio < 2
         if sum(moving[i : i + window]) == 0 and bp < 2:
             result[i : i + window] = 1
-    return result
+            result2[i : i + (int(window_sec * lfp_rate2))] = 1
+    return result, result2
+
+
+def spindles_exclude_resting(mne_data, resting, ch_list=None, out_rest=False):
+    resting_df = pd.DataFrame(resting.T, columns=mne_data.info["ch_names"])
+    resting_df["time"] = [i * 0.004 for i in range(len(mne_data))]
+    resting_df = resting_df.set_index("time")
+    for channel in spindles_df.Channel.unique():
+        sp_times = spindles_df.loc[spindles_df.Channel == channel][
+            ["Start", "End"]
+        ].values
+        for time in sp_times:
+            try:
+                if sum(resting_df[channel][time[0] : time[1]]) <= 1:
+                    spindles_df[
+                        (spindles_df.Channel == channel)
+                        & (spindles_df.Start == time[0])
+                        & (spindles_df.End == time[1])
+                    ] = np.nan
+            except:
+                print(f"Error in channel {channel}")
+    if out_rest:
+        return (
+            spindles_df,
+            resting_df,
+        )  # Can be used to calculate proportion of spindles per time
+
+    return spindles_df
 
 
 def create_events(record, events):
@@ -66,27 +97,10 @@ def mark_movement(speed, mne_array):
     return create_events(mne_array, events)
 
 
-def process_spindles(mne_data):
-    sp = yasa.spindles_detect(
-        mne_data,
-        sf=250,
-        thresh={"rel_pow": 0.2, "corr": 0.65, "rms": 2.5},
-        freq_sp=(12, 15),
-        multi_only=True,
-        verbose="error",
-    )
-    try:
-        df = sp.summary()
-    except:
-        return None
-    return df
-
-
-def spindles_exclude_resting(mne_data, resting, ch_list=None, out_rest=False):
+def spindles_exclude_resting(spindles_df, resting, mne_data, out_rest=False):
     resting_df = pd.DataFrame(resting.T, columns=mne_data.info["ch_names"])
     resting_df["time"] = [i * 0.004 for i in range(len(mne_data))]
     resting_df = resting_df.set_index("time")
-    spindles_df = process_spindles(mne_data)
     for channel in spindles_df.Channel.unique():
         sp_times = spindles_df.loc[spindles_df.Channel == channel][
             ["Start", "End"]
@@ -128,3 +142,10 @@ def plot_recordings_per_animal(sleep, out_name):
     ax.set_ylabel("Frequency of recordings")
     fig.savefig(out_name)
     plt.close(fig)
+
+
+def ensure_sleeping(recording):
+    nwbfile = recording.data
+    speed = nwbfile.processing["behavior"]["running_speed"].data[:]
+    num_moving = len(np.nonzero(speed > 2.5))
+    return num_moving / len(speed) > 0.25

@@ -117,6 +117,8 @@ rule ca1_lfp:
 
 
 rule theta_gamma:
+    input:
+        "results/openfield_processed.csv"
     output:
         directory("results/plots/theta_gamma")
     log:
@@ -125,3 +127,16 @@ rule theta_gamma:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/analyse_theta_gamma.py"
+
+
+rule analyse_sleep:
+    input:
+        "results/other_processed.csv"
+    output:
+        directory("results/plots/sleep")
+    log:
+        "logs/sleep.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/sleep_analysis.py"

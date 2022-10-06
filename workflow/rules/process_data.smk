@@ -8,6 +8,7 @@ rule preprocess_data:
     script:
         "../scripts/index_axona_files.py"
 
+
 rule add_data_types:
     input:
         "results/axona_file_index.csv"
@@ -19,6 +20,7 @@ rule add_data_types:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/add_types_to_table.py"
+
 
 rule convert_to_nwb:
     input:
@@ -36,6 +38,7 @@ rule convert_to_nwb:
     script:
         "../scripts/convert_to_nwb.py"
 
+
 rule convert_tmaze:
     input:
         "results/subret_recordings.csv",
@@ -48,3 +51,19 @@ rule convert_tmaze:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/t_maze_convert.py"
+
+
+rule convert_all_data:
+    input:
+        "results/subret_recordings.csv",
+        "results/processed_nwbfiles.csv",
+    output:
+        "results/other_converted.csv",
+        "results/other_process.csv",
+        "results/every_processed_nwb.csv"
+    log:
+        "logs/convert_all_data.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/convert_remaining_data.py"

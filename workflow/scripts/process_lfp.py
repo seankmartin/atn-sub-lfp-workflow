@@ -321,7 +321,10 @@ def main(table_paths, config_path, output_paths, num_cpus, overwrite=False):
     config = smr.ParamHandler(source_file=config_path)
     config["num_cpus"] = num_cpus
     for table_path, output_path in zip(table_paths, output_paths[:-1]):
-        datatable = df_from_file(table_path)
+        if isinstance(table_path, pd.DataFrame):
+            datatable = table_path
+        else:
+            datatable = df_from_file(table_path)
         loader = NWBLoader(mode="a") if overwrite else NWBLoader(mode="r")
         rc = smr.RecordingContainer.from_table(datatable, loader)
         out_df = datatable.copy()

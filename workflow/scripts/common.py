@@ -55,7 +55,7 @@ def rsc_histology(rat_name):
         "CanCSCaR5": "ipsilateral",
     }
 
-    return rat_name_dict.get(rat_name, "NOT_EXIST")
+    return rat_name_dict.get(rat_name, "RSC_not_recorded")
 
 
 def numpy_to_nc(data, sample_rate=None, timestamp=None):

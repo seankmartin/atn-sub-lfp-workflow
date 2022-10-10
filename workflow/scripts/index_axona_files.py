@@ -361,7 +361,7 @@ def animal_to_mapping(s):
         "CanCSR8": "CanCSR.py",
     }
 
-    return d.get(s, "NOT_EXIST")
+    return d.get(s, "no_mapping")
 
 
 def filename_to_mapping(s):
@@ -446,6 +446,8 @@ def clean_data(df, **kwargs):
     df["mapping_file"] = df.filename.apply(filename_to_mapping)
     df["mapping"] = df["mapping_file"].combine_first(df["mapping"])
     df.drop("mapping_file", axis=1, inplace=True)
+
+    df = df[df["rat_name"] != "LSR7"]
 
     return df
 

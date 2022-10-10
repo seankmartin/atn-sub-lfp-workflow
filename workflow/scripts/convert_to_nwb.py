@@ -32,7 +32,15 @@ def main(
     filenames = []
 
     for i in range(len(rc)):
-        module_logger.info(f"Converting {rc[i].source_file} to NWB")
+        if overwrite or not os.path.exists(out_name):
+            module_logger.info(f"Converting {rc[i].source_file} to NWB")
+        else:
+            module_logger.debug(f"Already converted {rc[i].source_file}")
+        if rc[i].mapping in ["no_mapping", "NOT_EXIST"]:
+            module_logger.warning(
+                "Provide a mapping in index_axona_files.py"
+                + f"before converting {rc[i].source_file}"
+            )
         try:
             fname = convert_to_nwb_and_save(
                 rc, i, output_directory, config["cfg_base_dir"], overwrite
@@ -67,7 +75,7 @@ def write_nwbfile(filename, r, nwbfile, manager=None):
             io.write(nwbfile)
         return filename
     except Exception:
-        module_logger.error(f"Could not write {nwbfile} from {r} out to {filename}")
+        module_logger.error(f"Could not write nwbfile from {r} out to {filename}")
         if filename.is_file():
             filename.unlink()
         traceback.print_exc()
@@ -81,7 +89,7 @@ def export_nwbfile(filename, r, nwbfile, src_io, debug=False):
             io.export(src_io=src_io, nwbfile=nwbfile)
         return filename
     except Exception:
-        module_logger.error(f"Could not write {nwbfile} from {r} out to {filename}")
+        module_logger.error(f"Could not write nwbfile from {r} out to {filename}")
         if debug:
             breakpoint()
         if filename.is_file():

@@ -3,3 +3,4 @@ fooof
 pynwb
 python-picard
 pactools
+ripple_detection

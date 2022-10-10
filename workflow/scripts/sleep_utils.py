@@ -6,9 +6,7 @@ import simuran as smr
 from simuran.bridges.neurochat_bridge import signal_to_neurochat
 
 
-def mark_rest(
-    speed, lfp, lfp_rate, lfp_rate2, speed_rate, tresh=2.5, window_sec=2, **kwargs
-):
+def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwargs):
     """Returns ones for the time windows where the animal was moving with a speed smaller than treshold
     Inputs:
         file(str): filename to be analysed
@@ -29,7 +27,6 @@ def mark_rest(
 
     window = int(window_sec * lfp_rate)
     result = np.zeros(len(lfp))
-    result2 = np.zeros(int(len(lfp) * (lfp_rate2 / lfp_rate)))
     for i in range(0, len(lfp) - window, window // 2):
         sig = smr.Eeg.from_numpy(lfp[i : i + window])
         nc_sig = signal_to_neurochat(sig)
@@ -39,8 +36,7 @@ def mark_rest(
         # running speed < 2.5cm/s , and theta/delta power ratio < 2
         if sum(moving[i : i + window]) == 0 and bp < 2:
             result[i : i + window] = 1
-            result2[i : i + (int(window_sec * lfp_rate2))] = 1
-    return result, result2
+    return result
 
 
 def spindles_exclude_resting(mne_data, resting, ch_list=None, out_rest=False):

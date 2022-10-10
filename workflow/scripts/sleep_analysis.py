@@ -1,4 +1,4 @@
-from operator import sub
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -24,26 +24,30 @@ def main(input_path, out_dir):
     plot_recordings_per_animal(sleep, out_dir / "rat_stats.png")
     loader = smr.loader("nwb")
     rc = smr.RecordingContainer.from_table(sleep, loader)
+    all_spindles = []
+    all_ripples = []
     for r in rc.load_iter():
         if not ensure_sleeping(r):
             print(f"Too much movement in {r.source_file} for sleep")
-        long_resting = spindle_control(r)
-        ripple_control(r, long_resting)
+        spindles, resting_array = spindle_control(r)
+        ripple_times = ripple_control(r, resting_array)
+        print(spindles)
+        print(spindles.summary())
+        print(ripple_times)
+        exit(-1)
+        all_spindles.append(spindles)
+        all_ripples.append(ripple_times)
 
 
 def spindle_control(r):
-    resting_array, long_resting = find_resting(r)
+    resting_array = find_resting(r)
     mne_array = convert_to_mne(r, resting_array)
     sp = detect_spindles(mne_array)
-    print(sp.summary())
-    breakpoint()
     if sp is not None:
-        spindles, rest = spindles_exclude_resting(
-            sp.summary(), resting_array, mne_array, True
+        spindles = spindles_exclude_resting(
+            sp.summary(), resting_array, mne_array, False
         )
-    breakpoint()
-    print(spindles, rest)
-    return long_resting
+    return spindles, resting_array
 
 
 def find_resting(r):
@@ -52,8 +56,7 @@ def find_resting(r):
     speed_rate = np.mean(np.diff(speed))
     sub_signal = r.processing["average_lfp"]["SUB_avg"].data[:]
     sub_rate = r.processing["average_lfp"]["SUB_avg"].rate
-    rate2 = r.processing["high_rate_ecephys"]["LFP"]["ElectricalSeries"].rate
-    return mark_rest(speed, sub_signal, sub_rate, rate2, speed_rate)
+    return mark_rest(speed, sub_signal, sub_rate, speed_rate)
 
 
 def convert_to_mne(r, events):
@@ -92,7 +95,7 @@ def detect_spindles(mne_data):
     )
 
 
-def ripple_control(r, long_resting):
+def ripple_control(r, resting):
     lfp_egf = r.processing["high_rate_ecephys"]["LFP"]["ElectricalSeries"]
     lfp_rate = lfp_egf.rate
     lfp_data = lfp_egf.data[:]
@@ -100,7 +103,6 @@ def ripple_control(r, long_resting):
     time = [i / lfp_rate for i in range(len(filtered_lfps[0]))]
     speed = r.processing["behaviour"]["running_speed"].data[:]
     speed_long = [speed[i // lfp_rate] for i in range(lfp_data[0])]
-    # TODO detect movement ourselves
     ripple_times = Kay_ripple_detector(
         time,
         filtered_lfps,
@@ -112,8 +114,24 @@ def ripple_control(r, long_resting):
         smoothing_sigma=0.004,
         close_ripple_threshold=0.1,
     )
-    return ripple_times
+    eeg_rate = r.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
+    final_times, non_times = [], []
+    for t in ripple_times:
+        t_to_sample = t * eeg_rate
+        if resting[t_to_sample]:
+            final_times.append(t)
+        else:
+            non_times.append(t)
+
+    return final_times, non_times
 
 
 if __name__ == "__main__":
-    main(input_path, out_dir)
+    try:
+        smr.set_only_log_to_file(snakemake.log[0])
+        main(snakemake.input[0], snakemake.output[0])
+    except Exception:
+        here = Path(__file__).parent.parent.parent
+        input_path = here / "results" / "other_processed.csv"
+        out_dir = here / "plots" / "sleep"
+        main(input_path, out_dir)

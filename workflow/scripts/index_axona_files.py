@@ -202,10 +202,10 @@ def get_maze(s):
     ):
         return "tmaze"
 
-    elif "+mazedown" or "+maze down" in temp:
+    elif "mazedown" in temp or "+maze down" in temp:
         return "mazedown"
 
-    elif "+mazeup" in temp:
+    elif "mazeup" in temp:
         return "mazeup"
 
     else:
@@ -259,11 +259,10 @@ def get_maze_from_folder(s):
         return "spatial_cues"
 
     elif (
-        "maze" in temp
-        and "+" in temp
-        or "+maze" in temp
-        or "t" in temp
-        and "maze" in temp
+        ("maze" in temp and "+" in temp)
+        or ("+maze" in temp)
+        or ("t" in temp and "maze" in temp)
+        or ("tmaze" in temp)
     ):
         return "tmaze"
 

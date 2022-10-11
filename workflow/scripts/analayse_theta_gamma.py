@@ -2,19 +2,15 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import simuran as smr
 from pactools import Comodulogram
-from skm_pyutils.table import df_from_file, df_to_file, list_to_df
-
-from common import numpy_to_nc, rename_rat
+from skm_pyutils.table import df_from_file
 
 
 def main(input_, output_dir, config_path):
-    config = smr.config_from_file(config_path)
+    # config = smr.config_from_file(config_path)
     datatable = df_from_file(input_)
     loader = smr.loader("nwb")
-    datatable.loc[:, "rat"] = datatable["rat"].map(lambda x: rename_rat(x))
     rc = smr.RecordingContainer.from_table(datatable, loader=loader)
 
     for i in range(len(rc)):

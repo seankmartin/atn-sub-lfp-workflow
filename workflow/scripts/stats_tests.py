@@ -420,7 +420,7 @@ def muscimol_stats(input_path, overall_kwargs, get_obj):
 def main(input_paths, plot_dir, output_file, show_quartiles=False):
     overall_kwargs_ttest = {
         "show_quartiles": show_quartiles,
-        "group1": "control",
+        "group1": "Control",
         "group2": "ATNx",
     }
 

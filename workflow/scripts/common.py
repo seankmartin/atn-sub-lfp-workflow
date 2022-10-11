@@ -6,10 +6,10 @@ def rename_rat(rat_name):
 
     rat_name_dict = {
         "CSubRet1": "CSR1",
-        "CSubRet2_sham": "CSR2",
-        "CSubRet3_sham": "CSR3",
+        "CSubRet2_sham": "CSR2_sham",
+        "CSubRet3_sham": "CSR3_sham",
         "CSubRet4": "CSR4",
-        "CSubRet5_sham": "CSR5",
+        "CSubRet5_sham": "CSR5_sham",
         "CSR6": "CSR6",
         "LSubRet1": "LSR1",
         "LSubRet2": "LSR2",

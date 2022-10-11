@@ -6,8 +6,10 @@ from pathlib import Path
 
 import numpy as np
 import simuran
-from simuran.loaders.nc_loader import NCLoader
+from simuran.loaders.neurochat_loader import NCLoader
 from skm_pyutils.table import df_to_file
+
+from common import rename_rat
 
 
 def main(path_to_files: str, output_path: str) -> None:
@@ -29,10 +31,9 @@ def get_rat_name(s):
 def get_rat_name_folder(s):
     """Get rat name from folder"""
     names_part = ["Ca", "LR", "CS", "CR", "LS"]
-    temp = s.split(os.sep)
-    for name, part in itertools.product(temp, names_part):
-        if name.startswith(part):
-            return name.split("_")[0]
+    for name in s.split(os.sep):
+        if name[:2] in names_part:
+            return name
 
 
 def decode_name(rat_name):
@@ -79,22 +80,25 @@ def decode_name_folder(rat_name):
 
 def get_treatment(s):
     """Get the type of treatment from filename"""
-    temp = re.split("_|\.", s.lower())
-    if "saline" in temp:
-        return "control"
-    elif "muscimol" in temp or "musc" in temp:
-        return "muscimol"
+    if "saline" in s:
+        return "CanControl"
+
+    if "musc" in s:
+        return "Muscimol"
 
 
 def get_treatment_folder(s):
-    """Get the type of maze from folder
-    not considering controls
-    """
-    temp = re.split("_|\.", s.lower())
-    if "saline" in temp or "sham" in temp:
-        return "control"
-    elif "muscimol" in temp or "musc" in temp:
-        return "muscimol"
+    if "sham" in s:
+        return "Control"
+
+    if "saline" in s:
+        return "CanControl"
+
+    if "musc" in s:
+        return "Muscimol"
+
+    if "CanC" in s:
+        return "CanControl"
 
 
 def get_sleep_awake(s):
@@ -124,7 +128,7 @@ def get_habituation(s):
 
 def get_habituation_folder(s):
     """Get the type of maze from folder"""
-    names_part = ["habituation", "hab", "hab1", "hab2", "hab3", "hab4", "hab5"]
+    names_part = ["hab", "screen"]
     temp = s.split(os.sep)
     return next(
         (1 for name, parts in itertools.product(temp, names_part) if parts in name), 0
@@ -191,16 +195,18 @@ def get_maze(s):
         return "bigsq1wall"
 
     elif (
-        "maze" in temp
-        and "+" in temp
-        or "+maze" in temp
-        or "t" in temp
-        and "maze" in temp
+        ("maze" in temp and "+" in temp)
+        or ("+maze" in temp)
+        or ("t" in temp and "maze" in temp)
+        or ("tmaze" in temp)
     ):
         return "tmaze"
 
-    elif "mazedown" in temp:
+    elif "+mazedown" or "+maze down" in temp:
         return "mazedown"
+
+    elif "+mazeup" in temp:
+        return "mazeup"
 
     else:
         return np.nan
@@ -407,9 +413,11 @@ def clean_data(df, **kwargs):
     df["maze"] = df["maze"].combine_first(df["maze_folder"])
     df.drop("maze_folder", axis=1, inplace=True)
     # get habituation
-    df["habituation"] = df.filename.apply(get_habituation_folder)
+    df["habituation_screening"] = df.filename.apply(get_habituation_folder)
     df["habituation_fname"] = df.filename.apply(get_habituation)
-    df["habituation"] = df["habituation"].combine_first(df["habituation_fname"])
+    df["habituation_screening"] = df["habituation_screening"].combine_first(
+        df["habituation_fname"]
+    )
     df.drop("habituation_fname", axis=1, inplace=True)
     # Get treatment
     df["treatment"] = df.filename.apply(get_treatment)
@@ -421,7 +429,6 @@ def clean_data(df, **kwargs):
     df.dropna(subset=["duration"], inplace=True)
     # light or dark
     df["light"] = df.filename.apply(get_light_dark)
-    df["light"] = df["light"].fillna(11)
     # Cleaning
     df["directory"] = df.directory.apply(clean_setup_files)
     df.dropna(subset=["directory"], inplace=True)
@@ -447,7 +454,8 @@ def clean_data(df, **kwargs):
     df["mapping"] = df["mapping_file"].combine_first(df["mapping"])
     df.drop("mapping_file", axis=1, inplace=True)
 
-    df = df[df["rat_name"] != "LSR7"]
+    df.loc[:, "rat"] = df["rat"].map(lambda x: rename_rat(x))
+    df = df[df["rat"] != "LSR7"]
 
     return df
 

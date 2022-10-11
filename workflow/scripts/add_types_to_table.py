@@ -37,7 +37,7 @@ def main(dirname, path_to_csv, output_path):
         )
 
     df_to_merge = list_to_df(
-        out_list, transpose=False, headers=["directory", "recording_type", "mapping"]
+        out_list, transpose=False, headers=["directory", "optional_grouping", "mapping"]
     )
     # duplicates = df[df.duplicated("directory", keep=False)]
     merged_df = df.merge(

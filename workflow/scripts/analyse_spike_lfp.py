@@ -6,7 +6,7 @@ import numpy as np
 import simuran as smr
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
-from common import numpy_to_nc, rename_rat
+from common import numpy_to_nc
 
 module_logger = logging.getLogger("simuran.custom.create_dfs")
 
@@ -17,12 +17,10 @@ def main(inputs, output_dir, config_path):
 
     n_shuffles = config["num_spike_shuffles"]
     open_df = df_from_file(inputs[0])
-    open_df.loc[:, "rat"] = open_df["rat"].map(lambda x: rename_rat(x))
     cells_rc = smr.RecordingContainer.from_table(open_df, loader=loader)
     openfield_spike_lfp(cells_rc, output_dir, n_shuffles, config)
 
     musc_df = df_from_file(inputs[1])
-    musc_df.loc[:, "rat"] = musc_df["rat"].map(lambda x: rename_rat(x))
     musc_rc = smr.RecordingContainer.from_table(musc_df, loader=loader)
     muscimol_spike_lfp(musc_rc, output_dir, n_shuffles, config)
 

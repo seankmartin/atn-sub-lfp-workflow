@@ -9,13 +9,57 @@ import numpy as np
 import pandas as pd
 import simuran as smr
 from hdmf.backends.hdf5.h5_utils import H5DataIO
+from hdmf.common import DynamicTable
 from neurochat.nc_lfp import NLfp
+from neurochat.nc_spike import NSpike
 from neurochat.nc_utils import RecPos
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from pynwb.ecephys import LFP, ElectricalSeries
 from pynwb.file import Subject
-from skm_pyutils.table import df_from_file, df_to_file, filter_table
+from skm_pyutils.table import (df_from_file, df_to_file, filter_table,
+                               list_to_df)
+
+
+def describe_columns():
+    return [
+        {
+            "name": "tetrode_chan_id",
+            "type": str,
+            "doc": "label of tetrode_label of channel",
+        },
+        {
+            "name": "num_spikes",
+            "type": int,
+            "doc": "the number of spikes identified",
+        },
+        {
+            "name": "timestamps",
+            "type": np.ndarray,
+            "doc": "identified spike times in seconds",
+        },
+    ]
+
+
+def describe_columns_waves():
+    return [
+        {
+            "name": "tetrode_chan_id",
+            "type": str,
+            "doc": "label of tetrode_label of channel",
+        },
+        {
+            "name": "num_spikes",
+            "type": int,
+            "doc": "the number of spikes identified",
+        },
+        {
+            "name": "waveforms",
+            "type": np.ndarray,
+            "doc": "Flattened sample values around the spike time on each of the four channels, unflattened has shape (X, 50)",
+        },
+    ]
+
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -36,7 +80,7 @@ def main(
             module_logger.info(f"Converting {rc[i].source_file} to NWB")
         else:
             module_logger.debug(f"Already converted {rc[i].source_file}")
-        if rc[i].mapping in ["no_mapping", "NOT_EXIST"]:
+        if rc[i].attrs["mapping"] in ["no_mapping", "NOT_EXIST"]:
             module_logger.warning(
                 "Provide a mapping in index_axona_files.py"
                 + f"before converting {rc[i].source_file}"
@@ -75,7 +119,9 @@ def write_nwbfile(filename, r, nwbfile, manager=None):
             io.write(nwbfile)
         return filename
     except Exception:
-        module_logger.error(f"Could not write nwbfile from {r} out to {filename}")
+        module_logger.error(
+            f"Could not write nwbfile from {r.source_file} out to {filename}"
+        )
         if filename.is_file():
             filename.unlink()
         traceback.print_exc()
@@ -89,7 +135,9 @@ def export_nwbfile(filename, r, nwbfile, src_io, debug=False):
             io.export(src_io=src_io, nwbfile=nwbfile)
         return filename
     except Exception:
-        module_logger.error(f"Could not write nwbfile from {r} out to {filename}")
+        module_logger.error(
+            f"Could not write nwbfile from {r.source_file} out to {filename}"
+        )
         if debug:
             breakpoint()
         if filename.is_file():
@@ -185,8 +233,8 @@ def add_position_data_to_nwb(recording, nwbfile):
 
 
 def add_unit_data_to_nwb(recording, nwbfile):
-    if recording.attrs.get("units", "default") is None:
-        return
+    if recording.attrs.get("units", "default") == "default":
+        add_waveforms_and_times_to_nwb(recording, nwbfile)
     added = False
     for i, unit_info in enumerate(recording.data["units"]):
         if unit_info.available_units is None:
@@ -216,6 +264,43 @@ def add_unit_data_to_nwb(recording, nwbfile):
                 waveform_sd=sd_wave,
                 electrode_group=nwbfile.get_electrode_group(group),
             )
+
+
+def add_waveforms_and_times_to_nwb(recording, nwbfile):
+    nc_spike = NSpike()
+    spike_files = recording.attrs["source_files"]["Spike"]
+    df_list = []
+    df_list_waves = []
+    for sf in spike_files:
+        if not os.path.exists(sf):
+            continue
+        times, waves = nc_spike.load_spike_Axona(sf, return_raw=True)
+        ext = os.path.splitext(sf)[-1][1:]
+        for chan, val in waves.items():
+            name = f"{ext}_{chan}"
+            num_spikes = len(times)
+            df_list.append([name, num_spikes, np.array(times)])
+            df_list_waves.append([name, num_spikes, val.flatten()])
+    max_spikes = max(d[1] for d in df_list)
+    for df_ in df_list:
+        df_[2] = np.pad(df_[2], (0, max_spikes - df_[1]), mode="empty")
+    for df_wave in df_list_waves:
+        df_wave[2] = np.pad(df_wave[2], (0, (max_spikes * 50) - (df_wave[1] * 50)))
+
+    final_df = list_to_df(df_list, ["tetrode_chan_id", "num_spikes", "timestamps"])
+    hdmf_table = DynamicTable.from_dataframe(
+        df=final_df, name="times", columns=describe_columns()
+    )
+    mod = nwbfile.create_processing_module(
+        "spikes", "Store unsorted spike times"
+    )
+    mod.add(hdmf_table)
+
+    final_df = list_to_df(df_list_waves, ["tetrode_chan_id", "num_spikes", "waveforms"])
+    hdmf_table = DynamicTable.from_dataframe(
+        df=final_df, name="waveforms", columns=describe_columns_waves()
+    )
+    mod.add(hdmf_table)
 
 
 def convert_eeg_path_to_egf(p):
@@ -433,7 +518,7 @@ def add_devices_to_nwb(nwbfile):
 
 def create_nwbfile_with_metadata(recording, name):
     nwbfile = NWBFile(
-        session_description=f"Openfield recording for {name}",
+        session_description=f"Recording {name}",
         identifier=f"ATNx_SUB_LFP--{name}",
         session_start_time=recording.datetime,
         experiment_description="Relationship between ATN, SUB, RSC, and CA1",
@@ -443,7 +528,10 @@ def create_nwbfile_with_metadata(recording, name):
         related_publications="doi:10.1523/JNEUROSCI.2868-20.2021",
     )
     nwbfile.subject = Subject(
-        species="Lister Hooded rat", sex="M", subject_id=recording.attrs["rat"]
+        species="Lister Hooded rat",
+        sex="M",
+        subject_id=recording.attrs["rat"],
+        weight=0.330,
     )
 
     return nwbfile

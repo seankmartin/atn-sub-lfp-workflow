@@ -2,7 +2,6 @@
 
 import logging
 import os
-import traceback
 from pathlib import Path
 
 import numpy as np
@@ -66,7 +65,15 @@ here = Path(__file__).resolve().parent
 module_logger = logging.getLogger("simuran.custom.convert_to_nwb")
 
 
-def main(table, config, filter_, output_directory, out_name, overwrite=False):
+def main(
+    table,
+    config,
+    filter_,
+    output_directory,
+    out_name,
+    overwrite=False,
+    except_errors=False,
+):
     filtered_table = filter_table(table, filter_) if filter_ is not None else table
     loader = smr.loader(config["loader"], **config["loader_kwargs"])
     rc = smr.RecordingContainer.from_table(filtered_table, loader)
@@ -78,18 +85,21 @@ def main(table, config, filter_, output_directory, out_name, overwrite=False):
             module_logger.info(f"Converting {rc[i].source_file} to NWB")
         else:
             module_logger.debug(f"Already converted {rc[i].source_file}")
-        if rc[i].attrs["mapping"] in ["no_mapping", "NOT_EXIST"]:
+        if rc[i].attrs["mapping"].source_file in ["no_mapping", "NOT_EXIST"]:
             module_logger.warning(
                 f"Provide a mapping in index_axona_files.py"
                 f" before converting {rc[i].source_file}"
             )
             continue
-        fname = convert_to_nwb_and_save(
+        fname, e = convert_to_nwb_and_save(
             rc, i, output_directory, config["cfg_base_dir"], overwrite
         )
         if fname is not None:
             filenames.append(fname)
             used.append(i)
+        elif not except_errors:
+            print(f"Error with recording {rc[i].source_file}")
+            raise e
 
     if len(used) != len(filtered_table):
         missed = len(filtered_table) - len(used)
@@ -105,37 +115,34 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
     filename = output_directory / "nwbfiles" / f"{save_name}.nwb"
 
     if not overwrite and filename.is_file():
-        return filename
+        return filename, None
 
     r = rc.load(i)
     nwbfile = convert_recording_to_nwb(r, rel_dir)
     return write_nwbfile(filename, r, nwbfile)
 
 
-def write_nwbfile(filename, r, nwbfile, manager=None, except_errors=False):
+def write_nwbfile(filename, r, nwbfile, manager=None):
     filename.parent.mkdir(parents=True, exist_ok=True)
     try:
         with NWBHDF5IO(filename, "w", manager=manager) as io:
             io.write(nwbfile)
-        return filename
+        return filename, None
     except Exception as e:
         module_logger.error(
             f"Could not write nwbfile from {r.source_file} out to {filename}"
         )
         if filename.is_file():
             filename.unlink()
-        traceback.print_exc()
-        if not except_errors:
-            raise e
-        return None
+        return None, e
 
 
-def export_nwbfile(filename, r, nwbfile, src_io, debug=False, except_errors=False):
+def export_nwbfile(filename, r, nwbfile, src_io, debug=False):
     filename.parent.mkdir(parents=True, exist_ok=True)
     try:
         with NWBHDF5IO(filename, "w") as io:
             io.export(src_io=src_io, nwbfile=nwbfile)
-        return filename
+        return filename, None
     except Exception as e:
         module_logger.error(
             f"Could not write nwbfile from {r.source_file} out to {filename}"
@@ -144,10 +151,7 @@ def export_nwbfile(filename, r, nwbfile, src_io, debug=False, except_errors=Fals
             breakpoint()
         if filename.is_file():
             filename.unlink()
-        traceback.print_exc()
-        if not except_errors:
-            raise e
-        return None
+        return None, e
 
 
 def access_nwb(nwbfile):
@@ -275,7 +279,7 @@ def add_waveforms_and_times_to_nwb(recording, nwbfile):
     try:
         spike_files = recording.attrs["source_files"]["Spike"]
     except KeyError:
-        module_logger.warning(f"No spike files for {r.source_file}")
+        module_logger.warning(f"No spike files for {recording.source_file}")
         return
     nc_spike = NSpike()
     df_list = []
@@ -423,6 +427,11 @@ def add_tetrodes_for_bipolar(recording, nwbfile, piw_device):
 def add_bipolar_electrodes(recording, nwbfile, be_device):
     if len(recording.data["signals"]) == 1:
         brain_region = recording.data["signals"][0].region
+        if brain_region is None:
+            regions = [s.region for s in recording.data["signals"]]
+            raise ValueError(
+                f"Brain region was none for single chan, regions available are {regions} in {recording.source_file} with mapping {recording.attrs['mapping']}"
+            )
         electrode_group = nwbfile.create_electrode_group(
             name="BE0",
             device=be_device,
@@ -434,6 +443,11 @@ def add_bipolar_electrodes(recording, nwbfile, be_device):
     else:
         for i in range(2):
             brain_region = recording.data["signals"][i * 2].region
+            if brain_region is None:
+                regions = [s.region for s in recording.data["signals"]]
+                raise ValueError(
+                    f"Brain region was none for four chan, regions available are {regions} in {recording.source_file} with mapping {recording.attrs['mapping']}"
+                )
             electrode_group = nwbfile.create_electrode_group(
                 name=f"BE{i}",
                 device=be_device,

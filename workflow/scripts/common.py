@@ -23,6 +23,42 @@ def rename_rat(rat_name):
     return rat_name_dict.get(rat_name, rat_name)
 
 
+def animal_to_mapping(s):
+    cl_13 = "CL-SR_1-3.py"
+    cl_46 = "CL-SR_4-6.py"
+    d = {
+        "CSR1": cl_13,
+        "CSR2_sham": cl_13,
+        "CSR3_sham": cl_13,
+        "CSR4": cl_46,
+        "CSR5_sham": cl_46,
+        "CSR6": cl_46,
+        "LSR1": cl_13,
+        "LSR2": cl_13,
+        "LSR3": cl_13,
+        "LSR4": cl_46,
+        "LSR5": cl_46,
+        "LSR6": cl_46,
+        "LSR7": "LSR7.py",
+        "CanCSCa1": "CanCSCa.py",
+        "CanCSR7": "CanCSR.py",
+        "CanCSR8": "CanCSR.py",
+    }
+
+    return d.get(s, "no_mapping")
+
+
+def filename_to_mapping(s):
+    """Some filenames need special mappings."""
+    d = {
+        "16082017_CSubRet1_smallsq_1.set": "only_1_sub_eeg.py",
+        "23112017_LSubRet5_smallsq_screen_6.set": "only_1_sub_eeg.py",
+        "26112017_LSubRet5_smallsq_screen_7.set": "only_1_sub_eeg.py",
+    }
+
+    return d.get(s, np.nan)
+
+
 def rsc_histology(rat_name):
 
     rat_name_dict = {

@@ -9,7 +9,7 @@ import simuran
 from simuran.loaders.neurochat_loader import NCLoader
 from skm_pyutils.table import df_to_file
 
-from common import rename_rat
+from common import animal_to_mapping, filename_to_mapping, rename_rat
 
 
 def main(path_to_files: str, output_path: str) -> None:
@@ -344,42 +344,6 @@ def update_maze(s):
         return "Lesion"
 
 
-def animal_to_mapping(s):
-    cl_13 = "CL-SR_1-3.py"
-    cl_46 = "CL-SR_4-6.py"
-    d = {
-        "CSubRet1": cl_13,
-        "CSubRet2": cl_13,
-        "CSubRet3": cl_13,
-        "CSubRet4": cl_46,
-        "CSubRet5": cl_46,
-        "CSR6": cl_46,
-        "LSubRet1": cl_13,
-        "LSubRet2": cl_13,
-        "LSubRet3": cl_13,
-        "LSubRet4": cl_46,
-        "LSubRet5": cl_46,
-        "LSR6": cl_46,
-        "LSR7": "LSR7.py",
-        "CanCSCa1": "CanCSCa.py",
-        "CanCSR7": "CanCSR.py",
-        "CanCSR8": "CanCSR.py",
-    }
-
-    return d.get(s, "no_mapping")
-
-
-def filename_to_mapping(s):
-    """Some filenames need special mappings."""
-    d = {
-        "16082017_CSubRet1_smallsq_1.set": "only_1_sub_eeg.py",
-        "23112017_LSubRet5_smallsq_screen_6.set": "only_1_sub_eeg.py",
-        "26112017_LSubRet5_smallsq_screen_7.set": "only_1_sub_eeg.py",
-    }
-
-    return d.get(s, np.nan)
-
-
 def clean_data(df, **kwargs):
     """
     Sequency of cleaning dataframe
@@ -448,13 +412,13 @@ def clean_data(df, **kwargs):
     ].name_dec.apply(update_maze)
     df.drop("name_dec", axis=1, inplace=True)
 
+    df.loc[:, "rat"] = df["rat"].map(lambda x: rename_rat(x))
+    df = df[df["rat"] != "LSR7"]
+
     df["mapping"] = df.rat.apply(animal_to_mapping)
     df["mapping_file"] = df.filename.apply(filename_to_mapping)
     df["mapping"] = df["mapping_file"].combine_first(df["mapping"])
     df.drop("mapping_file", axis=1, inplace=True)
-
-    df.loc[:, "rat"] = df["rat"].map(lambda x: rename_rat(x))
-    df = df[df["rat"] != "LSR7"]
 
     return df
 

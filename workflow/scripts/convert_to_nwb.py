@@ -87,7 +87,6 @@ def main(table, config, filter_, output_directory, out_name, overwrite=False):
         fname = convert_to_nwb_and_save(
             rc, i, output_directory, config["cfg_base_dir"], overwrite
         )
-        exit(-1)
         if fname is not None:
             filenames.append(fname)
             used.append(i)
@@ -110,7 +109,6 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
 
     r = rc.load(i)
     nwbfile = convert_recording_to_nwb(r, rel_dir)
-    print("Writing NWB file")
     return write_nwbfile(filename, r, nwbfile)
 
 
@@ -168,11 +166,8 @@ def convert_recording_to_nwb(recording, rel_dir=None):
     piw_device, be_device = add_devices_to_nwb(nwbfile)
     num_electrodes = add_electrodes_to_nwb(recording, nwbfile, piw_device, be_device)
 
-    print("Adding LFP data")
     add_lfp_data_to_nwb(recording, nwbfile, num_electrodes)
-    print("Adding unit data")
     add_unit_data_to_nwb(recording, nwbfile)
-    print("Adding position data")
     add_position_data_to_nwb(recording, nwbfile)
 
     return nwbfile

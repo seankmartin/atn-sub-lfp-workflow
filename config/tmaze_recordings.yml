@@ -1,16 +1,16 @@
 rat:
   [
-    CSubRet1,
-    CSubRet2,
-    CSubRet3,
-    CSubRet4,
-    CSubRet5,
+    CSR1,
+    CSR2_sham,
+    CSR3_sham,
+    CSR4,
+    CSR5_sham,
     CSR6,
-    LSubRet1,
-    LSubRet2,
-    LSubRet3,
-    LSubRet4,
-    LSubRet5,
+    LSR1,
+    LSR2,
+    LSR3,
+    LSR4,
+    LSR5,
   ]
-habituation: [0]
+habituation_screening: [0]
 maze: [tmaze]

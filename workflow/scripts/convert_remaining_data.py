@@ -21,6 +21,17 @@ def main(path_to_all, path_to_converted, config_path, outputs, num_cpus=1):
     )
     to_convert = df_all[df_merged["_merge"] == "left_only"]
 
+    # TEMP for now, let us try to get sleep working
+    to_convert = to_convert[to_convert["sleep"] == 1]
+
+    # Ignore those with no mapping and print warning
+    no_mapping = to_convert[to_convert["mapping"] == "no_mapping"]
+    if len(no_mapping) > 0:
+        print(f"WARNING ignoring {len(no_mapping)} files with no mapping")
+        rats = set(no_mapping["rat"])
+        print(f"This includes rats {rats}")
+    to_convert = to_convert[to_convert["mapping"] != "no_mapping"]
+
     out_name1, out_name2, out_name3 = outputs
     output_dir = out_name1.parent
     out_name = out_name1.name

@@ -114,15 +114,7 @@ def tmaze_headers():
 
 if __name__ == "__main__":
     try:
-        smr.set_only_log_to_file(snakemake.log[0])
-        convert_tmaze_data(
-            snakemake.input[0],
-            snakemake.config["tmaze_filter"],
-            snakemake.input[1],
-            snakemake.config["simuran_config"],
-            Path(snakemake.output[0]).parent,
-            snakemake.config["overwrite_nwb"],
-        )
+        a = snakemake.log[0]
     except Exception:
         here = Path(__file__).parent.parent.parent
         convert_tmaze_data(
@@ -132,4 +124,14 @@ if __name__ == "__main__":
             here / "config/simuran_params.yml",
             Path(here / "results"),
             False,
+        )
+    else:
+        smr.set_only_log_to_file(snakemake.log[0])
+        convert_tmaze_data(
+            snakemake.input[0],
+            snakemake.config["tmaze_filter"],
+            snakemake.input[1],
+            snakemake.config["simuran_config"],
+            Path(snakemake.output[0]).parent,
+            snakemake.config["overwrite_nwb"],
         )

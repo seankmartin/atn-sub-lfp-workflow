@@ -17,8 +17,7 @@ from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from pynwb.ecephys import LFP, ElectricalSeries
 from pynwb.file import Subject
-from skm_pyutils.table import (df_from_file, df_to_file, filter_table,
-                               list_to_df)
+from skm_pyutils.table import df_from_file, df_to_file, filter_table, list_to_df
 
 
 def describe_columns():
@@ -66,13 +65,12 @@ pd.options.mode.chained_assignment = None  # default='warn'
 here = Path(__file__).resolve().parent
 module_logger = logging.getLogger("simuran.custom.convert_to_nwb")
 
-# TODO revise experiment info and metadata
-def main(
-    table, config, filter_, output_directory, out_name, overwrite=False, debug=False
-):
+
+def main(table, config, filter_, output_directory, out_name, overwrite=False):
     filtered_table = filter_table(table, filter_) if filter_ is not None else table
     loader = smr.loader(config["loader"], **config["loader_kwargs"])
     rc = smr.RecordingContainer.from_table(filtered_table, loader)
+    used = []
     filenames = []
 
     for i in range(len(rc)):
@@ -82,22 +80,25 @@ def main(
             module_logger.debug(f"Already converted {rc[i].source_file}")
         if rc[i].attrs["mapping"] in ["no_mapping", "NOT_EXIST"]:
             module_logger.warning(
-                "Provide a mapping in index_axona_files.py"
-                + f"before converting {rc[i].source_file}"
+                f"Provide a mapping in index_axona_files.py"
+                f" before converting {rc[i].source_file}"
             )
-        try:
-            fname = convert_to_nwb_and_save(
-                rc, i, output_directory, config["cfg_base_dir"], overwrite
-            )
-        except Exception as err:
-            module_logger.exception(f"Could not write nwbfile from {rc[i].source_file}")
-            if debug:
-                breakpoint()
-        else:
+            continue
+        fname = convert_to_nwb_and_save(
+            rc, i, output_directory, config["cfg_base_dir"], overwrite
+        )
+        exit(-1)
+        if fname is not None:
             filenames.append(fname)
+            used.append(i)
 
+    if len(used) != len(filtered_table):
+        missed = len(filtered_table) - len(used)
+        print(f"WARNING: unable to convert all files, missed {missed}")
+    filtered_table = filtered_table.filter(used, axis=0)
     filtered_table["nwb_file"] = filenames
     df_to_file(filtered_table, output_directory / out_name)
+    return filenames
 
 
 def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=False):
@@ -109,32 +110,35 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
 
     r = rc.load(i)
     nwbfile = convert_recording_to_nwb(r, rel_dir)
+    print("Writing NWB file")
     return write_nwbfile(filename, r, nwbfile)
 
 
-def write_nwbfile(filename, r, nwbfile, manager=None):
+def write_nwbfile(filename, r, nwbfile, manager=None, except_errors=False):
     filename.parent.mkdir(parents=True, exist_ok=True)
     try:
         with NWBHDF5IO(filename, "w", manager=manager) as io:
             io.write(nwbfile)
         return filename
-    except Exception:
+    except Exception as e:
         module_logger.error(
             f"Could not write nwbfile from {r.source_file} out to {filename}"
         )
         if filename.is_file():
             filename.unlink()
         traceback.print_exc()
+        if not except_errors:
+            raise e
         return None
 
 
-def export_nwbfile(filename, r, nwbfile, src_io, debug=False):
+def export_nwbfile(filename, r, nwbfile, src_io, debug=False, except_errors=False):
     filename.parent.mkdir(parents=True, exist_ok=True)
     try:
         with NWBHDF5IO(filename, "w") as io:
             io.export(src_io=src_io, nwbfile=nwbfile)
         return filename
-    except Exception:
+    except Exception as e:
         module_logger.error(
             f"Could not write nwbfile from {r.source_file} out to {filename}"
         )
@@ -143,6 +147,8 @@ def export_nwbfile(filename, r, nwbfile, src_io, debug=False):
         if filename.is_file():
             filename.unlink()
         traceback.print_exc()
+        if not except_errors:
+            raise e
         return None
 
 
@@ -162,8 +168,11 @@ def convert_recording_to_nwb(recording, rel_dir=None):
     piw_device, be_device = add_devices_to_nwb(nwbfile)
     num_electrodes = add_electrodes_to_nwb(recording, nwbfile, piw_device, be_device)
 
+    print("Adding LFP data")
     add_lfp_data_to_nwb(recording, nwbfile, num_electrodes)
+    print("Adding unit data")
     add_unit_data_to_nwb(recording, nwbfile)
+    print("Adding position data")
     add_position_data_to_nwb(recording, nwbfile)
 
     return nwbfile
@@ -210,31 +219,32 @@ def add_position_data_to_nwb(recording, nwbfile):
     )
 
     raw_pos = rec_pos.get_raw_pos()
-    big_data = np.transpose(np.array([raw_pos[0], raw_pos[1], raw_pos[2], raw_pos[3]]))
-
-    big_led_ts = TimeSeries(
-        name="led_positions",
-        description="(x, y) position of big led, followed by (x,y) of small led. In raw pixel values, use conversion to get cm.",
-        data=big_data,
-        timestamps=position_timestamps,
-        unit="centimeters",
-        conversion=(1 / rec_pos.pixels_per_cm),
-    )
-
+    names = ["big_led_x", "big_led_y", "small_led_x", "small_led_y"]
     behavior_module = nwbfile.create_processing_module(
         name="behavior", description="processed behavior data"
     )
+    for name, pos in zip(names, raw_pos):
+        big_led_ts = TimeSeries(
+            name=name,
+            description="LED positions, note 1023 indicates untracked data",
+            data=np.array(pos),
+            rate=50.0,
+            unit="centimeters",
+            conversion=(1 / rec_pos.pixels_per_cm),
+        )
+        behavior_module.add(big_led_ts)
+
     behavior_module.add(position_obj)
     behavior_module.add(speed_ts)
-    behavior_module.add(big_led_ts)
 
     if filename.endswith(".pos"):
         behavior_module.add(compass_obj)
 
 
 def add_unit_data_to_nwb(recording, nwbfile):
+    add_waveforms_and_times_to_nwb(recording, nwbfile)
     if recording.attrs.get("units", "default") == "default":
-        add_waveforms_and_times_to_nwb(recording, nwbfile)
+        return
     added = False
     for i, unit_info in enumerate(recording.data["units"]):
         if unit_info.available_units is None:
@@ -267,8 +277,12 @@ def add_unit_data_to_nwb(recording, nwbfile):
 
 
 def add_waveforms_and_times_to_nwb(recording, nwbfile):
+    try:
+        spike_files = recording.attrs["source_files"]["Spike"]
+    except KeyError:
+        module_logger.warning(f"No spike files for {r.source_file}")
+        return
     nc_spike = NSpike()
-    spike_files = recording.attrs["source_files"]["Spike"]
     df_list = []
     df_list_waves = []
     for sf in spike_files:
@@ -291,9 +305,7 @@ def add_waveforms_and_times_to_nwb(recording, nwbfile):
     hdmf_table = DynamicTable.from_dataframe(
         df=final_df, name="times", columns=describe_columns()
     )
-    mod = nwbfile.create_processing_module(
-        "spikes", "Store unsorted spike times"
-    )
+    mod = nwbfile.create_processing_module("spikes", "Store unsorted spike times")
     mod.add(hdmf_table)
 
     final_df = list_to_df(df_list_waves, ["tetrode_chan_id", "num_spikes", "waveforms"])

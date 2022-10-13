@@ -85,7 +85,7 @@ def main(
             module_logger.info(f"Converting {rc[i].source_file} to NWB")
         else:
             module_logger.debug(f"Already converted {rc[i].source_file}")
-        if rc[i].attrs["mapping"].source_file in ["no_mapping", "NOT_EXIST"]:
+        if str(rc[i].attrs["mapping"].source_file) == "no_mapping":
             module_logger.warning(
                 f"Provide a mapping in index_axona_files.py"
                 f" before converting {rc[i].source_file}"
@@ -326,24 +326,23 @@ def add_lfp_data_to_nwb(recording, nwbfile, num_electrodes):
     egf_files = [
         convert_eeg_path_to_egf(f) for f in recording.attrs["source_files"]["Signal"]
     ]
-    egf_files = [f for f in egf_files if f is not None]
-    if not egf_files:
+    if egf_files := [f for f in egf_files if f is not None]:
+        data = []
+        for f in egf_files:
+            lfp = NLfp()
+            lfp.load(f, system="Axona")
+            data.append(lfp.get_samples())
+        rate = float(lfp.get_sampling_rate())
+        lfp_data = np.transpose(np.array(data))
+        module = nwbfile.create_processing_module(
+            name="high_rate_ecephys",
+            description="High sampling rate extracellular electrophysiology data",
+        )
+        add_lfp_array_to_nwb(
+            nwbfile, num_electrodes, lfp_data, rate=rate, module=module
+        )
+    else:
         module_logger.warning(f"No egf files found for {recording.source_file}")
-        return
-
-    data = []
-    for f in egf_files:
-        lfp = NLfp()
-        lfp.load(f, system="Axona")
-        data.append(lfp.get_samples())
-    rate = float(lfp.get_sampling_rate())
-    lfp_data = np.transpose(np.array(data))
-    module = nwbfile.create_processing_module(
-        name="high_rate_ecephys",
-        description="High sampling rate extracellular electrophysiology data",
-    )
-    add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data, rate=rate, module=module)
-
     lfp_data = np.transpose(np.array([s.samples for s in recording.data["signals"]]))
     add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data, rate=250.0)
 

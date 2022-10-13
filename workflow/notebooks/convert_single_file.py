@@ -19,9 +19,10 @@ module_logger.setLevel(logging.DEBUG)
 module_logger.addHandler(logging.StreamHandler(sys.stdout))
 
 # %%
-table_path = r"E:\Repos\atn-sub-lfp-workflow\results\subret_recordings.csv"
-config_path = r"E:\Repos\atn-sub-lfp-workflow\config\simuran_params.yml"
-filename = "04092017_CSubRet1_+maze_trial_1_1.set"
+table_path = r"E:\Temp\atn-sub-lfp-workflow\results\subret_recordings.csv"
+config_path = r"E:\Temp\atn-sub-lfp-workflow\config\simuran_params.yml"
+filename = "04122017_CSR4_sleep_1_1_awake.set"
+# filename = "04092017_CSubRet1_+maze_trial_1_1.set"
 output_dir = Path("test")
 out_name = "test.csv"
 

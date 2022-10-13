@@ -9,9 +9,6 @@ import simuran
 from simuran.loaders.neurochat_loader import NCLoader
 from skm_pyutils.table import df_to_file
 
-from common import animal_to_mapping, filename_to_mapping, rename_rat
-
-
 def main(path_to_files: str, output_path: str) -> None:
     loader = NCLoader(system="Axona", pos_extension=".pos")
     df = loader.index_files(path_to_files)
@@ -412,14 +409,6 @@ def clean_data(df, **kwargs):
     ].name_dec.apply(update_maze)
     df.drop("name_dec", axis=1, inplace=True)
 
-    df.loc[:, "rat"] = df["rat"].map(lambda x: rename_rat(x))
-
-    df["mapping"] = df.rat.apply(animal_to_mapping)
-    df["mapping_file"] = df.filename.apply(filename_to_mapping)
-    df["mapping"] = df["mapping_file"].combine_first(df["mapping"])
-    df.drop("mapping_file", axis=1, inplace=True)
-
-    df = df[df["rat"] != "LSR7"]
     return df
 
 

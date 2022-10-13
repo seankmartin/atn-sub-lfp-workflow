@@ -5,7 +5,7 @@ from skm_pyutils.path import (get_all_files_in_dir, get_dirs_matching_regex,
                               remove_empty_dirs_and_caches)
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
-from common import rsc_histology
+from common import rsc_histology, rename_rat, animal_to_mapping, filename_to_mapping
 
 here = Path(__file__).resolve().parent
 
@@ -15,6 +15,13 @@ def on_target(v):
 def main(dirname, path_to_csv, output_path):
     fnames = get_all_files_in_dir(here / "batch_params", ext=".py")
     df = df_from_file(path_to_csv)
+    df.loc[:, "rat"] = df["rat"].map(lambda x: rename_rat(x))
+    df["mapping"] = df.rat.apply(animal_to_mapping)
+    df["mapping_file"] = df.filename.apply(filename_to_mapping)
+    df["mapping"] = df["mapping_file"].combine_first(df["mapping"])
+    df.drop("mapping_file", axis=1, inplace=True)
+    df["RSC location"] = df["rat"].apply(rsc_histology)
+    df["RSC on target"] = df["RSC location"].apply(on_target)
 
     out_list = []
     for fname in fnames:
@@ -61,9 +68,7 @@ def main(dirname, path_to_csv, output_path):
             new_mapping.append(mapping)
     merged_df["mapping"] = new_mapping
 
-    merged_df["RSC location"] = merged_df["rat"].apply(rsc_histology)
-    merged_df["RSC on target"] = merged_df["RSC location"].apply(on_target)
-
+    merged_df = merged_df[merged_df["rat"] != "LSR7"]
     df_to_file(merged_df, output_path)
 
 

@@ -3,6 +3,10 @@ from neurochat.nc_lfp import NLfp
 
 
 def rename_rat(rat_name):
+    if rat_name.endswith("_muscimol"):
+        rat_name = rat_name[: -len("_muscimol")]
+    if rat_name.endswith("_musc_use"):
+        rat_name = rat_name[:-len("_musc_use")]
 
     rat_name_dict = {
         "CSubRet1": "CSR1",
@@ -18,6 +22,12 @@ def rename_rat(rat_name):
         "LSubRet5": "LSR5",
         "LSR6": "LSR6",
         "LSR7": "LSR7",
+        "CanCSRetCa1": "CanCSRCa1",
+        "CanCSRetCa2": "CanCSRCa2",
+        "CanCCaRet1": "CanCCaR1",
+        "CanCCaRet2": "CanCCaR2",
+        "CanCsubRet8": "CanCSR8",
+        "CanCSubCaR2": "CanCSCaR2"
     }
 
     return rat_name_dict.get(rat_name, rat_name)
@@ -62,17 +72,17 @@ def filename_to_mapping(s):
 def rsc_histology(rat_name):
 
     rat_name_dict = {
-        "CSubRet1": "midline",
-        "CSubRet2_sham": "midline",
-        "CSubRet3_sham": "contralateral",
-        "CSubRet4": "midline",
-        "CSubRet5_sham": "ipsilateral",
+        "CSR1": "midline",
+        "CSR2_sham": "midline",
+        "CSR3_sham": "contralateral",
+        "CSR4": "midline",
+        "CSR5_sham": "ipsilateral",
         "CSR6": "ipsilateral",
-        "LSubRet1": "ipsilateral",
-        "LSubRet2": "contralateral",
-        "LSubRet3": "contralateral",
-        "LSubRet4": "ipsilateral",
-        "LSubRet5": "contralateral",
+        "LSR1": "ipsilateral",
+        "LSR2": "contralateral",
+        "LSR3": "contralateral",
+        "LSR4": "ipsilateral",
+        "LSR5": "contralateral",
         "LSR6": "contralateral",
         "LSR7": "ipsilateral",
         "LRS1": "ipsilateral",
@@ -81,17 +91,17 @@ def rsc_histology(rat_name):
         "CanCSCa1": "NA",
         "CanCSR7": "contralateral",
         "CanCSR8": "ipsilateral",
-        "CanCSRetCa1": "contralateral",
-        "CanCSRetCa2": "contralateral",
-        "CanCCaRet1": "not imaged",
-        "CanCCaRet2": "ipsilateral",
+        "CanCSRCa1": "contralateral",
+        "CanCSRCa2": "contralateral",
+        "CanCCaR1": "not imaged",
+        "CanCCaR2": "ipsilateral",
         "CanCSCaR1": "not imaged",
         "CanCSCaR2": "ipsilateral",
         "CanCSCaR4": "not imaged",
         "CanCSCaR5": "ipsilateral",
     }
 
-    return rat_name_dict.get(rat_name, "RSC_not_recorded")
+    return rat_name_dict[rat_name]
 
 
 def numpy_to_nc(data, sample_rate=None, timestamp=None):

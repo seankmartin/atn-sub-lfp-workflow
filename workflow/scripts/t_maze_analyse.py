@@ -13,8 +13,6 @@ from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
 module_logger = logging.getLogger("simuran.custom.tmaze_analyse")
 
-# TODO implement gamma RSC and theta phase coupling
-
 
 def main(tmaze_times_filepath, config_filepath, out_dir):
     config = smr.config_from_file(config_filepath)

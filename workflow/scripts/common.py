@@ -6,7 +6,7 @@ def rename_rat(rat_name):
     if rat_name.endswith("_muscimol"):
         rat_name = rat_name[: -len("_muscimol")]
     if rat_name.endswith("_musc_use"):
-        rat_name = rat_name[:-len("_musc_use")]
+        rat_name = rat_name[: -len("_musc_use")]
 
     rat_name_dict = {
         "CSubRet1": "CSR1",
@@ -27,7 +27,7 @@ def rename_rat(rat_name):
         "CanCCaRet1": "CanCCaR1",
         "CanCCaRet2": "CanCCaR2",
         "CanCsubRet8": "CanCSR8",
-        "CanCSubCaR2": "CanCSCaR2"
+        "CanCSubCaR2": "CanCSCaR2",
     }
 
     return rat_name_dict.get(rat_name, rat_name)
@@ -50,9 +50,20 @@ def animal_to_mapping(s):
         "LSR5": cl_46,
         "LSR6": cl_46,
         "LSR7": "LSR7.py",
+        "LRS1": "CL-RS.py",
+        "CRS1": "CL-RS.py",
+        "CRS2": "CL-RS.py",
         "CanCSCa1": "CanCSCa.py",
         "CanCSR7": "CanCSR.py",
         "CanCSR8": "CanCSR.py",
+        "CanCSRCa1": "CanCSRCa.py",
+        "CanCSRCa2": "CanCSRCa.py",
+        "CanCCaR1": "CanCCaR.py",
+        "CanCCaR2": "CanCCaR.py",
+        "CanCSCaR1": "CanCSCaR.py",
+        "CanCSCaR2": "CanCSCaR.py",
+        "CanCSCaR4": "CanCSCaR.py",
+        "CanCSCaR5": "CanCSCaR.py",
     }
 
     return d.get(s, "no_mapping")

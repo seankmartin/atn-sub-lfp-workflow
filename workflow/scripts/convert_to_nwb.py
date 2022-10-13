@@ -104,7 +104,7 @@ def main(
     if len(used) != len(filtered_table):
         missed = len(filtered_table) - len(used)
         print(f"WARNING: unable to convert all files, missed {missed}")
-    filtered_table = filtered_table.filter(used, axis=0)
+    filtered_table = filtered_table.iloc[used, :]
     filtered_table["nwb_file"] = filenames
     df_to_file(filtered_table, output_directory / out_name)
     return filenames

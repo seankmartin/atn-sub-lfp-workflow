@@ -218,20 +218,19 @@ def add_position_data_to_nwb(recording, nwbfile):
     )
 
     raw_pos = rec_pos.get_raw_pos()
-    names = ["big_led_x", "big_led_y", "small_led_x", "small_led_y"]
     behavior_module = nwbfile.create_processing_module(
         name="behavior", description="processed behavior data"
     )
-    for name, pos in zip(names, raw_pos):
-        big_led_ts = TimeSeries(
-            name=name,
-            description="LED positions, note 1023 indicates untracked data",
-            data=np.array(pos),
-            rate=50.0,
-            unit="centimeters",
-            conversion=(1 / rec_pos.pixels_per_cm),
-        )
-        behavior_module.add(big_led_ts)
+    pos = np.transpose(np.array(raw_pos, dtype=np.uint16))
+    big_led_ts = TimeSeries(
+        name="led_pixel_positions",
+        description="LED positions, note 1023 indicates untracked data. Order is Big LED x, Big LED y, Small LED x, Small LED y",
+        data=pos,
+        rate=50.0,
+        unit="centimeters",
+        conversion=(1 / rec_pos.pixels_per_cm),
+    )
+    behavior_module.add(big_led_ts)
 
     behavior_module.add(position_obj)
     behavior_module.add(speed_ts)

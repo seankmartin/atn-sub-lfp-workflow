@@ -413,13 +413,13 @@ def clean_data(df, **kwargs):
     df.drop("name_dec", axis=1, inplace=True)
 
     df.loc[:, "rat"] = df["rat"].map(lambda x: rename_rat(x))
-    df = df[df["rat"] != "LSR7"]
 
     df["mapping"] = df.rat.apply(animal_to_mapping)
     df["mapping_file"] = df.filename.apply(filename_to_mapping)
     df["mapping"] = df["mapping_file"].combine_first(df["mapping"])
     df.drop("mapping_file", axis=1, inplace=True)
 
+    df = df[df["rat"] != "LSR7"]
     return df
 
 

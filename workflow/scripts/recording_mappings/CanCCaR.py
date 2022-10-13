@@ -15,16 +15,11 @@ def setup_signals():
     num_signals = 32
 
     # What brain region each signal was recorded from
-    regions = ["CA1"] * 2 + ["RSC"] * 2 + ["CA1"] * 12 + ["SUB"] * 16
+    regions = ["CA1"] * 2 + ["RSC"] * 2 + ["CA1"] * 28
 
     # If the wires were bundled, or any other kind of grouping existed
     # If no grouping, grouping = [i for in range(num_signals)]
-    groups = (
-        ["LFP", "LFP", "LFP", "LFP"]
-        + [i for i in range(12)]
-        + ["LFP", "LFP"]
-        + [12 + i for i in range(14)]
-    )
+    groups = ["LFP", "LFP", "LFP", "LFP"] + [i for i in range(num_signals - 4)]
 
     # The sampling rate in Hz of each signal
     sampling_rate = [250] * num_signals
@@ -46,7 +41,7 @@ def setup_units():
     num_groups = 8
 
     # The region that each group belongs to
-    regions = ["CA1"] * 4 + ["SUB"] * 4
+    regions = ["CA1"] * num_groups
 
     # A group number for each group, for example the tetrode number
     groups = [1, 2, 3, 4, 9, 10, 11, 12]

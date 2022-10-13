@@ -25,7 +25,7 @@ def setup_signals():
         + ["LFP", "LFP"]
         + [6, 7]
         + ["LFP", "LFP"]
-        + [7 + i for i in range(num_signals - 14)]
+        + [7 + i for i in range(18)]
     )
 
     # The sampling rate in Hz of each signal

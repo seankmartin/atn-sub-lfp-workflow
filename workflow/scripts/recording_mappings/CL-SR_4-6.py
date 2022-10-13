@@ -19,7 +19,7 @@ def setup_signals():
 
     # If the wires were bundled, or any other kind of grouping existed
     # If no grouping, grouping = [i for i in range(num_signals)]
-    groups = ["LFP", "LFP", "LFP", "LFP"] + [i for i in range(num_signals - 4)]
+    groups = ["LFP", "LFP", "LFP", "LFP"] + list(range(num_signals - 4))
 
     # The sampling rate in Hz of each signal
     sampling_rate = [250] * num_signals

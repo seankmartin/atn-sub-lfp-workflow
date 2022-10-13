@@ -315,13 +315,22 @@ def add_waveforms_and_times_to_nwb(recording, nwbfile):
 
 def convert_eeg_path_to_egf(p):
     p = Path(p)
-    return p.with_suffix(f".egf{p.suffix[4:]}")
+    p = p.with_suffix(f".egf{p.suffix[4:]}")
+    if p.is_file():
+        return p
+    else:
+        None
 
 
 def add_lfp_data_to_nwb(recording, nwbfile, num_electrodes):
     egf_files = [
         convert_eeg_path_to_egf(f) for f in recording.attrs["source_files"]["Signal"]
     ]
+    egf_files = [f for f in egf_files if f is not None]
+    if not egf_files:
+        module_logger.warning(f"No egf files found for {recording.source_file}")
+        return
+
     data = []
     for f in egf_files:
         lfp = NLfp()

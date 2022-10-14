@@ -4,3 +4,5 @@ pynwb
 python-picard
 pactools
 ripple_detection
+snakemake
+neurochat

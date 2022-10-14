@@ -7,7 +7,6 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
-import astropy.units as u
 import numpy as np
 import simuran
 from mne.filter import filter_data
@@ -437,7 +436,7 @@ class LFPICACombiner(LFPCombiner):
             data_to_use = reconst_raw.get_data()[idxs_to_use]
             val, _ = average_signals(data_to_use, clean=False)
             eeg = simuran.Eeg()
-            eeg.from_numpy(val * u.V, sampling_rate=signals[0].sampling_rate)
+            eeg.from_numpy(val, sampling_rate=signals[0].sampling_rate)
             eeg.region = region
             eeg.channel = "avg"
             output_dict[region] = eeg

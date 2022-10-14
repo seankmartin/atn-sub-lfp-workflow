@@ -329,15 +329,16 @@ def main(table_paths, config_path, output_paths, num_cpus, overwrite=False):
         rc = smr.RecordingContainer.from_table(datatable, loader)
         out_df = datatable.copy()
 
-        for i, r in enumerate(rc.load_iter()):
-            fname = Path(r.source_file)
+        for i in range(len(rc)):
+            fname = Path(rc[i].source_file)
             fname = fname.parent.parent / "processed" / fname.name
             if not fname.is_file() or overwrite:
-                module_logger.debug(f"Processing {r.source_file}")
+                module_logger.debug(f"Processing {rc[i].source_file}")
+                r = rc.load(i)
                 nwbfile, _ = add_lfp_info(r, config)
                 export_nwbfile(fname, r, nwbfile, r._nwb_io, debug=True)
             else:
-                module_logger.debug(f"Already processed {r.source_file}")
+                module_logger.debug(f"Already processed {rc[i].source_file}")
             row_idx = datatable.index[i]
             out_df.at[row_idx, "nwb_file"] = str(fname)
         output_dfs.append(out_df)
@@ -363,6 +364,7 @@ def test_main():
 
 if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
+    module_logger.setLevel(logging.DEBUG)
     main(
         snakemake.input,
         snakemake.config["simuran_config"],

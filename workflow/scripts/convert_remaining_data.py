@@ -37,7 +37,9 @@ def main(path_to_all, path_to_converted, config_path, outputs, num_cpus=1):
     out_name = out_name1.name
     convert_table_to_nwb(to_convert, config, None, output_dir, out_name)
 
-    process_tables([out_name1], config_path, [out_name2], num_cpus, overwrite=False)
+    process_tables(
+        [out_name1], config_path, ["temp.csv", out_name2], num_cpus, overwrite=False
+    )
 
     dfs = [df_converted, df_from_file(out_name2)]
     final_df = pd.concat(dfs, ignore_index=True)

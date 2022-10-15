@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -15,21 +16,34 @@ from sleep_utils import (
     spindles_exclude_resting,
 )
 
+module_logger = logging.getLogger("simuran.custom.sleep_analysis")
 
-def main(input_path, out_dir):
-    df = pd.read_csv(input_path, parse_dates=["date_time"])
+
+def main(input_path, out_dir, config):
+    out_dir.mkdir(parents=True, exist_ok=True)
+    df = pd.read_csv(input_path)
     cols = df.columns
     df[cols[2:]].loc[df[cols[2:]].sleep == 1]
     sleep = df.loc[df.sleep == 1]
+    if len(sleep) == 0:
+        module_logger.error(f"no sleep recordings found in {input_path}")
+        return
     plot_recordings_per_animal(sleep, out_dir / "rat_stats.png")
     loader = smr.loader("nwb")
     rc = smr.RecordingContainer.from_table(sleep, loader)
     all_spindles = []
     all_ripples = []
     for r in rc.load_iter():
+        electrodes = r.data.electrodes.to_dataframe()
+        brain_regions = sorted(list(set(electrodes["location"])))
+        if "SUB" not in brain_regions:
+            module_logger.info(f"Skipping {r.source_file} due to no SUB signal")
+            continue
         if not ensure_sleeping(r):
-            print(f"Too much movement in {r.source_file} for sleep")
-        spindles, resting_array = spindle_control(r)
+            module_logger.warning(f"Too much movement in {r.source_file} for sleep")
+            continue
+        module_logger.info(f"Processing {r.source_file} for spindles and ripples")
+        spindles, resting_array = spindle_control(r, config)
         ripple_times = ripple_control(r, resting_array)
         print(spindles)
         print(spindles.summary())
@@ -39,8 +53,8 @@ def main(input_path, out_dir):
         all_ripples.append(ripple_times)
 
 
-def spindle_control(r):
-    resting_array = find_resting(r)
+def spindle_control(r, config):
+    resting_array = find_resting(r, config)
     mne_array = convert_to_mne(r, resting_array)
     sp = detect_spindles(mne_array)
     if sp is not None:
@@ -50,13 +64,13 @@ def spindle_control(r):
     return spindles, resting_array
 
 
-def find_resting(r):
+def find_resting(r, config):
     nwbfile = r.data
     speed = nwbfile.processing["behavior"]["running_speed"].data[:]
     speed_rate = np.mean(np.diff(speed))
-    sub_signal = r.processing["average_lfp"]["SUB_avg"].data[:]
-    sub_rate = r.processing["average_lfp"]["SUB_avg"].rate
-    return mark_rest(speed, sub_signal, sub_rate, speed_rate)
+    sub_signal = nwbfile.processing["average_lfp"]["SUB_avg"].data[:]
+    sub_rate = nwbfile.processing["average_lfp"]["SUB_avg"].rate
+    return mark_rest(speed, sub_signal, sub_rate, speed_rate, **config)
 
 
 def convert_to_mne(r, events):
@@ -127,11 +141,21 @@ def ripple_control(r, resting):
 
 
 if __name__ == "__main__":
+    module_logger.setLevel(logging.DEBUG)
     try:
+        snakemake
+    except NameError:
+        using_snakemake = False
+    else:
+        using_snakemake = True
+    if using_snakemake:
         smr.set_only_log_to_file(snakemake.log[0])
-        main(snakemake.input[0], snakemake.output[0])
-    except Exception:
+        main(
+            snakemake.input[0], snakemake.output[0], snakemake.config["simuran_config"]
+        )
+    else:
         here = Path(__file__).parent.parent.parent
-        input_path = here / "results" / "other_processed.csv"
+        input_path = here / "results" / "every_processed_nwb.csv"
         out_dir = here / "plots" / "sleep"
-        main(input_path, out_dir)
+        config_path = here / "config" / "simuran_params.yml"
+        main(input_path, out_dir, config_path)

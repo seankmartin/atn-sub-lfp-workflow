@@ -91,11 +91,12 @@ def convert_to_mne(r, events):
     bad_chans = list(electrodes["clean"])
     ch_names = [
         f"{name}_{i}"
-        for i, name in enumerate(electrodes["region"])
+        for i, name in enumerate(electrodes["location"])
         if on_target or (electrodes["location"][i] != "RSC")
     ]
     mne_array = convert_signals_to_mne(signal_array, ch_names, bad_chans)
-    events = np.array[[events] * len(signal_array)]
+    events = np.tile(events, len(signal_array)).reshape(len(signal_array), -1)
+    # TODO events dont match
     return create_events(mne_array, events)
 
 
@@ -104,6 +105,7 @@ def detect_spindles(mne_data):
 
     For demos.
     """
+    # TODO this is too slow
     return yasa.spindles_detect(
         mne_data,
         thresh={"rel_pow": 0.2, "corr": 0.65, "rms": 2.5},

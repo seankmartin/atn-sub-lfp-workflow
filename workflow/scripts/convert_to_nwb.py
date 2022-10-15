@@ -81,10 +81,6 @@ def main(
     filenames = []
 
     for i in range(len(rc)):
-        if overwrite or not os.path.exists(out_name):
-            module_logger.info(f"Converting {rc[i].source_file} to NWB")
-        else:
-            module_logger.debug(f"Already converted {rc[i].source_file}")
         if str(rc[i].attrs["mapping"].source_file) == "no_mapping":
             module_logger.warning(
                 f"Provide a mapping in index_axona_files.py"
@@ -115,8 +111,10 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
     filename = output_directory / "nwbfiles" / f"{save_name}.nwb"
 
     if not overwrite and filename.is_file():
+        module_logger.debug(f"Already converted {rc[i].source_file}")
         return filename, None
 
+    module_logger.info(f"Converting {rc[i].source_file} to NWB")
     r = rc.load(i)
     nwbfile = convert_recording_to_nwb(r, rel_dir)
     return write_nwbfile(filename, r, nwbfile)
@@ -598,6 +596,7 @@ def convert_listed_data_to_nwb(
 
 if __name__ == "__main__":
     smr.set_only_log_to_file(snakemake.log[0])
+    module_logger.setLevel(logging.DEBUG)
     convert_listed_data_to_nwb(
         snakemake.input[0],
         snakemake.config["simuran_config"],

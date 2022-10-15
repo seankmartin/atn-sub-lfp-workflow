@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -47,15 +48,12 @@ def main(path_to_all, path_to_converted, config_path, outputs, num_cpus=1):
 
 
 if __name__ == "__main__":
+    module_logger = logging.getLogger("simuran.custom.convert_to_nwb")
+    module_logger.setLevel(logging.DEBUG)
+    module_logger = logging.getLogger("simuran.custom.process_lfp")
+    module_logger.setLevel(logging.DEBUG)
     try:
-        smr.set_only_log_to_file(snakemake.log[0])
-        main(
-            Path(snakemake.input[0]),
-            Path(snakemake.input[1]),
-            snakemake.config["simuran_config"],
-            [Path(o) for o in snakemake.output],
-            snakemake.threads,
-        )
+        a = snakemake.log[0]
     except Exception:
         here = Path(__file__).parent.parent.parent
         input_path1 = here / "results" / "subret_recordings.csv"
@@ -66,3 +64,12 @@ if __name__ == "__main__":
         fname3 = here / "results" / "every_processed_nwb.csv"
         fnames = [fname1, fname2, fname3]
         main(input_path1, input_path2, config_path, fnames)
+    else:
+        smr.set_only_log_to_file(snakemake.log[0])
+        main(
+            Path(snakemake.input[0]),
+            Path(snakemake.input[1]),
+            snakemake.config["simuran_config"],
+            [Path(o) for o in snakemake.output],
+            snakemake.threads,
+        )

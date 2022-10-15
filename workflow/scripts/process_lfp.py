@@ -130,7 +130,10 @@ def process_lfp(ss, config, type_):
 def add_lfp_info(recording, config):
     ss = NWBSignalSeries(recording)
     ss.filter(config["fmin"], config["fmax"], **config["filter_kwargs"])
-    canulated = recording.data.subject.fields["subject_id"].startswith("CanCsCa")
+    canulated = recording.data.subject.fields["subject_id"][:8] in [
+        "CanCSRCa",
+        "CanCSCaR",
+    ]
     type_ = "can_clean_kwargs" if canulated else "clean_kwargs"
     results_all, results_picked = process_lfp(ss, config, type_)
 

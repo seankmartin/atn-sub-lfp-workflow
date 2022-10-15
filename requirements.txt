@@ -6,3 +6,4 @@ pactools
 ripple_detection
 snakemake
 neurochat
+yasa

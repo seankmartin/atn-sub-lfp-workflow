@@ -20,6 +20,7 @@ module_logger = logging.getLogger("simuran.custom.sleep_analysis")
 
 
 def main(input_path, out_dir, config):
+    config = smr.config_from_file(config)
     out_dir.mkdir(parents=True, exist_ok=True)
     df = pd.read_csv(input_path)
     cols = df.columns
@@ -67,29 +68,31 @@ def spindle_control(r, config):
 def find_resting(r, config):
     nwbfile = r.data
     speed = nwbfile.processing["behavior"]["running_speed"].data[:]
-    speed_rate = np.mean(np.diff(speed))
+    timestamps = nwbfile.processing["behavior"]["running_speed"].timestamps[:]
+    speed_rate = np.mean(np.diff(timestamps))
     sub_signal = nwbfile.processing["average_lfp"]["SUB_avg"].data[:]
     sub_rate = nwbfile.processing["average_lfp"]["SUB_avg"].rate
     return mark_rest(speed, sub_signal, sub_rate, speed_rate, **config)
 
 
 def convert_to_mne(r, events):
-    lfp_egf = r.processing["high_rate_ecephys"]["LFP"]["ElectricalSeries"]
+    nwbfile = r.data
+    lfp_egf = nwbfile.processing["high_rate_ecephys"]["LFP"]["ElectricalSeries"]
     lfp_rate = lfp_egf.rate
-    lfp_data = lfp_egf.data[:]
+    lfp_data = lfp_egf.data[:].T
     on_target = r.attrs["RSC on target"]
-    electrodes = r.electrodes.to_dataframe()
+    electrodes = nwbfile.electrodes.to_dataframe()
     signal_array = [
         smr.Eeg.from_numpy(lfp, lfp_rate)
         for i, lfp in enumerate(lfp_data)
-        if on_target or electrodes["region"][i] != "RSC"
+        if on_target or (electrodes["location"][i] != "RSC")
     ]
 
     bad_chans = list(electrodes["clean"])
     ch_names = [
         f"{name}_{i}"
         for i, name in enumerate(electrodes["region"])
-        if on_target or electrodes["region"][i] != "RSC"
+        if on_target or (electrodes["location"][i] != "RSC")
     ]
     mne_array = convert_signals_to_mne(signal_array, ch_names, bad_chans)
     events = np.array[[events] * len(signal_array)]

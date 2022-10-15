@@ -19,8 +19,8 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     theta_min, theta_max = kwargs["theta_min"], kwargs["theta_max"]
     delta_min, delta_max = kwargs["delta_min"], kwargs["delta_max"]
 
-    lfp_samples_per_speed = lfp_rate / speed_rate
-    moving = np.zeros(len(speed) * lfp_samples_per_speed)
+    lfp_samples_per_speed = int(lfp_rate / speed_rate)
+    moving = np.zeros(int(len(speed) * lfp_samples_per_speed))
     for i in range(len(speed)):
         if speed[i] > tresh:
             moving[lfp_samples_per_speed * i : lfp_samples_per_speed * (i + 1)] = 1
@@ -28,7 +28,7 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     window = int(window_sec * lfp_rate)
     result = np.zeros(len(lfp))
     for i in range(0, len(lfp) - window, window // 2):
-        sig = smr.Eeg.from_numpy(lfp[i : i + window])
+        sig = smr.Eeg.from_numpy(lfp[i : i + window], lfp_rate)
         nc_sig = signal_to_neurochat(sig)
         bp = nc_sig.bandpower_ratio(
             [theta_min, theta_max], [delta_min, delta_max], window_sec

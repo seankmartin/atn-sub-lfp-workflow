@@ -143,5 +143,5 @@ def plot_recordings_per_animal(sleep, out_name):
 def ensure_sleeping(recording):
     nwbfile = recording.data
     speed = nwbfile.processing["behavior"]["running_speed"].data[:]
-    num_moving = len(np.nonzero(speed > 2.5))
-    return num_moving / len(speed) > 0.25
+    num_moving = np.count_nonzero(speed > 2.5)
+    return (num_moving / len(speed)) < 0.25

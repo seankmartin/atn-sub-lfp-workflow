@@ -47,7 +47,6 @@ def main(input_path, out_dir, config):
         spindles, resting_array = spindle_control(r, config)
         ripple_times = ripple_control(r, resting_array)
         print(spindles)
-        print(spindles.summary())
         print(ripple_times)
         exit(-1)
         all_spindles.append(spindles)

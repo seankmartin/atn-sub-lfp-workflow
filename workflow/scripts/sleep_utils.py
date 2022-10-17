@@ -39,7 +39,7 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     return result
 
 
-def spindles_exclude_resting(mne_data, resting, ch_list=None, out_rest=False):
+def spindles_exclude_resting(spindles_df, resting, mne_data):
     resting_df = pd.DataFrame(resting.T, columns=mne_data.info["ch_names"])
     resting_df["time"] = [i * 0.004 for i in range(len(mne_data))]
     resting_df = resting_df.set_index("time")
@@ -75,7 +75,7 @@ def create_events(record, events):
     record(mne_object): Record with events added
     """
     try:
-        assert len(record.times) == events.shape[1]
+        assert len(record.times) == events.shape
         stim_data = events
         info = mne.create_info(["STI"], record.info["sfreq"], ["stim"])
         stim_raw = mne.io.RawArray(stim_data, info)
@@ -93,25 +93,21 @@ def mark_movement(speed, mne_array):
     return create_events(mne_array, events)
 
 
-def spindles_exclude_resting(spindles_df, resting, mne_data, out_rest=False):
-    resting_df = pd.DataFrame(resting.T, columns=mne_data.info["ch_names"])
-    resting_df["time"] = [i * 0.004 for i in range(len(mne_data))]
-    resting_df = resting_df.set_index("time")
+def spindles_exclude_resting(spindles_df, resting, mne_data):
     for channel in spindles_df.Channel.unique():
         sp_times = spindles_df.loc[spindles_df.Channel == channel][
             ["Start", "End"]
         ].values
         for time in sp_times:
-            try:
-                if sum(resting_df[channel][time[0] : time[1]]) <= 1:
-                    spindles_df[
-                        (spindles_df.Channel == channel)
-                        & (spindles_df.Start == time[0])
-                        & (spindles_df.End == time[1])
-                    ] = np.nan
-            except BaseException:
-                print(f"Error in channel {channel}")
-    return (spindles_df, resting_df) if out_rest else spindles_df
+            start_idx = int(time[0] * mne_data.info["sfreq"])
+            end_idx = int(time[1] * mne_data.info["sfreq"])
+            if not np.all(resting[start_idx:end_idx]):
+                spindles_df[
+                    (spindles_df.Channel == channel)
+                    & (spindles_df.Start == time[0])
+                    & (spindles_df.End == time[1])
+                ] = np.nan
+    return spindles_df
 
 
 def plot_recordings_per_animal(sleep, out_name):

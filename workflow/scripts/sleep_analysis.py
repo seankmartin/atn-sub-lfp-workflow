@@ -59,9 +59,7 @@ def spindle_control(r, config):
     mne_array = convert_to_mne(r, resting_array)
     sp = detect_spindles(mne_array)
     if sp is not None:
-        spindles = spindles_exclude_resting(
-            sp.summary(), resting_array, mne_array, False
-        )
+        spindles = spindles_exclude_resting(sp.summary(), resting_array, mne_array)
     return spindles, resting_array
 
 
@@ -77,9 +75,9 @@ def find_resting(r, config):
 
 def convert_to_mne(r, events):
     nwbfile = r.data
-    lfp_egf = nwbfile.processing["high_rate_ecephys"]["LFP"]["ElectricalSeries"]
-    lfp_rate = lfp_egf.rate
-    lfp_data = lfp_egf.data[:].T
+    lfp = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"]
+    lfp_rate = lfp.rate
+    lfp_data = lfp.data[:].T
     on_target = r.attrs["RSC on target"]
     electrodes = nwbfile.electrodes.to_dataframe()
     signal_array = [
@@ -95,7 +93,7 @@ def convert_to_mne(r, events):
         if on_target or (electrodes["location"][i] != "RSC")
     ]
     mne_array = convert_signals_to_mne(signal_array, ch_names, bad_chans)
-    events = np.tile(events, len(signal_array)).reshape(len(signal_array), -1)
+    # events = np.tile(events, len(signal_array)).reshape(len(signal_array), -1)
     # TODO events dont match
     return create_events(mne_array, events)
 
@@ -105,7 +103,6 @@ def detect_spindles(mne_data):
 
     For demos.
     """
-    # TODO this is too slow
     return yasa.spindles_detect(
         mne_data,
         thresh={"rel_pow": 0.2, "corr": 0.65, "rms": 2.5},
@@ -115,13 +112,16 @@ def detect_spindles(mne_data):
 
 
 def ripple_control(r, resting):
-    lfp_egf = r.processing["high_rate_ecephys"]["LFP"]["ElectricalSeries"]
+    nwbfile = r.data
+    lfp_egf = nwbfile.processing["high_rate_ecephys"]["LFP"]["ElectricalSeries"]
     lfp_rate = lfp_egf.rate
     lfp_data = lfp_egf.data[:]
     filtered_lfps = filter_ripple_band(lfp_data)
-    time = [i / lfp_rate for i in range(len(filtered_lfps[0]))]
-    speed = r.processing["behaviour"]["running_speed"].data[:]
-    speed_long = [speed[i // lfp_rate] for i in range(lfp_data[0])]
+    time = [i / lfp_rate for i in range(filtered_lfps.shape[0])]
+    speed = nwbfile.processing["behavior"]["running_speed"].data[:]
+    timestamps = nwbfile.processing["behavior"]["running_speed"].timestamps[:]
+    speed_rate = np.mean(np.diff(timestamps))
+    speed_long = np.repeat(speed, int(lfp_rate * speed_rate))
     ripple_times = Kay_ripple_detector(
         time,
         filtered_lfps,
@@ -133,14 +133,15 @@ def ripple_control(r, resting):
         smoothing_sigma=0.004,
         close_ripple_threshold=0.1,
     )
-    eeg_rate = r.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
+    eeg_rate = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
     final_times, non_times = [], []
-    for t in ripple_times:
-        t_to_sample = t * eeg_rate
-        if resting[t_to_sample]:
-            final_times.append(t)
+    for _, row in ripple_times.iterrows():
+        t_start = int(row["start_time"] * eeg_rate)
+        t_end = int(row["end_time"] * eeg_rate)
+        if np.all(resting[t_start:t_end]):
+            final_times.append((row["start_time"], row["end_time"]))
         else:
-            non_times.append(t)
+            non_times.append((row["start_time"], row["end_time"]))
 
     return final_times, non_times
 

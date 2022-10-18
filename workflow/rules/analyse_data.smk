@@ -31,7 +31,7 @@ rule analyse_tmaze:
     conda:
         "../../envs/nwb_simuran.yml"
     script:
-        "../scripts/t_maze_analyse.py"
+        "../scripts/analyse_tmaze.py"
 
 
 rule analyse_spike_lfp:
@@ -102,7 +102,7 @@ rule tmaze_decoding:
     conda:
         "../../envs/nwb_simuran.yml"
     script:
-        "../scripts/t_maze_decode.py"
+        "../scripts/decode_tmaze.py"
 
 
 rule ca1_lfp:

@@ -4,7 +4,8 @@ from pprint import pprint
 
 import numpy as np
 import simuran as smr
-from neuronal import LFPDecoder
+
+from decoding import LFPDecoder
 
 
 def main(input_fpath, config, out_dir):

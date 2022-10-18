@@ -129,4 +129,17 @@ rule plot_tmaze:
     conda:
         "../../envs/nwb_simuran.yml"
     script:
-        "../scripts/t_maze_plot.py"
+        "../scripts/plot_tmaze.py"
+
+rule plot_sleep:
+    input:
+        "results/sleep/ripples.pkl",
+        "results/sleep/spindles.pkl"
+    output:
+        directory("results/plots/sleep")
+    log:
+        "logs/plot_sleep.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/plot_sleep.py"

@@ -7,3 +7,4 @@ ripple_detection
 snakemake
 neurochat
 yasa
+scikit-image

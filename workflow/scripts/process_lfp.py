@@ -141,7 +141,7 @@ def add_lfp_info(recording, config):
     # nwb_proc = nwbfile.copy()
     nwb_proc = nwbfile
     did_anything = [store_normalised_lfp(ss, results_all, nwb_proc)]
-    did_anything.append(store_average_lfp(results_picked, nwb_proc))
+    did_anything.append(store_average_lfp(results_picked, results_all, nwb_proc))
     did_anything.append(calculate_and_store_lfp_power(config, nwb_proc))
     did_anything.append(
         store_coherence(nwb_proc, flims=(config["fmin"], config["fmax"]))
@@ -201,7 +201,7 @@ def calculate_and_store_lfp_power(config, nwb_proc):
     mod.add(hdmf_table)
 
 
-def store_average_lfp(results_picked, nwb_proc):
+def store_average_lfp(results_picked, results_all, nwb_proc):
     if "average_lfp" in nwb_proc.processing:
         return False
     mod = nwb_proc.create_processing_module(
@@ -209,9 +209,16 @@ def store_average_lfp(results_picked, nwb_proc):
     )
 
     for brain_region, result in results_picked.items():
+        if np.sum(np.abs(result["average_signal"])) < 0.1:
+            module_logger.warning(
+                f"Average signal from first channels is none for brain region {brain_region}"
+            )
+            signal = results_all[brain_region]["average_signal"]
+        else:
+            signal = result["average_signal"]
         ts = TimeSeries(
             name=f"{brain_region}_avg",
-            data=0.001 * result["average_signal"],
+            data=0.001 * signal,
             unit="V",
             conversion=1.0,
             rate=250.0,

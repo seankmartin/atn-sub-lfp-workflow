@@ -1,4 +1,5 @@
 import logging
+import pickle
 from pathlib import Path
 
 import numpy as np
@@ -7,14 +8,10 @@ import simuran as smr
 import yasa
 from ripple_detection import Kay_ripple_detector, filter_ripple_band
 from simuran.bridges.mne_bridge import convert_signals_to_mne
+from tqdm import tqdm
 
-from sleep_utils import (
-    create_events,
-    ensure_sleeping,
-    mark_rest,
-    plot_recordings_per_animal,
-    spindles_exclude_resting,
-)
+from sleep_utils import (create_events, ensure_sleeping, mark_rest,
+                         spindles_exclude_resting)
 
 module_logger = logging.getLogger("simuran.custom.sleep_analysis")
 
@@ -29,12 +26,11 @@ def main(input_path, out_dir, config):
     if len(sleep) == 0:
         module_logger.error(f"no sleep recordings found in {input_path}")
         return
-    plot_recordings_per_animal(sleep, out_dir / "rat_stats.png")
     loader = smr.loader("nwb")
     rc = smr.RecordingContainer.from_table(sleep, loader)
     all_spindles = []
     all_ripples = []
-    for r in rc.load_iter():
+    for r in tqdm(rc.load_iter()):
         electrodes = r.data.electrodes.to_dataframe()
         brain_regions = sorted(list(set(electrodes["location"])))
         if "SUB" not in brain_regions:
@@ -46,11 +42,15 @@ def main(input_path, out_dir, config):
         module_logger.info(f"Processing {r.source_file} for spindles and ripples")
         spindles, resting_array = spindle_control(r, config)
         ripple_times = ripple_control(r, resting_array)
-        print(spindles)
-        print(ripple_times)
-        exit(-1)
-        all_spindles.append(spindles)
-        all_ripples.append(ripple_times)
+        all_spindles.append((r.source_file, spindles))
+        all_ripples.append((r.source_file, ripple_times))
+    filename = out_dir / "spindles.pkl"
+    with open(filename, "wb") as outfile:
+        pickle.dump(all_spindles, outfile)
+
+    filename = out_dir / "ripples.pkl"
+    with open(filename, "wb") as outfile:
+        pickle.dump(all_ripples, outfile)
 
 
 def spindle_control(r, config):
@@ -58,8 +58,8 @@ def spindle_control(r, config):
     mne_array = convert_to_mne(r, resting_array)
     sp = detect_spindles(mne_array)
     if sp is not None:
-        spindles = spindles_exclude_resting(sp.summary(), resting_array, mne_array)
-    return spindles, resting_array
+        sp = spindles_exclude_resting(sp.summary(), resting_array, mne_array)
+    return sp, resting_array
 
 
 def find_resting(r, config):
@@ -92,8 +92,6 @@ def convert_to_mne(r, events):
         if on_target or (electrodes["location"][i] != "RSC")
     ]
     mne_array = convert_signals_to_mne(signal_array, ch_names, bad_chans)
-    # events = np.tile(events, len(signal_array)).reshape(len(signal_array), -1)
-    # TODO events dont match
     return create_events(mne_array, events)
 
 
@@ -156,11 +154,13 @@ if __name__ == "__main__":
     if using_snakemake:
         smr.set_only_log_to_file(snakemake.log[0])
         main(
-            snakemake.input[0], snakemake.output[0], snakemake.config["simuran_config"]
+            snakemake.input[0],
+            Path(snakemake.output[0]).parent,
+            snakemake.config["simuran_config"],
         )
     else:
         here = Path(__file__).parent.parent.parent
         input_path = here / "results" / "every_processed_nwb.csv"
-        out_dir = here / "plots" / "sleep"
+        out_dir = here / "sleep"
         config_path = here / "config" / "simuran_params.yml"
         main(input_path, out_dir, config_path)

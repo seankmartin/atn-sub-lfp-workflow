@@ -131,9 +131,10 @@ rule theta_gamma:
 
 rule analyse_sleep:
     input:
-        "results/other_processed.csv"
+        "results/other_process.csv",
     output:
-        directory("results/plots/sleep")
+        "results/sleep/spindles.pkl",
+        "results/sleep/ripples.pkl"
     log:
         "logs/sleep.log"
     conda:

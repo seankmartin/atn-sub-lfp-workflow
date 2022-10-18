@@ -1,16 +1,21 @@
 from pathlib import Path
 
 from skm_pyutils.config import read_python
-from skm_pyutils.path import (get_all_files_in_dir, get_dirs_matching_regex,
-                              remove_empty_dirs_and_caches)
+from skm_pyutils.path import (
+    get_all_files_in_dir,
+    get_dirs_matching_regex,
+    remove_empty_dirs_and_caches,
+)
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
-from common import rsc_histology, rename_rat, animal_to_mapping, filename_to_mapping
+from common import animal_to_mapping, filename_to_mapping, rename_rat, rsc_histology
 
 here = Path(__file__).resolve().parent
 
+
 def on_target(v):
-    return v == "ispsilateral"
+    return v == "ipsilateral"
+
 
 def main(dirname, path_to_csv, output_path):
     fnames = get_all_files_in_dir(here / "batch_params", ext=".py")

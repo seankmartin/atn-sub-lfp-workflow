@@ -134,7 +134,8 @@ rule plot_tmaze:
 rule plot_sleep:
     input:
         "results/sleep/ripples.pkl",
-        "results/sleep/spindles.pkl"
+        "results/sleep/spindles.pkl",
+        "results/every_processed_nwb.csv"
     output:
         directory("results/plots/sleep")
     log:

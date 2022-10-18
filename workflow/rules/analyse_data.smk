@@ -134,10 +134,10 @@ rule analyse_sleep:
         "results/other_process.csv",
     output:
         "results/sleep/spindles.pkl",
-        "results/sleep/ripples.pkl"
+        "results/sleep/ripples.pkl",
     log:
         "logs/sleep.log"
     conda:
         "../../envs/nwb_simuran.yml"
     script:
-        "../scripts/sleep_analysis.py"
+        "../scripts/analyse_sleep.py"

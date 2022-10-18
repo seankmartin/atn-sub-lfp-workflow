@@ -2,6 +2,7 @@ import logging
 import pickle
 from pathlib import Path
 
+import mne
 import numpy as np
 import pandas as pd
 import simuran as smr
@@ -59,11 +60,18 @@ def main(input_path, out_dir, config):
 
 def spindle_control(r, config):
     resting_array = find_resting(r, config)
-    mne_array = convert_to_mne(r, resting_array)
-    sp = detect_spindles(mne_array)
-    if sp is not None:
-        sp = spindles_exclude_resting(sp.summary(), resting_array, mne_array)
-    return sp, resting_array
+    use_avg = config["spindles_use_avg"]
+    if use_avg:
+        mne_array = convert_to_mne_avg(r, resting_array)
+    else:
+        mne_array = convert_to_mne(r, resting_array)
+    spindles = detect_spindles(mne_array)
+    for (br, sp) in spindles.items():
+        if sp is not None:
+            spindles[br] = spindles_exclude_resting(
+                sp.summary(), resting_array, mne_array
+            )
+    return spindles, resting_array
 
 
 def find_resting(r, config):
@@ -99,17 +107,43 @@ def convert_to_mne(r, events):
     return create_events(mne_array, events)
 
 
+def convert_to_mne_avg(r, events):
+    nwbfile = r.data
+    brain_regions = sorted(list(set(nwbfile.electrodes.to_dataframe()["location"])))
+    signal_array = []
+    ch_names = []
+    for region in brain_regions:
+        if region == "RSC" and not r.attrs["RSC on target"]:
+            continue
+        lfp = nwbfile.processing["average_lfp"][f"{region}_avg"]
+        signal_array.append(smr.Eeg.from_numpy(lfp.data[:], lfp.rate))
+        ch_names.append(f"{region}_avg")
+
+    mne_array = convert_signals_to_mne(signal_array, ch_names)
+    return create_events(mne_array, events)
+
+
 def detect_spindles(mne_data):
     """See https://github.com/raphaelvallat/yasa/tree/master/notebooks
 
     For demos.
     """
-    return yasa.spindles_detect(
-        mne_data,
-        thresh={"rel_pow": 0.2, "corr": 0.65, "rms": 2.5},
-        freq_sp=(12, 15),
-        verbose="error",
-    )
+    ch_names = mne_data.info["ch_names"]
+    brain_regions = sorted(list({ch[:3] for ch in ch_names}))
+    sp_res = {}
+    for brain_region in brain_regions:
+        chans = mne.pick_channels_regexp(mne_data.info["ch_names"], f"^{brain_region}")
+        ch_to_use = [mne_data.info["ch_names"][ch] for ch in chans]
+        mne_data_br = mne_data.pick_channels(ch_to_use, ordered=True)
+        sp = yasa.spindles_detect(
+            mne_data_br,
+            thresh={"rel_pow": 0.2, "corr": 0.65, "rms": 2.5},
+            freq_sp=(12, 15),
+            verbose="error",
+            multi_only=True,
+        )
+        sp_res[brain_region] = sp
+    return sp_res
 
 
 def ripple_control(r, resting):

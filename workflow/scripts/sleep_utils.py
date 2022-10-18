@@ -39,33 +39,6 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     return result
 
 
-def spindles_exclude_resting(spindles_df, resting, mne_data):
-    resting_df = pd.DataFrame(resting.T, columns=mne_data.info["ch_names"])
-    resting_df["time"] = [i * 0.004 for i in range(len(mne_data))]
-    resting_df = resting_df.set_index("time")
-    for channel in spindles_df.Channel.unique():
-        sp_times = spindles_df.loc[spindles_df.Channel == channel][
-            ["Start", "End"]
-        ].values
-        for time in sp_times:
-            try:
-                if sum(resting_df[channel][time[0] : time[1]]) <= 1:
-                    spindles_df[
-                        (spindles_df.Channel == channel)
-                        & (spindles_df.Start == time[0])
-                        & (spindles_df.End == time[1])
-                    ] = np.nan
-            except:
-                print(f"Error in channel {channel}")
-    if out_rest:
-        return (
-            spindles_df,
-            resting_df,
-        )  # Can be used to calculate proportion of spindles per time
-
-    return spindles_df
-
-
 def create_events(record, events):
     """Create events on MNE object
     Inputs:

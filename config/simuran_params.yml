@@ -43,3 +43,4 @@ max_lfp_lengths:
   choice: [3.5, 0.5]
   end: 10
 tmaze_lfp_len: 6
+spindles_use_avg: True

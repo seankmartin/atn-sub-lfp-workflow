@@ -28,7 +28,7 @@ def plot_coherence_choice(coherence_df, out_dir):
         y="Coherence",
         hue="Group",
         style="Trial result",
-        ci=95,
+        errorbar=("ci", 95),
         estimator=np.median,
     )
     ax.set_ylim(0, 1)
@@ -52,7 +52,7 @@ def plot_choice_power(power_df, out_dir):
         hue="Group",
         style="Trial result",
         estimator=np.median,
-        ci=95,
+        errorbar=("ci", 95),
     )
     smr.despine()
     fig = smr.SimuranFigure(fig=fig, name=out_dir / "choice_power_ci")
@@ -82,7 +82,7 @@ def plot_group_power(group, power_df_sub, out_dir):
         y="Power (dB)",
         hue="Part",
         style="Trial",
-        ci=95,
+        errorbar=("ci", 95),
         estimator=np.median,
         ax=ax,
     )
@@ -96,14 +96,14 @@ def plot_group_coherence(group, coherence_df_sub, out_dir):
     smr.set_plot_style()
     fig, ax = plt.subplots()
     coherence_df_sub = coherence_df_sub[coherence_df_sub["RSC on target"]]
-    for ci, ci_name in zip((None, 95), ("", "_ci")):
+    for ci, ci_name in zip((None, ("ci", 95)), ("", "_ci")):
         sns.lineplot(
             data=coherence_df_sub,
             x="Frequency (Hz)",
             y="Coherence",
             hue="Part",
             style="Trial",
-            ci=ci,
+            errorbar=ci,
             estimator=np.median,
             ax=ax,
         )

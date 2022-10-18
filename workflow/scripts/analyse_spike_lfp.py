@@ -152,6 +152,10 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
         recording = recording_container.load(i)
         unit_types = ast.literal_eval(recording.attrs["unit_types"])
         treatment = recording.attrs["treatment"]
+        if recording.data.units is None:
+            raise ValueError(
+                f"No units found in nwbfile for {to_log} but {units} in metadata"
+            )
         unit_table = recording.data.units.to_dataframe()
         electrodes = recording.data.electrodes.to_dataframe()
         brain_regions = sorted(list(set(electrodes["location"])))
@@ -213,6 +217,7 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
 
 
 if __name__ == "__main__":
+    module_logger.setLevel(logging.DEBUG)
     smr.set_only_log_to_file(snakemake.log[0])
     main(
         snakemake.input,

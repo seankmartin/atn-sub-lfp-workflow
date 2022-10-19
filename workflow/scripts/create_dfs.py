@@ -88,7 +88,7 @@ def power_spectra_summary(rc, out_dir, config):
     for r in rc.load_iter():
         rat_name = r.attrs["rat"]
         group = group_type_from_rat_name(rat_name)
-        on_target = r.attrs["RSC_on_target"]
+        on_target = r.attrs["RSC on target"]
 
         clean_df = convert_df_to_averages(grab_psds(r.data)[0])
         clean_df = clean_df.assign(Rat=rat_name)
@@ -119,7 +119,7 @@ def power_spectra_summary(rc, out_dir, config):
             headers.append(f"{region} Beta Rel")
             headers.append(f"{region} Low Gamma Rel")
             headers.append(f"{region} High Gamma Rel")
-        headers.extend(["Condition, RSC on target"])
+        headers.extend(["Condition", "RSC on target"])
         sum_dfs.append(list_to_df([rel_power], headers=headers))
 
         psd_df = create_psd_table(r.data)
@@ -147,6 +147,7 @@ def openfield_coherence(rc, out_dir, config):
         l = []
         peak_coherences = []
         for recording in recording_container.load_iter():
+            on_target = recording.attrs["RSC on target"]
             nwbfile = recording.data
             coherence_df = nwbfile.processing["lfp_coherence"][
                 "coherence_table"
@@ -154,13 +155,13 @@ def openfield_coherence(rc, out_dir, config):
             region = coherence_df["label"].values[0]
             group = recording.attrs["treatment"]
             this_bit = [
-                [group, region, f_val, c_val]
+                [group, region, f_val, c_val, on_target]
                 for f_val, c_val in zip(
                     coherence_df["frequency"].values[0],
                     coherence_df["coherence"].values[0],
                 )
             ]
-            this_df = list_to_df(this_bit, headers=["G", "R", "F", "C"])
+            this_df = list_to_df(this_bit, headers=["G", "R", "F", "C", "T"])
             l.extend(this_bit)
             theta_coherence = this_df[
                 (this_df["F"] >= theta_min) & (this_df["F"] <= theta_max)
@@ -180,14 +181,16 @@ def openfield_coherence(rc, out_dir, config):
                     peak_delta_coherence,
                     peak_beta_coherence,
                     group,
+                    on_target,
                 ]
             )
-        headers = ["Group", "Regions", "Frequency (Hz)", "Coherence"]
+        headers = ["Group", "Regions", "Frequency (Hz)", "Coherence", "RSC on target"]
         headers2 = [
             "Peak Theta Coherence",
             "Peak Delta Coherence",
             "Peak Beta Coherence",
             "Condition",
+            "RSC on target",
         ]
         return list_to_df(l, headers), list_to_df(peak_coherences, headers2)
 
@@ -205,6 +208,7 @@ def openfield_speed(rc, out_dir):
                 "speed_lfp_table"
             ].to_dataframe()
             speed_df.loc[:, "Group"] = recording.attrs["treatment"].capitalize()
+            speed_df.loc[:, "RSC on target"] = recording.attrs["RSC on target"]
             speed_df.loc[:, "Condition"] = speed_df.loc[:, "Group"]
             dfs.append(speed_df)
         return pd.concat(dfs, ignore_index=True)

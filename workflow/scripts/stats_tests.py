@@ -125,8 +125,8 @@ def power_stats(input_path, overall_kwargs, get_obj):
             **{"value": f"retrospenial relative {name} powers (unitless)"},
         }
         res = mwu(
-            control_df[control_df["RSC_on_target"]][f"RSC {name} Rel"],
-            lesion_df[lesion_df["RSC_on_target"]][f"RSC {name} Rel"],
+            control_df[control_df["RSC on target"]][f"RSC {name} Rel"],
+            lesion_df[lesion_df["RSC on target"]][f"RSC {name} Rel"],
             t2_kwargs,
             do_plot=True,
         )
@@ -137,7 +137,7 @@ def coherence_stats(input_path, overall_kwargs, get_obj):
     get_obj.pt("Open field coherence")
     df, control_df, lesion_df = get_obj.get_df(input_path)
     df = df[df["RSC on target"]]
-    control_df = control_df[lesion_df["RSC on target"]]
+    control_df = control_df[control_df["RSC on target"]]
     lesion_df = lesion_df[lesion_df["RSC on target"]]
 
     t1_kwargs = {
@@ -183,8 +183,11 @@ def speed_stats(input_path, overall_kwargs, get_obj):
 
     for region, name in zip(["SUB", "RSC"], ["subicular", "retrospenial"]):
         if region == "RSC":
-            speed_ctrl = speed_ctrl[speed_ctrl["RSC on target"]]
-            speed_lesion = speed_lesion[speed_lesion["RSC on target"]]
+            speed_ctrl_df = speed_ctrl[speed_ctrl["RSC on target"]]
+            speed_lesion_df = speed_lesion[speed_lesion["RSC on target"]]
+        else:
+            speed_ctrl_df = speed_ctrl
+            speed_lesion_df = speed_lesion
         test_kwargs = {
             **overall_kwargs,
             **{
@@ -195,10 +198,11 @@ def speed_stats(input_path, overall_kwargs, get_obj):
                 "offset": 0,
             },
         }
-        speed_ctrl = speed_ctrl[speed_ctrl["region"] == region]
+        speed_ctrl_df = speed_ctrl_df[speed_ctrl_df["region"] == region]
+        print(speed_ctrl_df)
         res = corr(
-            speed_ctrl["speed"],
-            speed_ctrl["power"],
+            speed_ctrl_df["speed"],
+            speed_ctrl_df["power"],
             test_kwargs,
             do_plot=False,
         )
@@ -214,10 +218,10 @@ def speed_stats(input_path, overall_kwargs, get_obj):
                 "offset": 0,
             },
         }
-        speed_lesion = speed_lesion[speed_lesion["region"] == "SUB"]
+        speed_lesion_df = speed_lesion_df[speed_lesion_df["region"] == "SUB"]
         res = corr(
-            speed_lesion["speed"],
-            speed_lesion["power"],
+            speed_lesion_df["speed"],
+            speed_lesion_df["power"],
             test_kwargs,
             do_plot=False,
         )
@@ -229,11 +233,7 @@ def spike_lfp_stats(input_path, overall_kwargs, get_obj):
     df, control_df, lesion_df = get_obj.get_df(input_path)
     control_nspatial = control_df[control_df["Spatial"] == "Non-Spatial"]
     sub_control = control_nspatial[control_nspatial["Region"] == "SUB"]
-    rsc_control = control_nspatial[control_nspatial["Region"] == "RSC"]
     sub_lesion = lesion_df[lesion_df["Region"] == "SUB"]
-    rsc_lesion = lesion_df[lesion_df["Region"] == "RSC"]
-    rsc_control = rsc_control[rsc_control["RSC on target"]]
-    rsc_lesion = rsc_lesion[rsc_lesion["RSC on target"]]
 
     t1_kwargs = {
         **overall_kwargs,
@@ -249,21 +249,6 @@ def spike_lfp_stats(input_path, overall_kwargs, get_obj):
         do_plot=True,
     )
     get_obj.process_fig(res, "sub_sfc.pdf")
-
-    t2_kwargs = {
-        **overall_kwargs,
-        **{
-            "value": "retrospenial theta spike field coherence for non-spatially tuned cells (percent)"
-        },
-    }
-
-    res = mwu(
-        rsc_control["Peak Theta SFC"],
-        rsc_lesion["Peak Theta SFC"],
-        t2_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "rsc_sfc.pdf")
 
 
 def tmaze_stats(input_path, overall_kwargs, get_obj):
@@ -283,8 +268,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice[control_choice["RSC_on_target"]]["Peak Theta Coherence"],
-        lesion_choice[lesion_choice["RSC_on_target"]]["Peak Theta Coherence"],
+        control_choice[control_choice["RSC on target"]]["Peak Theta Coherence"],
+        lesion_choice[lesion_choice["RSC on target"]]["Peak Theta Coherence"],
         t1_kwargs,
         do_plot=True,
     )
@@ -317,8 +302,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice[control_choice["RSC_on_target"]]["Peak Theta Coherence"],
-        lesion_choice[lesion_choice["RSC_on_target"]]["Peak Theta Coherence"],
+        control_choice[control_choice["RSC on target"]]["Peak Theta Coherence"],
+        lesion_choice[lesion_choice["RSC on target"]]["Peak Theta Coherence"],
         t2_kwargs,
         do_plot=True,
     )
@@ -351,8 +336,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice1[control_choice1["RSC_on_target"]]["Peak Theta Coherence"],
-        control_choice2[control_choice2["RSC_on_target"]]["Peak Theta Coherence"],
+        control_choice1[control_choice1["RSC on target"]]["Peak Theta Coherence"],
+        control_choice2[control_choice2["RSC on target"]]["Peak Theta Coherence"],
         t3_kwargs,
         do_plot=True,
     )
@@ -372,8 +357,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        lesion_choice1[lesion_choice1["RSC_on_target"]]["Peak Theta Coherence"],
-        lesion_choice2[lesion_choice2["RSC_on target"]]["Peak Theta Coherence"],
+        lesion_choice1[lesion_choice1["RSC on target"]]["Peak Theta Coherence"],
+        lesion_choice2[lesion_choice2["RSC on target"]]["Peak Theta Coherence"],
         t4_kwargs,
         do_plot=True,
     )

@@ -240,6 +240,7 @@ def add_position_data_to_nwb(recording, nwbfile):
 def add_unit_data_to_nwb(recording, nwbfile):
     add_waveforms_and_times_to_nwb(recording, nwbfile)
     if recording.attrs.get("units", "default") == "default":
+        module_logger.info(f"{recording.source_file} has no unit information")
         return
     added = False
     for i, unit_info in enumerate(recording.data["units"]):
@@ -258,14 +259,16 @@ def add_unit_data_to_nwb(recording, nwbfile):
         for unit_no in all_units:
             nunit.set_unit_no(unit_no)
             timestamps = nunit.get_unit_stamp()
-            if len(timestamps) < 10:
+            tname = f"TT{unit_info.tag}_U{unit_no}"
+            if len(timestamps) < 3:
+                module_logger.warning("Low firing rate spike {tname} excluded")
                 continue
             mean_wave_res = nunit.wave_property()
             mean_wave = mean_wave_res["Mean wave"][:, mean_wave_res["Max channel"]]
             sd_wave = mean_wave_res["Std wave"][:, mean_wave_res["Max channel"]]
             nwbfile.add_unit(
                 spike_times=timestamps,
-                tname=f"TT{unit_info.tag}_U{unit_no}",
+                tname=tname,
                 waveform_mean=mean_wave,
                 waveform_sd=sd_wave,
                 electrode_group=nwbfile.get_electrode_group(group),
@@ -572,11 +575,8 @@ def convert_listed_data_to_nwb(
     overwrite=False,
 ):
     """These are processed in order of individual_tables"""
-    table = df_from_file(overall_datatable)
     config = smr.ParamHandler(source_file=config_path, name="params")
-    filter_ = smr.ParamHandler(source_file=data_fpath, name="filter")
-    out_name = "openfield_nwb.csv"
-    main(table, config, filter_, output_directory, out_name, overwrite=overwrite)
+    table = df_from_file(overall_datatable)
     for id_table_name in individual_tables:
         id_table = df_from_file(id_table_name)
         out_name = f"{Path(id_table_name).stem}_nwb.csv"
@@ -591,7 +591,11 @@ def convert_listed_data_to_nwb(
         )
         if "directory_x" in merged_df.columns:
             merged_df.drop("directory_x", axis=1, inplace=True)
-        main(merged_df, config, None, output_directory, out_name, overwrite)
+        main(merged_df, config, None, output_directory, out_name, True)
+
+    filter_ = smr.ParamHandler(source_file=data_fpath, name="filter")
+    out_name = "openfield_nwb.csv"
+    main(table, config, filter_, output_directory, out_name, overwrite=overwrite)
 
 
 if __name__ == "__main__":

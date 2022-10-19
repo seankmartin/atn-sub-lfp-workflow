@@ -209,7 +209,7 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
     headers = ["Peak Theta SFC", "Group", "Region", "RSC on target", "Spatial"]
     peak_df = list_to_df(peak_vals, headers=headers)
 
-    if sta_df["Group"].str.startswith("musc").any():
+    if sta_df["Group"].str.startswith("Musc").any():
         sta_df["Treatment"] = sta_df["Spatial"]
         sfc_df["Treatment"] = sfc_df["Spatial"]
         peak_df["Treatment"] = peak_df["Spatial"]

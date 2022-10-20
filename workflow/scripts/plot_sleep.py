@@ -1,4 +1,5 @@
 import pickle
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -20,10 +21,11 @@ def main(ripples_pkl, spindles_pkl, metadata_file, output_dir, config_path):
 def plot_ripples(ripples_data, output_dir, config, df):
     l = []
     for data in ripples_data:
-        filename, times, ratio_rest = data
+        filename, data = data
+        times, times_nrest, ratio_rest = data
         metadata = df[df["nwb_file"] == filename]
-        treatment = metadata["treatment"][0]
-        duration = metadata["duration"][0]
+        treatment = metadata["treatment"].values[0]
+        duration = metadata["duration"].values[0]
         l.append(
             [
                 treatment,
@@ -41,14 +43,14 @@ def plot_ripples(ripples_data, output_dir, config, df):
 
 def plot_spindles(spindles_data, ripples_data, output_dir, config, df):
     l = []
-    for i, (filename, sp) in enumerate(spindles_data):
-        ratio_rest = ripples_data[i][-1]
+    for i, (filename, sp_dict) in enumerate(spindles_data):
+        ratio_rest = ripples_data[i][-1][-1]
         metadata = df[df["nwb_file"] == filename]
-        treatment = metadata["treatment"][0]
-        duration = metadata["duration"][0]
-        for br, sp in sp[0].items():
-            num_spindles = len(sp) - sp["Start"].isna().sum()
-            l.append(treatment, br, 60 * num_spindles / ratio_rest * duration)
+        treatment = metadata["treatment"].values[0]
+        duration = metadata["duration"].values[0]
+        for br, sp in sp_dict.items():
+            num_spindles = 0 if sp is None else len(sp) - sp["Start"].isna().sum()
+            l.append([treatment, br, 60 * num_spindles / ratio_rest * duration])
     df = list_to_df(l, headers=["Treatment", "Region", "Spindles/min"])
     fig, ax = plt.subplots()
     smr.set_plot_style()
@@ -63,6 +65,7 @@ if __name__ == "__main__":
     main(
         snakemake.input[0],
         snakemake.input[1],
-        snakemake.output[0],
+        snakemake.input[2],
+        Path(snakemake.output[0]),
         snakemake.config["simuran_config"],
     )

@@ -35,8 +35,8 @@ def compute_pac(sub_signal, rsc_signal, out_path, fs=250):
         method="duprelatour",
         progress_bar=True,
         random_state=0,
-        n_jobs=3,
-        n_surrogates=200,
+        n_jobs=4,
+        n_surrogates=150,
     )
     fig, ax = plt.subplots(2, 1, figsize=(6, 4))
     estimator.fit(sub_signal, rsc_signal)

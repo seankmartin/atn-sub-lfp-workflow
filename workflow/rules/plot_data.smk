@@ -137,7 +137,9 @@ rule plot_sleep:
         "results/sleep/spindles.pkl",
         "results/every_processed_nwb.csv"
     output:
-        directory("results/plots/sleep")
+        directory("results/plots/sleep"),
+        "results/sleep/spindles.csv",
+        "results/sleep/ripples.csv",
     log:
         "logs/plot_sleep.log"
     conda:

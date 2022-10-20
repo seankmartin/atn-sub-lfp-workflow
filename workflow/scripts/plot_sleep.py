@@ -4,7 +4,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
 import simuran as smr
-from skm_pyutils.table import df_from_file, list_to_df
+from skm_pyutils.table import df_from_file, df_to_file, list_to_df
 
 
 def main(ripples_pkl, spindles_pkl, metadata_file, output_dir, config_path):
@@ -32,10 +32,11 @@ def plot_ripples(ripples_data, output_dir, config, df):
                 60 * len(times[0]) / (ratio_rest * duration),
             ]
         )
-    df = list_to_df(l, headers=["Treatment", "Ripples/min"])
+    df = list_to_df(l, headers=["Condition", "Ripples/min"])
+    df_to_file(df, output_dir.parent.parent / "sleep" / "ripples.csv")
     fig, ax = plt.subplots()
     smr.set_plot_style()
-    sns.barplot(data=df, x="Treatment", y="Ripples/min", ax=ax)
+    sns.barplot(data=df, x="Condition", y="Ripples/min", ax=ax)
     ax.set_title("Subicular sharp wave ripples in sleep")
     smr_fig = smr.SimuranFigure(fig, output_dir / "ripples", done=True)
     smr_fig.save()
@@ -50,11 +51,12 @@ def plot_spindles(spindles_data, ripples_data, output_dir, config, df):
         duration = metadata["duration"].values[0]
         for br, sp in sp_dict.items():
             num_spindles = 0 if sp is None else len(sp) - sp["Start"].isna().sum()
-            l.append([treatment, br, 60 * num_spindles / ratio_rest * duration])
-    df = list_to_df(l, headers=["Treatment", "Region", "Spindles/min"])
+            l.append([treatment, br, 60 * num_spindles / (ratio_rest * duration)])
+    df = list_to_df(l, headers=["Condition", "Region", "Spindles/min"])
+    df_to_file(df, output_dir.parent.parent / "sleep" / "spindles.csv")
     fig, ax = plt.subplots()
     smr.set_plot_style()
-    sns.barplot(data=df, x="Treatment", y="Spindles/min", hue="Region", ax=ax)
+    sns.barplot(data=df, x="Condition", y="Spindles/min", hue="Region", ax=ax)
     ax.set_title("Spindles in sleep")
     smr_fig = smr.SimuranFigure(fig, output_dir / "spindles", done=True)
     smr_fig.save()

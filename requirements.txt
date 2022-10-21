@@ -8,3 +8,4 @@ snakemake
 neurochat
 yasa
 scikit-image
+more-itertools

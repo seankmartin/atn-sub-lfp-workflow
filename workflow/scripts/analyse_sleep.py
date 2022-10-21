@@ -1,5 +1,6 @@
 import logging
 import pickle
+from math import floor
 from pathlib import Path
 
 import mne
@@ -7,13 +8,20 @@ import numpy as np
 import pandas as pd
 import simuran as smr
 import yasa
-from ripple_detection import Kay_ripple_detector, filter_ripple_band
+from ripple_detection import (
+    Karlsson_ripple_detector,
+    Kay_ripple_detector,
+    filter_ripple_band,
+)
+from scipy.signal import decimate
 from simuran.bridges.mne_bridge import convert_signals_to_mne
+from skm_pyutils.table import df_to_file, list_to_df
 from tqdm import tqdm
 
 from sleep_utils import (
     create_events,
     ensure_sleeping,
+    find_ranges,
     mark_rest,
     spindles_exclude_resting,
 )
@@ -21,7 +29,36 @@ from sleep_utils import (
 module_logger = logging.getLogger("simuran.custom.sleep_analysis")
 
 
-def main(input_path, out_dir, config):
+def main(input_path, out_dir, config, do_spindles=True, do_ripples=True):
+    config, rc = setup(input_path, out_dir, config)
+    all_spindles = []
+    all_ripples = []
+    for r in tqdm(rc.load_iter()):
+        if not ensure_sleeping(r):
+            module_logger.warning(f"Too much movement in {r.source_file} for sleep")
+            continue
+        module_logger.info(f"Processing {r.source_file} for spindles and ripples")
+        resting_array, ratio_resting, resting_groups = find_resting(r, config)
+        exit(-1)
+        # TODO update spindle and ripples control to use new time.
+        if do_spindles:
+            spindles, resting_array = spindle_control(r, resting_array, config)
+            all_spindles.append(
+                (r.source_file, spindles, ratio_resting, resting_groups)
+            )
+        if do_ripples:
+            ripple_times = ripple_control(r, resting_array, config)
+            all_ripples.append(
+                (r.source_file, ripple_times, ratio_resting, resting_groups)
+            )
+    if do_spindles:
+        do_spindles(out_dir, all_spindles)
+
+    if do_ripples:
+        save_ripples(out_dir, all_ripples)
+
+
+def setup(input_path, out_dir, config):
     config = smr.config_from_file(config)
     out_dir.mkdir(parents=True, exist_ok=True)
     df = pd.read_csv(input_path)
@@ -29,37 +66,35 @@ def main(input_path, out_dir, config):
     df[cols[2:]].loc[df[cols[2:]].sleep == 1]
     sleep = df.loc[df.sleep == 1]
     if len(sleep) == 0:
-        module_logger.error(f"no sleep recordings found in {input_path}")
-        return
+        raise FileNotFoundError(f"no sleep recordings found in {input_path}")
+
     loader = smr.loader("nwb")
     rc = smr.RecordingContainer.from_table(sleep, loader)
-    all_spindles = []
-    all_ripples = []
-    for r in tqdm(rc.load_iter()):
-        electrodes = r.data.electrodes.to_dataframe()
-        brain_regions = sorted(list(set(electrodes["location"])))
-        if "SUB" not in brain_regions:
-            module_logger.info(f"Skipping {r.source_file} due to no SUB signal")
-            continue
-        if not ensure_sleeping(r):
-            module_logger.warning(f"Too much movement in {r.source_file} for sleep")
-            continue
-        module_logger.info(f"Processing {r.source_file} for spindles and ripples")
-        spindles, resting_array = spindle_control(r, config)
-        ripple_times = ripple_control(r, resting_array)
-        all_spindles.append((r.source_file, spindles))
-        all_ripples.append((r.source_file, ripple_times))
+    return config, rc
+
+
+def do_spindles(out_dir, all_spindles):
     filename = out_dir / "spindles.pkl"
     with open(filename, "wb") as outfile:
         pickle.dump(all_spindles, outfile)
 
+
+def save_ripples(out_dir, all_ripples):
     filename = out_dir / "ripples.pkl"
     with open(filename, "wb") as outfile:
         pickle.dump(all_ripples, outfile)
 
+    l = []
+    for val in all_ripples.iteritems():
+        fname, ripple_times, ratio_resting, resting_groups = val
+        times, n_times = ripple_times
+        l.append([fname, times, n_times, ratio_resting, resting_groups])
+    headers = ["Filename", "Ripple Times", "Move Ripple Times", "Resting Ratio"]
+    df = list_to_df(l, headers=headers)
+    df_to_file(df, out_dir / "sleep" / "ripples.csv")
 
-def spindle_control(r, config):
-    resting_array = find_resting(r, config)
+
+def spindle_control(r, resting_array, config):
     use_avg = config["spindles_use_avg"]
     if use_avg:
         mne_array = convert_to_mne_avg(r, resting_array)
@@ -79,9 +114,22 @@ def find_resting(r, config):
     speed = nwbfile.processing["behavior"]["running_speed"].data[:]
     timestamps = nwbfile.processing["behavior"]["running_speed"].timestamps[:]
     speed_rate = np.mean(np.diff(timestamps))
-    sub_signal = nwbfile.processing["average_lfp"]["SUB_avg"].data[:]
-    sub_rate = nwbfile.processing["average_lfp"]["SUB_avg"].rate
-    return mark_rest(speed, sub_signal, sub_rate, speed_rate, **config)
+    brain_regions = nwbfile.electrodes.to_dataframe()["location"]
+    name = "SUB_avg" if "SUB" in brain_regions else "CA1_avg"
+    sub_signal = nwbfile.processing["average_lfp"][name].data[:]
+    sub_rate = nwbfile.processing["average_lfp"][name].rate
+
+    resting, resting_intervals = mark_rest(
+        speed, sub_signal, sub_rate, speed_rate, **config
+    )
+    ratio_resting = np.sum(resting) / len(resting)
+    if ratio_resting > 1:
+        raise RuntimeError(f"Incorrect resting amount {ratio_resting}")
+    resting_groups = find_ranges(resting, sub_rate)
+    print(ratio_resting)
+    print(resting_intervals)
+    print(resting)
+    return resting, ratio_resting, resting_groups
 
 
 def convert_to_mne(r, events):
@@ -146,22 +194,96 @@ def detect_spindles(mne_data):
     return sp_res
 
 
-def ripple_control(r, resting):
+def ripple_control(r, resting, config):
+    kay = config["kay_ripple_detector"]
+    use_first_two = config["use_first_two_for_ripples"]
+    ripple_detect = Kay_ripple_detector if kay else Karlsson_ripple_detector
+
     nwbfile = r.data
     lfp_egf = nwbfile.processing["high_rate_ecephys"]["LFP"]["ElectricalSeries"]
     lfp_rate = lfp_egf.rate
-    lfp_data = lfp_egf.data[:].T
+    lfp_data = lfp_egf.data
     brain_regions = nwbfile.electrodes.to_dataframe()["location"]
-    lfp_data_sub = np.array(
-        [lfp_data[i] for i in range(len(brain_regions)) if brain_regions[i] == "SUB"]
-    ).T
-    filtered_lfps = filter_ripple_band(lfp_data_sub)
-    time = [i / lfp_rate for i in range(filtered_lfps.shape[0])]
     speed = nwbfile.processing["behavior"]["running_speed"].data[:]
     timestamps = nwbfile.processing["behavior"]["running_speed"].timestamps[:]
     speed_rate = np.mean(np.diff(timestamps))
-    speed_long = np.repeat(speed, int(lfp_rate * speed_rate))
-    ripple_times = Kay_ripple_detector(
+    on_target = r.attrs["RSC on target"]
+    eeg_rate = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
+    desired_rate = config["lfp_ripple_rate"]
+    downsampling_factor = floor(lfp_rate / desired_rate)
+    new_rate = int(lfp_rate / downsampling_factor)
+    speed_long = np.repeat(speed, int(new_rate * speed_rate))
+    print(downsampling_factor)
+
+    return extract_lfp_data_and_do_ripples(
+        r,
+        use_first_two,
+        lfp_rate,
+        lfp_data,
+        brain_regions,
+        on_target,
+        downsampling_factor,
+        resting,
+        ripple_detect,
+        speed_long,
+        eeg_rate,
+    )
+
+
+def extract_lfp_data_and_do_ripples(
+    r,
+    use_first_two,
+    lfp_rate,
+    lfp_data,
+    brain_regions,
+    on_target,
+    downsampling_factor,
+    resting,
+    ripple_detect,
+    speed_long,
+    eeg_rate,
+):
+    time = None
+    final_dict = {}
+    for brain_region in brain_regions:
+        if (brain_region == "RSC") and (not on_target):
+            continue
+        brain_region_indices = [
+            i for i in range(len(brain_regions)) if brain_regions[i] == brain_region
+        ]
+        indices_to_use = (
+            brain_region_indices[:2] if use_first_two else brain_region_indices
+        )
+        lfp_data_sub = lfp_data[:, indices_to_use].T
+        print(lfp_data_sub.shape)
+        if downsampling_factor != 1:
+            lfp_data_sub = decimate(
+                lfp_data_sub, downsampling_factor, zero_phase=True, axis=-1
+            )
+        print(lfp_data_sub.shape)
+        print(r.attrs["duration"])
+
+        filtered_lfps = filter_ripple_band(lfp_data_sub)
+        if time is None:
+            time = [i / lfp_rate for i in range(filtered_lfps.shape[0])]
+
+        res = ripples(
+            resting,
+            ripple_detect,
+            lfp_rate,
+            speed_long,
+            eeg_rate,
+            filtered_lfps,
+            time,
+        )
+        final_dict[brain_region] = res
+    return final_dict
+
+
+def ripples(
+    resting, ripple_detect, lfp_rate, speed_long, eeg_rate, filtered_lfps, time
+):
+    ripple_times = ripple_detect(
         time,
         filtered_lfps,
         speed_long,
@@ -172,7 +294,6 @@ def ripple_control(r, resting):
         smoothing_sigma=0.004,
         close_ripple_threshold=0.1,
     )
-    eeg_rate = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
     final_times, non_times = [], []
     for _, row in ripple_times.iterrows():
         t_start = int(row["start_time"] * eeg_rate)
@@ -182,8 +303,7 @@ def ripple_control(r, resting):
         else:
             non_times.append((row["start_time"], row["end_time"]))
 
-    ratio_resting = np.sum(resting) / len(speed)
-    return final_times, non_times, ratio_resting
+    return final_times, non_times
 
 
 if __name__ == "__main__":
@@ -204,6 +324,6 @@ if __name__ == "__main__":
     else:
         here = Path(__file__).parent.parent.parent
         input_path = here / "results" / "every_processed_nwb.csv"
-        out_dir = here / "sleep"
+        out_dir = here / "results" / "sleep"
         config_path = here / "config" / "simuran_params.yml"
         main(input_path, out_dir, config_path)

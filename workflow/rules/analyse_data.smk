@@ -79,6 +79,8 @@ rule hypothesis_tests:
         "results/summary/openfield_peak_sfc.csv",
         "results/tmaze/results.csv",
         "results/summary/muscimol_peak_sfc.csv",
+        "results/sleep/spindles.csv",
+        "results/sleep/ripples.csv"
     output:
         directory("results/plots/stats"),
         "results/stats_output.txt"

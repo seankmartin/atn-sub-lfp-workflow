@@ -1,9 +1,12 @@
+import logging
+
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
-import pandas as pd
 import simuran as smr
 from simuran.bridges.neurochat_bridge import signal_to_neurochat
+
+module_logger = logging.getLogger("simuran.custom.sleep_analysis")
 
 
 def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwargs):
@@ -36,7 +39,30 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
         # running speed < 2.5cm/s , and theta/delta power ratio < 2
         if sum(moving[i : i + window]) == 0 and bp < 2:
             result[i : i + window] = 1
-    return result
+
+    intervaled = find_ranges(result, lfp_rate)
+    print(intervaled)
+    module_logger.debug(f"Resting ranges {intervaled}")
+
+    old_len = len(intervaled)
+    new_intervals = combine_intervals(intervaled, tol=2)
+    new_len = len(new_intervals)
+    while new_len != old_len:
+        old_len = len(new_intervals)
+        new_intervals = combine_intervals(new_intervals, tol=2)
+        new_len = len(new_intervals)
+
+    module_logger.debug(f"Combined resting ranges to {new_intervals}")
+    return result, new_intervals
+
+
+# TODO fix this combination
+def combine_intervals(intervaled, tol=2):
+    return [
+        (val[0], intervaled[i + 1][-1])
+        for i, val in enumerate(intervaled[:-1])
+        if (intervaled[i + 1][0] - val[-1]) < tol
+    ]
 
 
 def create_events(record, events):
@@ -114,3 +140,17 @@ def ensure_sleeping(recording):
     speed = nwbfile.processing["behavior"]["running_speed"].data[:]
     num_moving = np.count_nonzero(speed > 2.5)
     return (num_moving / len(speed)) < 0.25
+
+
+def find_ranges(resting, srate):
+    resting_times = []
+    in_rest = False
+    for i, val in enumerate(resting):
+        if val and not in_rest:
+            in_rest = True
+            rest_start = i / srate
+        elif not val and in_rest:
+            in_rest = False
+            rest_end = (i - 1) / srate
+            resting_times.append((rest_start, rest_end))
+    return resting_times

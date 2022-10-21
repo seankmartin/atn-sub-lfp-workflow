@@ -44,3 +44,6 @@ max_lfp_lengths:
   end: 10
 tmaze_lfp_len: 6
 spindles_use_avg: True
+kay_ripple_detector: True
+use_first_two_for_ripples: False
+lfp_ripple_rate: 600

@@ -1,4 +1,3 @@
-import csv
 import os
 from pathlib import Path
 
@@ -12,8 +11,6 @@ from simuran.bridges.neurochat_bridge import signal_to_neurochat
 
 from frequency_analysis import calculate_psd
 from lfp_clean import LFPAverageCombiner, NCSignalSeries
-
-os.chdir(r"E:\Repos\atn-sub-lfp-workflow")
 
 
 def setup_signals():
@@ -272,7 +269,7 @@ def visualise(out_dir, config):
 
     peaks = fg.get_params("peak_params", 0)[:, 0]
 
-    peaks_data = [[p, "Control", "CA1"] for p in peaks]
+    peaks_data = [[p, "Lesion", "CA1"] for p in peaks]
     peaks_df = pd.DataFrame.from_records(
         peaks_data, columns=["Peak frequency", "Group", "Region"]
     )
@@ -282,6 +279,9 @@ def visualise(out_dir, config):
         data=peaks_df,
         x="Peak frequency",
         ax=ax,
+        hue="Group",
+        multiple="stack",
+        binwidth=1,
     )
     simuran.despine()
     out_name = os.path.join(out_dir, "ca1_peaks_fooof.pdf")
@@ -290,15 +290,9 @@ def visualise(out_dir, config):
 
 
 if __name__ == "__main__":
-    try:
-        simuran.set_only_log_to_file(snakemake.log[0])
-        main(
-            snakemake.config["ca1_directory"],
-            snakemake.output[0],
-            snakemake.config["simuran_config"],
-        )
-    except Exception:
-        input_dir = r"H:\ATN_CA1"
-        output_dir = "results\ca1_analysis"
-        config_loc = r"config\simuran_params.yml"
-        main(input_dir, output_dir, config_loc)
+    simuran.set_only_log_to_file(snakemake.log[0])
+    main(
+        snakemake.config["ca1_directory"],
+        snakemake.output[0],
+        snakemake.config["simuran_config"],
+    )

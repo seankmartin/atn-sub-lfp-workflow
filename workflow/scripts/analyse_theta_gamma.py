@@ -18,12 +18,13 @@ def main(input_, output_dir, config_path):
             continue
         r = rc.load(i)
         nwbfile = r.data
-        average_signal = nwbfile.processing["average_lfp"]
-        sub_signal = average_signal["SUB_avg"].data[:]
-        rsc_signal = average_signal["RSC_avg"].data[:]
         name = r.get_name_for_save()
         out_path = output_dir / f"{name}.png"
-        compute_pac(sub_signal, rsc_signal, out_path, 250)
+        if not out_path.is_file():
+            average_signal = nwbfile.processing["average_lfp"]
+            sub_signal = average_signal["SUB_avg"].data[:]
+            rsc_signal = average_signal["RSC_avg"].data[:]
+            compute_pac(sub_signal, rsc_signal, out_path, 250)
 
 
 def compute_pac(sub_signal, rsc_signal, out_path, fs=250):
@@ -56,15 +57,22 @@ def compute_pac(sub_signal, rsc_signal, out_path, fs=250):
 
 if __name__ == "__main__":
     try:
+        snakemake
+    except Exception:
+        use_snakemake = False
+    else:
+        use_snakemake = True
+
+    if use_snakemake:
         smr.set_only_log_to_file(snakemake.log[0])
         main(
             snakemake.input[0],
-            Path(snakemake.output[0]).parent,
+            Path(snakemake.output[0]),
             snakemake.config["simuran_config"],
         )
-    except Exception:
-        here = Path(__file__).parent.parent
+    else:
+        here = Path(__file__).parent.parent.parent
         input_path = here / "results" / "openfield_processed.csv"
         output_dir = here / "results" / "plots" / "theta_gamma"
-        config_path = here.parent / "config" / "simuran_params.yml"
+        config_path = here / "config" / "simuran_params.yml"
         main(input_path, output_dir, config_path)

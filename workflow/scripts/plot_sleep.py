@@ -20,25 +20,27 @@ def main(ripples_pkl, spindles_pkl, metadata_file, output_dir, config_path):
 
 def plot_ripples(ripples_data, output_dir, config, df):
     l = []
-    for data in ripples_data:
-        filename, data = data
-        times, times_nrest, ratio_rest = data
-        metadata = df[df["nwb_file"] == filename]
-        treatment = metadata["treatment"].values[0]
-        duration = metadata["duration"].values[0]
-        l.append(
-            [
-                filename,
-                treatment,
-                60 * len(times[0]) / (ratio_rest * duration),
-            ]
-        )
-    df = list_to_df(l, headers=["Filename", "Condition", "Ripples/min"])
+    for full_data in ripples_data:
+        filename, all_data = full_data
+        for brain_region, data in all_data.items():
+            times, times_nrest, ratio_rest = data
+            metadata = df[df["nwb_file"] == filename]
+            treatment = metadata["treatment"].values[0]
+            duration = metadata["duration"].values[0]
+            l.append(
+                [
+                    filename,
+                    treatment,
+                    brain_region,
+                    60 * len(times) / (ratio_rest * duration),
+                ]
+            )
+    df = list_to_df(l, headers=["Filename", "Condition", "Brain Region", "Ripples/min"])
     df_to_file(df, output_dir.parent.parent / "sleep" / "ripples.csv")
     fig, ax = plt.subplots()
     smr.set_plot_style()
-    sns.barplot(data=df, x="Condition", y="Ripples/min", ax=ax)
-    ax.set_title("Subicular sharp wave ripples in sleep")
+    sns.barplot(data=df, x="Condition", y="Ripples/min", hue="Brain Region", ax=ax)
+    ax.set_title("Sharp wave ripples in sleep")
     smr_fig = smr.SimuranFigure(fig, output_dir / "ripples", done=True)
     smr_fig.save()
 
@@ -46,7 +48,7 @@ def plot_ripples(ripples_data, output_dir, config, df):
 def plot_spindles(spindles_data, ripples_data, output_dir, config, df):
     l = []
     for i, (filename, sp_dict) in enumerate(spindles_data):
-        ratio_rest = ripples_data[i][-1][-1]
+        ratio_rest = ripples_data[i][-1]["SUB"][-1]
         metadata = df[df["nwb_file"] == filename]
         treatment = metadata["treatment"].values[0]
         duration = metadata["duration"].values[0]
@@ -55,22 +57,40 @@ def plot_spindles(spindles_data, ripples_data, output_dir, config, df):
             l.append(
                 [filename, treatment, br, 60 * num_spindles / (ratio_rest * duration)]
             )
-    df = list_to_df(l, headers=["Filename", "Condition", "Region", "Spindles/min"])
+    df = list_to_df(
+        l, headers=["Filename", "Condition", "Brain Region", "Spindles/min"]
+    )
     df_to_file(df, output_dir.parent.parent / "sleep" / "spindles.csv")
     fig, ax = plt.subplots()
     smr.set_plot_style()
-    sns.barplot(data=df, x="Condition", y="Spindles/min", hue="Region", ax=ax)
+    sns.barplot(data=df, x="Condition", y="Spindles/min", hue="Brain Region", ax=ax)
     ax.set_title("Spindles in sleep")
     smr_fig = smr.SimuranFigure(fig, output_dir / "spindles", done=True)
     smr_fig.save()
 
 
 if __name__ == "__main__":
-    smr.set_only_log_to_file(snakemake.log[0])
-    main(
-        snakemake.input[0],
-        snakemake.input[1],
-        snakemake.input[2],
-        Path(snakemake.output[0]),
-        snakemake.config["simuran_config"],
-    )
+    try:
+        snakemake
+    except Exception:
+        use_snakemake = False
+    else:
+        use_snakemake = True
+    if use_snakemake:
+        smr.set_only_log_to_file(snakemake.log[0])
+        main(
+            snakemake.input[0],
+            snakemake.input[1],
+            snakemake.input[2],
+            Path(snakemake.output[0]),
+            snakemake.config["simuran_config"],
+        )
+    else:
+        here = Path(__file__).parent.parent.parent
+        main(
+            here / "results" / "sleep" / "ripples.pkl",
+            here / "results" / "sleep" / "spindles.pkl",
+            here / "results" / "every_processed_nwb.csv",
+            here / "results" / "plots" / "sleep",
+            here / "config" / "simuran_params.yml",
+        )

@@ -402,6 +402,13 @@ def muscimol_stats(input_path, overall_kwargs, get_obj):
     get_obj.process_fig(res, "rsc_sfc_musc.pdf")
 
 
+def sleep_stats(spindles_path, ripples_path, overall_kwargs, get_obj):
+    get_obj.pt("Sleep")
+    df, control_df, lesion_df = get_obj.get_df(input_path)
+
+    # TODO need ANOVA / bonferonni correction
+
+
 def main(input_paths, plot_dir, output_file, show_quartiles=False):
     overall_kwargs_ttest = {
         "show_quartiles": show_quartiles,
@@ -437,6 +444,9 @@ def main(input_paths, plot_dir, output_file, show_quartiles=False):
 
     # 7. Muscimol stats
     muscimol_stats(input_paths[5], overall_kwargs_musc, get_obj)
+
+    # 8. Sleep ripples and spindles
+    sleep_stats(input_paths[6], input_paths[7], overall_kwargs_ttest, get_obj)
 
     get_obj.to_file(output_file)
 

@@ -41,17 +41,29 @@ def main(input_path, out_dir, config, do_spindles=True, do_ripples=True):
         if do_spindles:
             spindles = spindle_control(r, resting_groups, config)
             all_spindles.append(
-                (r.source_file, spindles, ratio_resting, resting_groups)
+                (
+                    r.source_file,
+                    spindles,
+                    ratio_resting,
+                    resting_groups,
+                    r.attrs["duration"],
+                )
             )
         if do_ripples:
             ripple_times = ripple_control(r, resting_array, config)
             all_ripples.append(
-                (r.source_file, ripple_times, ratio_resting, resting_groups)
+                (
+                    r.source_file,
+                    ripple_times,
+                    ratio_resting,
+                    resting_groups,
+                    r.attrs["duration"],
+                )
             )
             # TODO temp
             break
     if do_spindles:
-        do_spindles(out_dir, all_spindles)
+        save_spindles(out_dir, all_spindles)
 
     if do_ripples:
         save_ripples(out_dir, all_ripples)
@@ -72,10 +84,45 @@ def setup(input_path, out_dir, config):
     return config, rc
 
 
-def do_spindles(out_dir, all_spindles):
+def save_spindles(out_dir, all_spindles):
     filename = out_dir / "spindles.pkl"
     with open(filename, "wb") as outfile:
         pickle.dump(all_spindles, outfile)
+    l = []
+    for spindles in all_spindles:
+        source_file, sp_dict, ratio_resting, resting_group, duration = spindles
+        for k, v in sp_dict.items():
+            num_spindles = 0 if v is None else len(v) - v["Start"].isna().sum()
+            if num_spindles != 0:
+                spindle_times = [
+                    (v["Start"][i], v["End"][i])
+                    for i in range(len(v))
+                    if not np.innan(v["Start"][i])
+                ]
+            else:
+                spindle_times = []
+            l.append(
+                [
+                    source_file,
+                    ratio_resting,
+                    resting_group,
+                    k,
+                    spindle_times,
+                    num_spindles,
+                    60 * num_spindles / (ratio_resting * duration),
+                ]
+            )
+    headers = [
+        "Filename",
+        "Resting Ratio",
+        "Resting Times",
+        "Brain Region",
+        "Spindle Times",
+        "Number of Spindles",
+        "Spindles per Minute",
+    ]
+    df = list_to_df(l, headers=headers)
+    df_to_file(df, out_dir / "sleep" / "spindles.csv")
 
 
 def save_ripples(out_dir, all_ripples):
@@ -85,7 +132,7 @@ def save_ripples(out_dir, all_ripples):
 
     l = []
     for val in all_ripples:
-        fname, ripple_times, ratio_resting, resting_groups = val
+        fname, ripple_times, ratio_resting, resting_groups, duration = val
         for k, v in ripple_times.iteritems():
             times, n_times = v
             detector, brain_region = k.split("_")
@@ -98,6 +145,9 @@ def save_ripples(out_dir, all_ripples):
                     resting_groups,
                     detector,
                     brain_region,
+                    len(times),
+                    len(n_times),
+                    60 * len(times) / (ratio_resting * duration),
                 ]
             )
     headers = [
@@ -105,8 +155,12 @@ def save_ripples(out_dir, all_ripples):
         "Ripple Times",
         "Move Ripple Times",
         "Resting Ratio",
+        "Resting Times",
         "Detector",
         "Brain Region",
+        "Number of Ripples",
+        "Number of Non-rest Ripples",
+        "Ripples per Minute",
     ]
     df = list_to_df(l, headers=headers)
     df_to_file(df, out_dir / "sleep" / "ripples.csv")

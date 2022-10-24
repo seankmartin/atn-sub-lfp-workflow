@@ -9,6 +9,7 @@ import simuran
 from simuran.loaders.neurochat_loader import NCLoader
 from skm_pyutils.table import df_to_file
 
+
 def main(path_to_files: str, output_path: str) -> None:
     loader = NCLoader(system="Axona", pos_extension=".pos")
     df = loader.index_files(path_to_files)
@@ -413,5 +414,14 @@ def clean_data(df, **kwargs):
 
 
 if __name__ == "__main__":
-    simuran.set_only_log_to_file(snakemake.log[0])
-    main(snakemake.config["data_directory"], snakemake.output[0])
+    try:
+        snakemake
+    except Exception:
+        use_snakemake = False
+    else:
+        use_snakemake = True
+    if use_snakemake:
+        simuran.set_only_log_to_file(snakemake.log[0])
+        main(snakemake.config["data_directory"], snakemake.output[0])
+    else:
+        main(r"H:\SubRet_recordings_imaging", r"results\axona_file_index.csv")

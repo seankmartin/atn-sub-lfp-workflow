@@ -21,6 +21,7 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     """
     theta_min, theta_max = kwargs["theta_min"], kwargs["theta_max"]
     delta_min, delta_max = kwargs["delta_min"], kwargs["delta_max"]
+    min_sleep_length = kwargs["min_sleep_length"]
 
     lfp_samples_per_speed = int(lfp_rate / speed_rate)
     moving = np.zeros(int(len(speed) * lfp_samples_per_speed))
@@ -41,7 +42,6 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
             result[i : i + window] = 1
 
     intervaled = find_ranges(result, lfp_rate)
-    print(intervaled)
     module_logger.debug(f"Resting ranges {intervaled}")
 
     old_len = len(intervaled)
@@ -53,16 +53,32 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
         new_len = len(new_intervals)
 
     module_logger.debug(f"Combined resting ranges to {new_intervals}")
-    return result, new_intervals
 
-
-# TODO fix this combination
-def combine_intervals(intervaled, tol=2):
-    return [
-        (val[0], intervaled[i + 1][-1])
-        for i, val in enumerate(intervaled[:-1])
-        if (intervaled[i + 1][0] - val[-1]) < tol
+    final_intervals = [
+        val for val in new_intervals if val[-1] - val[0] > min_sleep_length
     ]
+
+    module_logger.debug(f"Removed short intervals to {final_intervals}")
+
+    return result, final_intervals
+
+
+def combine_intervals(intervaled, tol=2):
+    intervals = []
+    i = 0
+    while i < (len(intervaled) - 1):
+        val = intervaled[i]
+        if (intervaled[i + 1][0] - val[-1]) < tol:
+            intervals.append((val[0], intervaled[i + 1][-1]))
+            i += 2
+        else:
+            intervals.append(val)
+            i += 1
+
+    if intervals[-1][-1] != intervaled[-1][-1]:
+        intervals.append(intervaled[-1])
+
+    return intervals
 
 
 def create_events(record, events):
@@ -92,19 +108,18 @@ def mark_movement(speed, mne_array):
     return create_events(mne_array, events)
 
 
-def spindles_exclude_resting(spindles_df, resting, mne_data):
+def spindles_exclude_resting(spindles_df, resting):
     for channel in spindles_df.Channel.unique():
         sp_times = spindles_df.loc[spindles_df.Channel == channel][
             ["Start", "End"]
         ].values
-        for time in sp_times:
-            start_idx = int(time[0] * mne_data.info["sfreq"])
-            end_idx = int(time[1] * mne_data.info["sfreq"])
-            if not np.all(resting[start_idx:end_idx]):
+        for t in sp_times:
+            use_this_time = any(((t[0] >= r[0]) and (t[0] <= r[1]) for r in resting))
+            if not use_this_time:
                 spindles_df[
                     (spindles_df.Channel == channel)
-                    & (spindles_df.Start == time[0])
-                    & (spindles_df.End == time[1])
+                    & (spindles_df.Start == t[0])
+                    & (spindles_df.End == t[1])
                 ] = np.nan
     return spindles_df
 

@@ -21,9 +21,9 @@ def main(ripples_pkl, spindles_pkl, metadata_file, output_dir, config_path):
 def plot_ripples(ripples_data, output_dir, config, df):
     l = []
     for full_data in ripples_data:
-        filename, all_data = full_data
+        filename, all_data, ratio_rest, resting_groups, duration = full_data
         for brain_region, data in all_data.items():
-            times, times_nrest, ratio_rest = data
+            times, times_nrest = data
             metadata = df[df["nwb_file"] == filename]
             treatment = metadata["treatment"].values[0]
             duration = metadata["duration"].values[0]
@@ -36,7 +36,7 @@ def plot_ripples(ripples_data, output_dir, config, df):
                 ]
             )
     df = list_to_df(l, headers=["Filename", "Condition", "Brain Region", "Ripples/min"])
-    df_to_file(df, output_dir.parent.parent / "sleep" / "ripples.csv")
+    df_to_file(df, output_dir.parent.parent / "sleep" / "ripples2.csv")
     fig, ax = plt.subplots()
     smr.set_plot_style()
     sns.barplot(data=df, x="Condition", y="Ripples/min", hue="Brain Region", ax=ax)
@@ -47,8 +47,8 @@ def plot_ripples(ripples_data, output_dir, config, df):
 
 def plot_spindles(spindles_data, ripples_data, output_dir, config, df):
     l = []
-    for i, (filename, sp_dict) in enumerate(spindles_data):
-        ratio_rest = ripples_data[i][-1]["SUB"][-1]
+    for spindles in spindles_data:
+        filename, sp_dict, ratio_rest, resting_group, duration = spindles
         metadata = df[df["nwb_file"] == filename]
         treatment = metadata["treatment"].values[0]
         duration = metadata["duration"].values[0]
@@ -60,7 +60,7 @@ def plot_spindles(spindles_data, ripples_data, output_dir, config, df):
     df = list_to_df(
         l, headers=["Filename", "Condition", "Brain Region", "Spindles/min"]
     )
-    df_to_file(df, output_dir.parent.parent / "sleep" / "spindles.csv")
+    df_to_file(df, output_dir.parent.parent / "sleep" / "spindles2.csv")
     fig, ax = plt.subplots()
     smr.set_plot_style()
     sns.barplot(data=df, x="Condition", y="Spindles/min", hue="Brain Region", ax=ax)

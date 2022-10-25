@@ -55,7 +55,7 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     module_logger.debug(f"Combined resting ranges to {new_intervals}")
 
     final_intervals = [
-        val for val in new_intervals if val[-1] - val[0] > min_sleep_length
+        val for val in new_intervals if (val[-1] - val[0]) > min_sleep_length
     ]
 
     module_logger.debug(f"Removed short intervals to {final_intervals}")
@@ -74,6 +74,9 @@ def combine_intervals(intervaled, tol=2):
         else:
             intervals.append(val)
             i += 1
+
+    if len(intervals) == 0:
+        intervals.append(intervaled[-1])
 
     if intervals[-1][-1] != intervaled[-1][-1]:
         intervals.append(intervaled[-1])
@@ -149,7 +152,7 @@ def ensure_sleeping(recording):
     nwbfile = recording.data
     speed = nwbfile.processing["behavior"]["running_speed"].data[:]
     num_moving = np.count_nonzero(speed > 2.5)
-    return (num_moving / len(speed)) < 0.25
+    return (num_moving / len(speed)) < 0.5
 
 
 def find_ranges(resting, srate):

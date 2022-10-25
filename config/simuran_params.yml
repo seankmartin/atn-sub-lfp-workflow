@@ -45,5 +45,6 @@ max_lfp_lengths:
 tmaze_lfp_len: 6
 spindles_use_avg: True
 use_first_two_for_ripples: True
-lfp_ripple_rate: 600
+lfp_ripple_rate: 800
 min_sleep_length: 20
+only_karlsson_detect: True

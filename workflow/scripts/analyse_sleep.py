@@ -33,6 +33,9 @@ def main(input_path, out_dir, config, do_spindles=True, do_ripples=True):
         if not ensure_sleeping(r):
             module_logger.warning(f"Too much movement in {r.source_file} for sleep")
             continue
+        if "awake" in r.source_file:
+            module_logger.warning(f"Not processing awake sleep")
+            continue
         module_logger.info(f"Processing {r.source_file} for spindles and ripples")
         ratio_resting, resting_groups = find_resting(r, config)
         if do_spindles:
@@ -252,7 +255,7 @@ def detect_spindles(mne_data):
             mne_data_br,
             thresh={"rel_pow": 0.2, "corr": 0.65, "rms": 2.5},
             freq_sp=(12, 15),
-            verbose="error",
+            verbose=False,
             multi_only=True,
         )
         sp_res[brain_region] = sp
@@ -326,6 +329,12 @@ def extract_lfp_data_and_do_ripples(
                 brain_region_indices[:2] if use_first_two else brain_region_indices
             )
             lfp_data_sub = lfp_data[:, indices_to_use].T
+            if np.all(np.isclose(lfp_data_sub, 0.0)):
+                if len(brain_region_indices) == 2:
+                    logging.warning(f"{brain_region} has no data")
+                    continue
+                indices_to_use = brain_region_indices[2:4]
+                lfp_data_sub = lfp_data[:, indices_to_use].T
             filtered_lfps = filter_ripple_band(lfp_data_sub, lfp_rate).T
 
             if downsampling_factor != 1:

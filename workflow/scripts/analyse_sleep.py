@@ -281,6 +281,7 @@ def ripple_control(r, resting, config):
 
     return extract_lfp_data_and_do_ripples(
         use_first_two,
+        lfp_rate,
         new_rate,
         lfp_data,
         brain_regions,
@@ -295,6 +296,7 @@ def ripple_control(r, resting, config):
 def extract_lfp_data_and_do_ripples(
     use_first_two,
     lfp_rate,
+    new_rate,
     lfp_data,
     brain_regions,
     on_target,
@@ -316,19 +318,19 @@ def extract_lfp_data_and_do_ripples(
                 brain_region_indices[:2] if use_first_two else brain_region_indices
             )
             lfp_data_sub = lfp_data[:, indices_to_use].T
-            if downsampling_factor != 1:
-                lfp_data_sub = decimate(
-                    lfp_data_sub, downsampling_factor, zero_phase=True, axis=-1
-                )
-
             filtered_lfps = filter_ripple_band(lfp_data_sub, lfp_rate).T
+
+            if downsampling_factor != 1:
+                filtered_lfps = decimate(
+                    filtered_lfps, downsampling_factor, zero_phase=True, axis=0
+                )
             if time is None:
-                time = [i / lfp_rate for i in range(filtered_lfps.shape[0])]
+                time = [i / new_rate for i in range(filtered_lfps.shape[0])]
 
             res = ripples(
                 resting,
                 ripple_detect,
-                lfp_rate,
+                new_rate,
                 speed_long,
                 filtered_lfps,
                 time,

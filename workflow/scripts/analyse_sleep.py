@@ -8,11 +8,7 @@ import numpy as np
 import pandas as pd
 import simuran as smr
 import yasa
-from ripple_detection import (
-    Karlsson_ripple_detector,
-    Kay_ripple_detector,
-    filter_ripple_band,
-)
+from ripple_detection import Karlsson_ripple_detector, Kay_ripple_detector
 from scipy.signal import decimate
 from simuran.bridges.mne_bridge import convert_signals_to_mne
 from skm_pyutils.table import df_to_file, list_to_df
@@ -21,6 +17,7 @@ from tqdm import tqdm
 from sleep_utils import (
     create_events,
     ensure_sleeping,
+    filter_ripple_band,
     mark_rest,
     spindles_exclude_resting,
 )
@@ -37,7 +34,7 @@ def main(input_path, out_dir, config, do_spindles=True, do_ripples=True):
             module_logger.warning(f"Too much movement in {r.source_file} for sleep")
             continue
         module_logger.info(f"Processing {r.source_file} for spindles and ripples")
-        resting_array, ratio_resting, resting_groups = find_resting(r, config)
+        ratio_resting, resting_groups = find_resting(r, config)
         if do_spindles:
             spindles = spindle_control(r, resting_groups, config)
             all_spindles.append(
@@ -49,8 +46,10 @@ def main(input_path, out_dir, config, do_spindles=True, do_ripples=True):
                     r.attrs["duration"],
                 )
             )
+            # TODO temp
+            break
         if do_ripples:
-            ripple_times = ripple_control(r, resting_array, config)
+            ripple_times = ripple_control(r, resting_groups, config)
             all_ripples.append(
                 (
                     r.source_file,
@@ -97,7 +96,7 @@ def save_spindles(out_dir, all_spindles):
                 spindle_times = [
                     (v["Start"][i], v["End"][i])
                     for i in range(len(v))
-                    if not np.innan(v["Start"][i])
+                    if not np.isnan(v["Start"][i])
                 ]
             else:
                 spindle_times = []
@@ -122,7 +121,7 @@ def save_spindles(out_dir, all_spindles):
         "Spindles per Minute",
     ]
     df = list_to_df(l, headers=headers)
-    df_to_file(df, out_dir / "sleep" / "spindles.csv")
+    df_to_file(df, out_dir / "spindles.csv")
 
 
 def save_ripples(out_dir, all_ripples):
@@ -133,7 +132,7 @@ def save_ripples(out_dir, all_ripples):
     l = []
     for val in all_ripples:
         fname, ripple_times, ratio_resting, resting_groups, duration = val
-        for k, v in ripple_times.iteritems():
+        for k, v in ripple_times.items():
             times, n_times = v
             detector, brain_region = k.split("_")
             l.append(
@@ -163,7 +162,7 @@ def save_ripples(out_dir, all_ripples):
         "Ripples per Minute",
     ]
     df = list_to_df(l, headers=headers)
-    df_to_file(df, out_dir / "sleep" / "ripples.csv")
+    df_to_file(df, out_dir / "ripples.csv")
 
 
 def spindle_control(r, resting_array, config):
@@ -189,13 +188,13 @@ def find_resting(r, config):
     sub_signal = nwbfile.processing["average_lfp"][name].data[:]
     sub_rate = nwbfile.processing["average_lfp"][name].rate
 
-    resting, resting_intervals = mark_rest(
-        speed, sub_signal, sub_rate, speed_rate, **config
-    )
-    ratio_resting = np.sum(resting) / len(resting)
+    resting_intervals = mark_rest(speed, sub_signal, sub_rate, speed_rate, **config)
+    duration = timestamps[-1]
+    resting_bits = sum((r[1] - r[0] for r in resting_intervals))
+    ratio_resting = resting_bits / duration
     if ratio_resting > 1:
         raise RuntimeError(f"Incorrect resting amount {ratio_resting}")
-    return resting, ratio_resting, resting_intervals
+    return ratio_resting, resting_intervals
 
 
 def convert_to_mne(r, events):
@@ -247,8 +246,7 @@ def detect_spindles(mne_data):
     sp_res = {}
     for brain_region in brain_regions:
         chans = mne.pick_channels_regexp(mne_data.info["ch_names"], f"^{brain_region}")
-        ch_to_use = [mne_data.info["ch_names"][ch] for ch in chans]
-        mne_data_br = mne_data.pick_channels(ch_to_use, ordered=True)
+        mne_data_br = mne_data.copy().pick(chans)
         sp = yasa.spindles_detect(
             mne_data_br,
             thresh={"rel_pow": 0.2, "corr": 0.65, "rms": 2.5},
@@ -273,17 +271,17 @@ def ripple_control(r, resting, config):
     timestamps = nwbfile.processing["behavior"]["running_speed"].timestamps[:]
     speed_rate = np.mean(np.diff(timestamps))
     on_target = r.attrs["RSC on target"]
-    eeg_rate = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
     desired_rate = config["lfp_ripple_rate"]
     downsampling_factor = floor(lfp_rate / desired_rate)
     new_rate = int(lfp_rate / downsampling_factor)
     speed_long = np.repeat(speed, int(new_rate * speed_rate))
-    print(downsampling_factor)
+
+    if abs(len(speed_long) - r.attrs["duration"] * desired_rate) > 5:
+        raise ValueError("Non matching speed and duration in sleep analysis")
 
     return extract_lfp_data_and_do_ripples(
-        r,
         use_first_two,
-        lfp_rate,
+        new_rate,
         lfp_data,
         brain_regions,
         on_target,
@@ -291,12 +289,10 @@ def ripple_control(r, resting, config):
         resting,
         ripple_detect,
         speed_long,
-        eeg_rate,
     )
 
 
 def extract_lfp_data_and_do_ripples(
-    r,
     use_first_two,
     lfp_rate,
     lfp_data,
@@ -306,11 +302,10 @@ def extract_lfp_data_and_do_ripples(
     resting,
     ripple_detectors,
     speed_long,
-    eeg_rate,
 ):
     time = None
     final_dict = {}
-    for ripple_detect_name, ripple_detect in ripple_detectors.iteritems():
+    for ripple_detect_name, ripple_detect in ripple_detectors.items():
         for brain_region in brain_regions:
             if (brain_region == "RSC") and (not on_target):
                 continue
@@ -321,15 +316,12 @@ def extract_lfp_data_and_do_ripples(
                 brain_region_indices[:2] if use_first_two else brain_region_indices
             )
             lfp_data_sub = lfp_data[:, indices_to_use].T
-            print(lfp_data_sub.shape)
             if downsampling_factor != 1:
                 lfp_data_sub = decimate(
                     lfp_data_sub, downsampling_factor, zero_phase=True, axis=-1
                 )
-            print(lfp_data_sub.shape)
-            print(r.attrs["duration"])
 
-            filtered_lfps = filter_ripple_band(lfp_data_sub)
+            filtered_lfps = filter_ripple_band(lfp_data_sub, lfp_rate).T
             if time is None:
                 time = [i / lfp_rate for i in range(filtered_lfps.shape[0])]
 
@@ -338,7 +330,6 @@ def extract_lfp_data_and_do_ripples(
                 ripple_detect,
                 lfp_rate,
                 speed_long,
-                eeg_rate,
                 filtered_lfps,
                 time,
             )
@@ -346,9 +337,7 @@ def extract_lfp_data_and_do_ripples(
     return final_dict
 
 
-def ripples(
-    resting, ripple_detect, lfp_rate, speed_long, eeg_rate, filtered_lfps, time
-):
+def ripples(resting, ripple_detect, lfp_rate, speed_long, filtered_lfps, time):
     ripple_times = ripple_detect(
         time,
         filtered_lfps,
@@ -392,4 +381,6 @@ if __name__ == "__main__":
         input_path = here / "results" / "every_processed_nwb.csv"
         out_dir = here / "results" / "sleep"
         config_path = here / "config" / "simuran_params.yml"
-        main(input_path, out_dir, config_path)
+        do_spindles = True
+        do_ripples = False
+        main(input_path, out_dir, config_path, do_spindles, do_ripples)

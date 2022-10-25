@@ -60,7 +60,7 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
 
     module_logger.debug(f"Removed short intervals to {final_intervals}")
 
-    return result, final_intervals
+    return final_intervals
 
 
 def combine_intervals(intervaled, tol=2):
@@ -89,15 +89,10 @@ def create_events(record, events):
     output:
     record(mne_object): Record with events added
     """
-    try:
-        assert len(record.times) == events.shape
-        stim_data = events
-        info = mne.create_info(["STI"], record.info["sfreq"], ["stim"])
-        stim_raw = mne.io.RawArray(stim_data, info)
-        record.add_channels([stim_raw], force_update_info=True)
-    except AssertionError as error:
-        print(error)
-        print("The length of events needs to be equal to record length.")
+    annotations = mne.Annotations(
+        [t[0] for t in events], [t[1] - t[0] for t in events], "Resting"
+    )
+    record.set_annotations(annotations)
     return record
 
 
@@ -169,3 +164,7 @@ def find_ranges(resting, srate):
             rest_end = (i - 1) / srate
             resting_times.append((rest_start, rest_end))
     return resting_times
+
+
+def filter_ripple_band(data, srate, **kwargs):
+    return mne.filter.filter_data(data, srate, 150, 250, **kwargs)

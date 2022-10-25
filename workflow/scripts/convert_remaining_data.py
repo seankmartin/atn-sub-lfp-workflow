@@ -9,7 +9,9 @@ from convert_to_nwb import main as convert_table_to_nwb
 from process_lfp import main as process_tables
 
 
-def main(path_to_all, path_to_converted, config_path, outputs, num_cpus=1):
+def main(
+    path_to_all, path_to_converted, config_path, outputs, num_cpus=1, sleep_only=False
+):
     df_all = df_from_file(path_to_all)
     df_converted = df_from_file(path_to_converted)
     config = smr.config_from_file(config_path)
@@ -21,7 +23,7 @@ def main(path_to_all, path_to_converted, config_path, outputs, num_cpus=1):
         indicator=True,
     )
     to_convert = df_all[df_merged["_merge"] == "left_only"]
-
+    to_convert = to_convert[to_convert["sleep"] == 1] if sleep_only else to_convert
     no_mapping = to_convert[to_convert["mapping"] == "no_mapping"]
     if len(no_mapping) > 0:
         print(f"WARNING ignoring {len(no_mapping)} files with no mapping")
@@ -59,7 +61,8 @@ if __name__ == "__main__":
         fname2 = here / "results" / "other_processed.csv"
         fname3 = here / "results" / "every_processed_nwb.csv"
         fnames = [fname1, fname2, fname3]
-        main(input_path1, input_path2, config_path, fnames)
+        sleep_only = True
+        main(input_path1, input_path2, config_path, fnames, sleep_only=sleep_only)
     else:
         smr.set_only_log_to_file(snakemake.log[0])
         main(
@@ -68,4 +71,5 @@ if __name__ == "__main__":
             snakemake.config["simuran_config"],
             [Path(o) for o in snakemake.output],
             snakemake.threads,
+            sleep_only=snakemake.config["sleep_only"],
         )

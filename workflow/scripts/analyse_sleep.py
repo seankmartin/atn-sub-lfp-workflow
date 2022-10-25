@@ -46,8 +46,6 @@ def main(input_path, out_dir, config, do_spindles=True, do_ripples=True):
                     r.attrs["duration"],
                 )
             )
-            # TODO temp
-            break
         if do_ripples:
             ripple_times = ripple_control(r, resting_groups, config)
             all_ripples.append(
@@ -59,8 +57,6 @@ def main(input_path, out_dir, config, do_spindles=True, do_ripples=True):
                     r.attrs["duration"],
                 )
             )
-            # TODO temp
-            break
     if do_spindles:
         save_spindles(out_dir, all_spindles)
 
@@ -265,13 +261,20 @@ def detect_spindles(mne_data):
 
 def ripple_control(r, resting, config):
     use_first_two = config["use_first_two_for_ripples"]
-    ripple_detect = {"Kay": Kay_ripple_detector, "Karlsson": Karlsson_ripple_detector}
+    only_karlsson = config["only_karlsson_detect"]
+    if only_karlsson:
+        ripple_detect = {"Karlsson": Karlsson_ripple_detector}
+    else:
+        ripple_detect = {
+            "Kay": Kay_ripple_detector,
+            "Karlsson": Karlsson_ripple_detector,
+        }
 
     nwbfile = r.data
     lfp_egf = nwbfile.processing["high_rate_ecephys"]["LFP"]["ElectricalSeries"]
     lfp_rate = lfp_egf.rate
     lfp_data = lfp_egf.data
-    brain_regions = nwbfile.electrodes.to_dataframe()["location"]
+    brain_regions = list(nwbfile.electrodes.to_dataframe()["location"])
     speed = nwbfile.processing["behavior"]["running_speed"].data[:]
     timestamps = nwbfile.processing["behavior"]["running_speed"].timestamps[:]
     speed_rate = np.mean(np.diff(timestamps))
@@ -389,5 +392,5 @@ if __name__ == "__main__":
         out_dir = here / "results" / "sleep"
         config_path = here / "config" / "simuran_params.yml"
         do_spindles = True
-        do_ripples = False
+        do_ripples = True
         main(input_path, out_dir, config_path, do_spindles, do_ripples)

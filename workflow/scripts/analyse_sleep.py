@@ -345,9 +345,9 @@ def ripples(resting, ripple_detect, lfp_rate, speed_long, filtered_lfps, time):
         lfp_rate,
         speed_threshold=2.5,
         minimum_duration=0.015,
-        zscore_threshold=2.0,
+        zscore_threshold=3.0,
         smoothing_sigma=0.004,
-        close_ripple_threshold=0.1,
+        close_ripple_threshold=0.05,
     )
     final_times, non_times = [], []
     for _, row in ripple_times.iterrows():

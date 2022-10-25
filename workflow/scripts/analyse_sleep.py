@@ -183,8 +183,13 @@ def find_resting(r, config):
     speed = nwbfile.processing["behavior"]["running_speed"].data[:]
     timestamps = nwbfile.processing["behavior"]["running_speed"].timestamps[:]
     speed_rate = np.mean(np.diff(timestamps))
-    brain_regions = nwbfile.electrodes.to_dataframe()["location"]
-    name = "SUB_avg" if "SUB" in brain_regions else "CA1_avg"
+    brain_regions = list(nwbfile.electrodes.to_dataframe()["location"])
+    if "SUB" in brain_regions:
+        name = "SUB_avg"
+    elif "CA1" in brain_regions:
+        name = "CA1_avg"
+    else:
+        name = "RSC_avg"
     sub_signal = nwbfile.processing["average_lfp"][name].data[:]
     sub_rate = nwbfile.processing["average_lfp"][name].rate
 

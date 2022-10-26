@@ -22,6 +22,7 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     theta_min, theta_max = kwargs["theta_min"], kwargs["theta_max"]
     delta_min, delta_max = kwargs["delta_min"], kwargs["delta_max"]
     min_sleep_length = kwargs["min_sleep_length"]
+    sleep_tol = kwargs["sleep_join_tol"]
 
     lfp_samples_per_speed = int(lfp_rate / speed_rate)
     moving = np.zeros(int(len(speed) * lfp_samples_per_speed))
@@ -45,11 +46,11 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     module_logger.debug(f"Resting ranges {intervaled}")
 
     old_len = len(intervaled)
-    new_intervals = combine_intervals(intervaled, tol=2)
+    new_intervals = combine_intervals(intervaled, tol=sleep_tol)
     new_len = len(new_intervals)
     while new_len != old_len:
         old_len = len(new_intervals)
-        new_intervals = combine_intervals(new_intervals, tol=2)
+        new_intervals = combine_intervals(new_intervals, tol=sleep_tol)
         new_len = len(new_intervals)
 
     module_logger.debug(f"Combined resting ranges to {new_intervals}")

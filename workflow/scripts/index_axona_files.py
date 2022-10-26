@@ -24,6 +24,7 @@ def get_rat_name(s):
     for name, parts in itertools.product(temp, names_part):
         if parts in name:
             return name
+    return np.nan
 
 
 def get_rat_name_folder(s):
@@ -55,27 +56,6 @@ def decode_name(rat_name):
     return res
 
 
-def decode_name_folder(rat_name):
-    """Function to decode rat names based on the order of the names"""
-    res = []
-    regex_dict = {
-        "Canula": "^(Can)",
-        "Ca1": "(Ca)",
-        "Lesion": "(L)",
-        "Control": "(CC)|(CR)|(CS)",
-        "Ret": "(Ret)|(R)",
-        "Sub": "(Sub)|(S)",
-    }
-    for code in regex_dict:
-        if re.search(regex_dict[code], rat_name):
-            rat_name = re.sub(regex_dict[code], "", rat_name)
-            res.append(code)
-    n = re.findall("\d$", rat_name)
-    if len(n) > 0:
-        res.append(n[0])
-    return res
-
-
 def get_treatment(s):
     """Get the type of treatment from filename"""
     if "saline" in s:
@@ -83,6 +63,8 @@ def get_treatment(s):
 
     if "musc" in s:
         return "Muscimol"
+
+    return np.nan
 
 
 def get_treatment_folder(s):
@@ -102,15 +84,22 @@ def get_treatment_folder(s):
 def get_sleep_awake(s):
     """Get the if animal is sleeping from filename"""
     temp = re.split("_|\.", s.lower())
-    if "sleep" in temp:
+    if "sleep" in temp or "partial" in temp:
         return 1
-    return 0
+    return np.nan
 
 
 def get_sleep_awake_folder(s):
     """Get the if animal is sleeping from folder"""
     temp = re.split("_|\.|\ |\/", s.lower())
-    if "sleep" in temp or "sleeping" in temp:
+    if "sleep" in temp or "sleeping" in temp or "partial" in temp:
+        return 1
+    if (
+        s.endswith("sleep")
+        or s.endswith("sleepy")
+        or s.endswith("sllep")
+        or s.endswith("sleeppos")
+    ):
         return 1
     return 0
 
@@ -129,7 +118,8 @@ def get_habituation_folder(s):
     names_part = ["hab", "screen"]
     temp = s.split(os.sep)
     return next(
-        (1 for name, parts in itertools.product(temp, names_part) if parts in name), 0
+        (1 for name, parts in itertools.product(temp, names_part) if parts in name),
+        np.nan,
     )
 
 
@@ -365,7 +355,7 @@ def clean_data(df, **kwargs):
     df["n_channels"] = df.filename.apply(n_channels)
     # sleep experiment
     df["sleep"] = df.filename.apply(get_sleep_awake)
-    df["sleep_folder"] = df.filename.apply(get_sleep_awake_folder)
+    df["sleep_folder"] = df.directory.apply(get_sleep_awake_folder)
     df["sleep"] = df["sleep"].combine_first(df["sleep_folder"])
     df.drop("sleep_folder", axis=1, inplace=True)
     # get mazes
@@ -374,7 +364,7 @@ def clean_data(df, **kwargs):
     df["maze"] = df["maze"].combine_first(df["maze_folder"])
     df.drop("maze_folder", axis=1, inplace=True)
     # get habituation
-    df["habituation_screening"] = df.filename.apply(get_habituation_folder)
+    df["habituation_screening"] = df.directory.apply(get_habituation_folder)
     df["habituation_fname"] = df.filename.apply(get_habituation)
     df["habituation_screening"] = df["habituation_screening"].combine_first(
         df["habituation_fname"]
@@ -382,7 +372,7 @@ def clean_data(df, **kwargs):
     df.drop("habituation_fname", axis=1, inplace=True)
     # Get treatment
     df["treatment"] = df.filename.apply(get_treatment)
-    df["treatment_folder"] = df.filename.apply(get_treatment_folder)
+    df["treatment_folder"] = df.directory.apply(get_treatment_folder)
     df["treatment"] = df["treatment"].combine_first(df["treatment_folder"])
     df.drop("treatment_folder", axis=1, inplace=True)
     # Get duration

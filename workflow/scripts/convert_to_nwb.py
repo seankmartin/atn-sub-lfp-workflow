@@ -96,6 +96,8 @@ def main(
         elif not except_errors:
             print(f"Error with recording {rc[i].source_file}")
             raise e
+        else:
+            print(f"Error with recording {rc[i].source_file}, check logs")
 
     if len(used) != len(filtered_table):
         missed = len(filtered_table) - len(used)
@@ -115,7 +117,11 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
         return filename, None
 
     module_logger.info(f"Converting {rc[i].source_file} to NWB")
-    r = rc.load(i)
+    try:
+        r = rc.load(i)
+    except Exception as e:
+        module_logger.error(f"Could not load {rc[i].source_file} due to {e}")
+        return None, e
     nwbfile = convert_recording_to_nwb(r, rel_dir)
     return write_nwbfile(filename, r, nwbfile)
 
@@ -608,4 +614,5 @@ if __name__ == "__main__":
         Path(snakemake.output[0]).parent,
         snakemake.input[1:],
         snakemake.config["overwrite_nwb"],
+        except_errors=snakemake.config["except_nwb_errors"],
     )

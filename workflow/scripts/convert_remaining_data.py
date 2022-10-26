@@ -34,7 +34,9 @@ def main(
     out_name1, out_name2, out_name3 = outputs
     output_dir = out_name1.parent
     out_name = out_name1.name
-    convert_table_to_nwb(to_convert, config, None, output_dir, out_name)
+    convert_table_to_nwb(
+        to_convert, config, None, output_dir, out_name, except_errors=True
+    )
 
     process_tables(
         [out_name1], config_path, ["temp.csv", out_name2], num_cpus, overwrite=False
@@ -51,8 +53,12 @@ if __name__ == "__main__":
     module_logger = logging.getLogger("simuran.custom.process_lfp")
     module_logger.setLevel(logging.DEBUG)
     try:
-        a = snakemake.log[0]
+        snakemake
     except Exception:
+        use_snakemake = False
+    else:
+        use_snakemake = True
+    if not use_snakemake:
         here = Path(__file__).parent.parent.parent
         input_path1 = here / "results" / "subret_recordings.csv"
         input_path2 = here / "results" / "openfield_processed.csv"

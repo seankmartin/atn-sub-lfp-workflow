@@ -1,9 +1,11 @@
 import ast
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import mne
 import numpy as np
 import simuran as smr
+from scipy.signal import decimate
 from simuran.bridges.mne_bridge import convert_signals_to_mne
 from skm_pyutils.table import df_from_file
 
@@ -56,10 +58,27 @@ def convert_to_mne(r):
     return convert_signals_to_mne(signal_array, ch_names, bad_chans)
 
 
+def check_decimation(signals):
+    filtered_signals = mne.filter.filter_data(signals, 4800, 150, 250)
+    fig, axes = plt.subplots(2 * len(signals))
+    x = [i / 4800 for i in range(0, 4800 * 20)]
+    for i, s in enumerate(filtered_signals):
+        axes[i].plot(x, s[: 4800 * 20], c="k")
+    x = [i / 1600 for i in range(0, 1600 * 20)]
+    filtered_lfps = decimate(filtered_signals, 3, zero_phase=True, axis=-1)
+    for i, s in enumerate(filtered_lfps):
+        axes[2 + i].plot(x, s[: 1600 * 20], c="b")
+
+
 loader = smr.loader_from_string("nwb")
 recording = smr.Recording(source_file=filename, loader=loader)
 recording.load()
 nwbfile = recording.data
+signals = (
+    nwbfile.processing["high_rate_ecephys"]["LFP"]["ElectricalSeries"].data[:, :2].T
+)
+check_decimation(signals)
+plt.show()
 mne_data = convert_to_mne(recording)
 add_annotation(mne_data, spindles_df, ripples_df, filename)
 max_val = 1.8 * np.max(np.abs(mne_data.get_data(stop=DATA_LEN)))

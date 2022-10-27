@@ -1,5 +1,6 @@
 import logging
 import pickle
+import traceback
 from math import floor
 from pathlib import Path
 
@@ -25,41 +26,64 @@ from sleep_utils import (
 module_logger = logging.getLogger("simuran.custom.sleep_analysis")
 
 
-def main(input_path, out_dir, config, do_spindles=True, do_ripples=True):
+def main(
+    input_path, out_dir, config, do_spindles=True, do_ripples=True, overwrite=False
+):
     config, rc = setup(input_path, out_dir, config)
     all_spindles = []
     all_ripples = []
+
+    if (out_dir / "spindles.pkl").exists() and not overwrite:
+        with open(out_dir / "spindles.pkl", "rb") as f:
+            all_spindles = pickle.load(f)
+    else:
+        all_spindles = []
+
+    if (out_dir / "ripples.pkl").exists() and not overwrite:
+        with open(out_dir / "ripples.pkl", "rb") as f:
+            all_ripples = pickle.load(f)
+    else:
+        all_ripples = []
+
     for r in tqdm(rc.load_iter()):
-        if not ensure_sleeping(r):
-            module_logger.warning(f"Too much movement in {r.source_file} for sleep")
-            continue
-        if "awake" in r.source_file:
-            module_logger.warning(f"Not processing awake sleep")
-            continue
-        module_logger.info(f"Processing {r.source_file} for spindles and ripples")
-        ratio_resting, resting_groups = find_resting(r, config)
-        if do_spindles:
-            spindles = spindle_control(r, resting_groups, config)
-            all_spindles.append(
-                (
-                    r.source_file,
-                    spindles,
-                    ratio_resting,
-                    resting_groups,
-                    r.attrs["duration"],
-                )
-            )
-        if do_ripples:
-            ripple_times = ripple_control(r, resting_groups, config)
-            all_ripples.append(
-                (
-                    r.source_file,
-                    ripple_times,
-                    ratio_resting,
-                    resting_groups,
-                    r.attrs["duration"],
-                )
-            )
+        try:
+            if not ensure_sleeping(r):
+                module_logger.warning(f"Too much movement in {r.source_file} for sleep")
+                continue
+            if "awake" in r.source_file:
+                module_logger.warning(f"Not processing awake sleep")
+                continue
+            module_logger.info(f"Processing {r.source_file} for spindles and ripples")
+            ratio_resting, resting_groups = find_resting(r, config)
+            if do_spindles:
+                if r.source_file not in [a[0] for a in all_spindles]:
+                    spindles = spindle_control(r, resting_groups, config)
+                    all_spindles.append(
+                        (
+                            r.source_file,
+                            spindles,
+                            ratio_resting,
+                            resting_groups,
+                            r.attrs["duration"],
+                        )
+                    )
+            if do_ripples:
+                if r.source_file not in [a[0] for a in all_ripples]:
+                    ripple_times = ripple_control(r, resting_groups, config)
+                    all_ripples.append(
+                        (
+                            r.source_file,
+                            ripple_times,
+                            ratio_resting,
+                            resting_groups,
+                            r.attrs["duration"],
+                        )
+                    )
+                    break
+        except Exception as e:
+            print(f"ERROR: sleep execution failed with {e}")
+            traceback.print_exc()
+            break
     if do_spindles:
         save_spindles(out_dir, all_spindles)
 
@@ -89,16 +113,8 @@ def save_spindles(out_dir, all_spindles):
     l = []
     for spindles in all_spindles:
         source_file, sp_dict, ratio_resting, resting_group, duration = spindles
-        for k, v in sp_dict.items():
-            num_spindles = 0 if v is None else len(v) - v["Start"].isna().sum()
-            if num_spindles != 0:
-                spindle_times = [
-                    (v["Start"][i], v["End"][i])
-                    for i in range(len(v))
-                    if not np.isnan(v["Start"][i])
-                ]
-            else:
-                spindle_times = []
+        for k, spindle_times in sp_dict.items():
+            num_spindles = len(spindle_times)
             l.append(
                 [
                     source_file,
@@ -174,6 +190,8 @@ def spindle_control(r, resting_array, config):
     for (br, sp) in spindles.items():
         if sp is not None:
             spindles[br] = spindles_exclude_resting(sp.summary(), resting_array)
+        else:
+            spindles[br] = []
     return spindles
 
 
@@ -264,9 +282,9 @@ def detect_spindles(mne_data):
 
 def ripple_control(r, resting, config):
     use_first_two = config["use_first_two_for_ripples"]
-    only_karlsson = config["only_karlsson_detect"]
-    if only_karlsson:
-        ripple_detect = {"Karlsson": Karlsson_ripple_detector}
+    only_kay_detect = config["only_kay_detect"]
+    if only_kay_detect:
+        ripple_detect = {"Kay": Kay_ripple_detector}
     else:
         ripple_detect = {
             "Kay": Kay_ripple_detector,
@@ -329,7 +347,7 @@ def extract_lfp_data_and_do_ripples(
                 brain_region_indices[:2] if use_first_two else brain_region_indices
             )
             lfp_data_sub = lfp_data[:, indices_to_use].T
-            if np.all(np.isclose(lfp_data_sub, 0.0)):
+            if np.sum(np.abs(lfp_data_sub)) <= 1.0:
                 if len(brain_region_indices) == 2:
                     logging.warning(f"{brain_region} has no data")
                     continue
@@ -364,7 +382,7 @@ def ripples(resting, ripple_detect, lfp_rate, speed_long, filtered_lfps, time):
         lfp_rate,
         speed_threshold=2.5,
         minimum_duration=0.015,
-        zscore_threshold=3.0,
+        zscore_threshold=2.0,
         smoothing_sigma=0.004,
         close_ripple_threshold=0.05,
     )
@@ -394,6 +412,9 @@ if __name__ == "__main__":
             snakemake.input[0],
             Path(snakemake.output[0]).parent,
             snakemake.config["simuran_config"],
+            True,
+            True,
+            snakemake.config["overwrite_sleep"],
         )
     else:
         here = Path(__file__).parent.parent.parent

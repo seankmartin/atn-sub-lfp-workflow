@@ -108,19 +108,17 @@ def mark_movement(speed, mne_array):
 
 
 def spindles_exclude_resting(spindles_df, resting):
+    times = []
     for channel in spindles_df.Channel.unique():
         sp_times = spindles_df.loc[spindles_df.Channel == channel][
             ["Start", "End"]
         ].values
         for t in sp_times:
-            use_this_time = any(((t[0] >= r[0]) and (t[0] <= r[1]) for r in resting))
-            if not use_this_time:
-                spindles_df[
-                    (spindles_df.Channel == channel)
-                    & (spindles_df.Start == t[0])
-                    & (spindles_df.End == t[1])
-                ] = np.nan
-    return spindles_df
+            use_this_time = any(((t[0] >= r[0]) and (t[1] <= r[1]) for r in resting))
+            if use_this_time:
+                if not np.any(np.abs(np.array([t_[0] for t_ in times]) - t[0]) < 0.1):
+                    times.append([t[0], t[1]])
+    return times
 
 
 def plot_recordings_per_animal(sleep, out_name):

@@ -6,3 +6,4 @@ tmaze_filter: config\tmaze_recordings.yml
 overwrite_nwb: False
 sleep_only: True
 overwrite_sleep: False
+except_nwb_errors: True

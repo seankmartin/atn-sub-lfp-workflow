@@ -10,7 +10,13 @@ from process_lfp import main as process_tables
 
 
 def main(
-    path_to_all, path_to_converted, config_path, outputs, num_cpus=1, sleep_only=False
+    path_to_all,
+    path_to_converted,
+    config_path,
+    outputs,
+    num_cpus=1,
+    sleep_only=False,
+    except_errors=False,
 ):
     df_all = df_from_file(path_to_all)
     df_converted = df_from_file(path_to_converted)
@@ -35,7 +41,12 @@ def main(
     output_dir = out_name1.parent
     out_name = out_name1.name
     convert_table_to_nwb(
-        to_convert, config, None, output_dir, out_name, except_errors=True
+        to_convert,
+        config,
+        None,
+        output_dir,
+        out_name,
+        except_errors=except_errors,
     )
 
     process_tables(
@@ -78,4 +89,5 @@ if __name__ == "__main__":
             [Path(o) for o in snakemake.output],
             snakemake.threads,
             sleep_only=snakemake.config["sleep_only"],
+            except_errors=snakemake.config["except_nwb_errors"],
         )

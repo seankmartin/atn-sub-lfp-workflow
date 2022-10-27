@@ -1,6 +1,5 @@
 import ast
 from pathlib import Path
-
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
@@ -16,7 +15,7 @@ filename = r"d:\atn-sub-lfp-workflow\results\processed\CSubRet5_sham--recording-
 spindles_df = df_from_file(sleep_dir / "spindles.csv")
 ripples_df = df_from_file(sleep_dir / "ripples.csv")
 
-DATA_LEN = 100
+DATA_LEN = 200
 
 
 def add_ripples_annotation(mne_data, ripples_df, filename):
@@ -128,15 +127,11 @@ def spindles_plot(recording, spindles_df, filename):
     max_val = 1.8 * np.max(np.abs(mne_data.get_data()))
     scalings = {"eeg": max_val}
     fig = mne_data.plot(
-        duration=6.0,
-        n_channels=4,
-        scalings=scalings,
-        start=first,
-        show=True,
+        duration=6.0, n_channels=4, scalings=scalings, start=first, show=True
     )
     inp = input("Press enter to continue...")
 
 
 spindles_plot(recording, spindles_df, filename)
-ripples_plot(recording, spindles_df, filename)
+ripples_plot(recording, ripples_df, filename)
 plot_decimation(nwbfile)

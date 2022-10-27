@@ -16,7 +16,8 @@ from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from pynwb.ecephys import LFP, ElectricalSeries
 from pynwb.file import Subject
-from skm_pyutils.table import df_from_file, df_to_file, filter_table, list_to_df
+from skm_pyutils.table import (df_from_file, df_to_file, filter_table,
+                               list_to_df)
 
 
 def describe_columns():
@@ -579,6 +580,7 @@ def convert_listed_data_to_nwb(
     output_directory,
     individual_tables,
     overwrite=False,
+    except_errors=False,
 ):
     """These are processed in order of individual_tables"""
     config = smr.ParamHandler(source_file=config_path, name="params")
@@ -597,7 +599,7 @@ def convert_listed_data_to_nwb(
         )
         if "directory_x" in merged_df.columns:
             merged_df.drop("directory_x", axis=1, inplace=True)
-        main(merged_df, config, None, output_directory, out_name, True)
+        main(merged_df, config, None, output_directory, out_name, overwrite=overwrite, except_errors=except_errors)
 
     filter_ = smr.ParamHandler(source_file=data_fpath, name="filter")
     out_name = "openfield_nwb.csv"

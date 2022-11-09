@@ -33,14 +33,14 @@ def main(
     all_spindles = []
     all_ripples = []
 
-    if (out_dir / "spindles.pkl").exists() and not overwrite:
-        with open(out_dir / "spindles.pkl", "rb") as f:
+    if (out_dir / "spindles_backup.pkl").exists() and not overwrite:
+        with open(out_dir / "spindles_backup.pkl", "rb") as f:
             all_spindles = pickle.load(f)
     else:
         all_spindles = []
 
-    if (out_dir / "ripples.pkl").exists() and not overwrite:
-        with open(out_dir / "ripples.pkl", "rb") as f:
+    if (out_dir / "ripples_backup.pkl").exists() and not overwrite:
+        with open(out_dir / "ripples_backup.pkl", "rb") as f:
             all_ripples = pickle.load(f)
     else:
         all_ripples = []
@@ -79,7 +79,6 @@ def main(
                             r.attrs["duration"],
                         )
                     )
-                    break
         except Exception as e:
             print(f"ERROR: sleep execution failed with {e}")
             traceback.print_exc()
@@ -108,6 +107,9 @@ def setup(input_path, out_dir, config):
 
 def save_spindles(out_dir, all_spindles):
     filename = out_dir / "spindles.pkl"
+    with open(filename, "wb") as outfile:
+        pickle.dump(all_spindles, outfile)
+    filename = out_dir / "spindles_backup.pkl"
     with open(filename, "wb") as outfile:
         pickle.dump(all_spindles, outfile)
     l = []
@@ -143,7 +145,9 @@ def save_ripples(out_dir, all_ripples):
     filename = out_dir / "ripples.pkl"
     with open(filename, "wb") as outfile:
         pickle.dump(all_ripples, outfile)
-
+    filename = out_dir / "ripples_backup.pkl"
+    with open(filename, "wb") as outfile:
+        pickle.dump(all_ripples, outfile)
     l = []
     for val in all_ripples:
         fname, ripple_times, ratio_resting, resting_groups, duration = val
@@ -399,7 +403,6 @@ def ripples(resting, ripple_detect, lfp_rate, speed_long, filtered_lfps, time):
 
 
 if __name__ == "__main__":
-    module_logger.setLevel(logging.DEBUG)
     try:
         snakemake
     except NameError:
@@ -408,6 +411,8 @@ if __name__ == "__main__":
         using_snakemake = True
     if using_snakemake:
         smr.set_only_log_to_file(snakemake.log[0])
+        module_logger.setLevel(logging.DEBUG)
+        logging.getLogger("simuran.custom.sleep_utils").setLevel(logging.DEBUG)
         main(
             snakemake.input[0],
             Path(snakemake.output[0]).parent,

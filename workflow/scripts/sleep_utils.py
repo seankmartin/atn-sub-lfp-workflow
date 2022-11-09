@@ -6,19 +6,10 @@ import numpy as np
 import simuran as smr
 from simuran.bridges.neurochat_bridge import signal_to_neurochat
 
-module_logger = logging.getLogger("simuran.custom.sleep_analysis")
+module_logger = logging.getLogger("simuran.custom.sleep_utils")
 
 
 def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwargs):
-    """Returns ones for the time windows where the animal was moving with a speed smaller than treshold
-    Inputs:
-        file(str): filename to be analysed
-        tresh(float): speed treshold in cm/s
-        window_sec(int): Window in seconds to define resting epochs
-    Returns:
-        resting(arr): 1 (ones) for resting 0 (zeros) for movement
-        There is a sample for each lfp sample
-    """
     theta_min, theta_max = kwargs["theta_min"], kwargs["theta_max"]
     delta_min, delta_max = kwargs["delta_min"], kwargs["delta_max"]
     min_sleep_length = kwargs["min_sleep_length"]

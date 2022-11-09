@@ -133,7 +133,7 @@ rule theta_gamma:
 
 rule analyse_sleep:
     input:
-        "results/other_process.csv",
+        "results/every_processed_nwb.csv",
     output:
         "results/sleep/spindles.pkl",
         "results/sleep/ripples.pkl",

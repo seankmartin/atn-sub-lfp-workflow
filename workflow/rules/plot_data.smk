@@ -138,8 +138,8 @@ rule plot_sleep:
         "results/every_processed_nwb.csv"
     output:
         directory("results/plots/sleep"),
-        "results/sleep/spindles.csv",
-        "results/sleep/ripples.csv",
+        "results/sleep/spindles2.csv",
+        "results/sleep/ripples2.csv",
     log:
         "logs/plot_sleep.log"
     conda:

@@ -43,10 +43,10 @@ max_lfp_lengths:
   choice: [3.5, 0.5]
   end: 10
 tmaze_lfp_len: 6
-spindles_use_avg: False
-use_first_two_for_ripples: False
+spindles_use_avg: True
+use_first_two_for_ripples: True
 lfp_ripple_rate: 1600
 min_sleep_length: 60
 only_kay_detect: True
 except_nwb_errors: True
-sleep_join_tol: 1
+sleep_join_tol: 1.5

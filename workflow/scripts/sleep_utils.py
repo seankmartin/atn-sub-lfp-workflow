@@ -15,23 +15,27 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     min_sleep_length = kwargs["min_sleep_length"]
     sleep_tol = kwargs["sleep_join_tol"]
 
-    lfp_samples_per_speed = int(lfp_rate / speed_rate)
+    lfp_samples_per_speed = int(lfp_rate * speed_rate)
     moving = np.zeros(int(len(speed) * lfp_samples_per_speed))
     for i in range(len(speed)):
         if speed[i] > tresh:
             moving[lfp_samples_per_speed * i : lfp_samples_per_speed * (i + 1)] = 1
 
     window = int(window_sec * lfp_rate)
+    half_window = window // 2
     result = np.zeros(len(lfp))
-    for i in range(0, len(lfp) - window, window // 2):
-        sig = smr.Eeg.from_numpy(lfp[i : i + window], lfp_rate)
+    if result.shape != moving.shape:
+        raise RuntimeError("Non-matching movement and result sizes")
+
+    for i in range(half_window, len(lfp), window):
+        sig = smr.Eeg.from_numpy(lfp[i - half_window : i + half_window], lfp_rate)
         nc_sig = signal_to_neurochat(sig)
         bp = nc_sig.bandpower_ratio(
             [theta_min, theta_max], [delta_min, delta_max], window_sec
         )
         # running speed < 2.5cm/s , and theta/delta power ratio < 2
-        if sum(moving[i : i + window]) == 0 and bp < 2:
-            result[i : i + window] = 1
+        if sum(moving[i - half_window : i + half_window]) == 0 and bp < 2:
+            result[i - half_window : i + half_window] = 1
 
     intervaled = find_ranges(result, lfp_rate)
     module_logger.debug(f"Resting ranges {intervaled}")
@@ -60,7 +64,7 @@ def combine_intervals(intervaled, tol=2):
     i = 0
     while i < (len(intervaled) - 1):
         val = intervaled[i]
-        if (intervaled[i + 1][0] - val[-1]) < tol:
+        if (intervaled[i + 1][0] - val[-1]) <= tol:
             intervals.append((val[0], intervaled[i + 1][-1]))
             i += 2
         else:
@@ -154,8 +158,10 @@ def find_ranges(resting, srate):
             rest_start = i / srate
         elif not val and in_rest:
             in_rest = False
-            rest_end = (i - 1) / srate
+            rest_end = i / srate
             resting_times.append((rest_start, rest_end))
+    if in_rest:
+        resting_times.append((rest_start, ((len(resting_times) - 1) / srate)))
     return resting_times
 
 

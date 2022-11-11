@@ -9,15 +9,19 @@ include: "rules/plot_data.smk"
 rule all:
     input: 
         [
-            "results/plots/spectra",
+            "results/plots/spectra/",
             "results/plots/summary/png/per_animal_psds--averaged_psds--SUB.png",
             "results/plots/summary/png/SUB--fooof_combined.png",
             "results/plots/summary/png/coherence.png",
-            "results/plots/signals",
+            "results/plots/signals/",
             "results/plots/summary/png/SUB--speed_theta.png",
             "results/plots/signals/",
             "results/plots/spike_lfp/",
             "results/plots/spike_lfp_musc/",
-            "results/plots/tmaze",
-            "results/plots/tmaze_decoding",
-            "results/stats_output.txt"]
+            "results/plots/tmaze/",
+            "results/plots/tmaze_decoding/",
+            "results/plots/sleep/",
+            "results/plots/theta_gamma/",
+            "results/ca1_analysis/",
+            "results/stats_output.txt"
+            ]

@@ -53,7 +53,7 @@ def plot_spindles(spindles_data, ripples_data, output_dir, config, df):
         treatment = metadata["treatment"].values[0]
         duration = metadata["duration"].values[0]
         for br, sp in sp_dict.items():
-            num_spindles = 0 if sp is None else len(sp) - sp["Start"].isna().sum()
+            num_spindles = 0 if sp is None else len(sp)
             l.append(
                 [filename, treatment, br, 60 * num_spindles / (ratio_rest * duration)]
             )

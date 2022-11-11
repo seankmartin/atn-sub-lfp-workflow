@@ -24,8 +24,6 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     window = int(window_sec * lfp_rate)
     half_window = window // 2
     result = np.zeros(len(lfp))
-    if result.shape != moving.shape:
-        raise RuntimeError("Non-matching movement and result sizes")
 
     for i in range(half_window, len(lfp), window):
         sig = smr.Eeg.from_numpy(lfp[i - half_window : i + half_window], lfp_rate)

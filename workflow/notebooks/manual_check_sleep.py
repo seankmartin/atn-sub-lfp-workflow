@@ -10,7 +10,7 @@ from skm_pyutils.table import df_from_file
 
 here = Path(__file__).parent
 sleep_dir = here.parent.parent / "results" / "sleep"
-filename = r"d:\atn-sub-lfp-workflow\results\processed\CSubRet5_sham--recording--sleep--08122017--S2 sleep--08122017_CSR5_sleep_2_2_sleep.nwb"
+filename = r"results\processed\CSubRet5_sham--recording--sleep--08122017--S2 sleep--08122017_CSR5_sleep_2_2_sleep.nwb"
 
 spindles_df = df_from_file(sleep_dir / "spindles.csv")
 ripples_df = df_from_file(sleep_dir / "ripples.csv")
@@ -110,7 +110,7 @@ def ripples_plot(recording, ripples_df, filename):
     add_ripples_annotation(mne_data, ripples_df, filename)
     max_val = 1.8 * np.max(np.abs(mne_data.get_data(stop=DATA_LEN)))
     scalings = {"eeg": max_val}
-    fig = mne_data.plot(
+    mne_data.plot(
         duration=6.0,
         n_channels=4,
         scalings=scalings,
@@ -118,7 +118,7 @@ def ripples_plot(recording, ripples_df, filename):
         highpass=250,
         show=True,
     )
-    inp = input("Press enter to continue...")
+    input("Press enter to continue...")
 
 
 def spindles_plot(recording, spindles_df, filename):
@@ -126,12 +126,22 @@ def spindles_plot(recording, spindles_df, filename):
     first = add_spindles_annotation(mne_data, spindles_df, filename)
     max_val = 1.8 * np.max(np.abs(mne_data.get_data()))
     scalings = {"eeg": max_val}
-    fig = mne_data.plot(
-        duration=6.0, n_channels=4, scalings=scalings, start=first, show=True
-    )
-    inp = input("Press enter to continue...")
+    mne_data.plot(duration=6.0, n_channels=4, scalings=scalings, start=first, show=True)
+    input("Press enter to continue...")
 
 
+def speed_plot(recording, ripples_df, filename):
+    speed = recording.data.processing["behavior"]["running_speed"].data[:]
+    timestamps = recording.data.processing["behavior"]["running_speed"].timestamps[:]
+    ripples = ripples_df[ripples_df["Filename"] == filename]
+
+    print(ripples["Resting Times"].iloc[0])
+    plt.plot(timestamps, speed)
+    plt.show()
+    input("Press Enter to continue")
+
+
+speed_plot(recording, ripples_df, filename)
 spindles_plot(recording, spindles_df, filename)
 ripples_plot(recording, ripples_df, filename)
 plot_decimation(nwbfile)

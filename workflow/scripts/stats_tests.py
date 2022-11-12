@@ -263,13 +263,13 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     t1_kwargs = {
         **overall_kwargs,
         **{
-            "value": "subicular to retronspenial LFP theta coherence during correct trials"
+            "value": "subicular to retronspenial LFP theta coherence in choice parts during correct trials"
         },
     }
 
     res = mwu(
-        control_choice[control_choice["RSC on target"]]["Peak Theta Coherence"],
-        lesion_choice[lesion_choice["RSC on target"]]["Peak Theta Coherence"],
+        control_choice[control_choice["RSC on target"]]["Theta Coherence"],
+        lesion_choice[lesion_choice["RSC on target"]]["Theta Coherence"],
         t1_kwargs,
         do_plot=True,
     )
@@ -277,7 +277,7 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
 
     t1a_kwargs = {
         **overall_kwargs,
-        **{"value": "subicular LFP theta power during correct trials"},
+        **{"value": "subicular LFP theta power in choice parts during correct trials"},
     }
 
     res = mwu(
@@ -302,8 +302,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice[control_choice["RSC on target"]]["Peak Theta Coherence"],
-        lesion_choice[lesion_choice["RSC on target"]]["Peak Theta Coherence"],
+        control_choice[control_choice["RSC on target"]]["Theta Coherence"],
+        lesion_choice[lesion_choice["RSC on target"]]["Theta Coherence"],
         t2_kwargs,
         do_plot=True,
     )
@@ -336,8 +336,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        control_choice1[control_choice1["RSC on target"]]["Peak Theta Coherence"],
-        control_choice2[control_choice2["RSC on target"]]["Peak Theta Coherence"],
+        control_choice1[control_choice1["RSC on target"]]["Theta Coherence"],
+        control_choice2[control_choice2["RSC on target"]]["Theta Coherence"],
         t3_kwargs,
         do_plot=True,
     )
@@ -357,8 +357,8 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        lesion_choice1[lesion_choice1["RSC on target"]]["Peak Theta Coherence"],
-        lesion_choice2[lesion_choice2["RSC on target"]]["Peak Theta Coherence"],
+        lesion_choice1[lesion_choice1["RSC on target"]]["Theta Coherence"],
+        lesion_choice2[lesion_choice2["RSC on target"]]["Theta Coherence"],
         t4_kwargs,
         do_plot=True,
     )
@@ -403,10 +403,11 @@ def muscimol_stats(input_path, overall_kwargs, get_obj):
 
 
 def sleep_stats(spindles_path, ripples_path, overall_kwargs, get_obj):
-    get_obj.pt("Sleep")
-    df, control_df, lesion_df = get_obj.get_df(input_path)
+    # get_obj.pt("Sleep")
+    # df, control_df, lesion_df = get_obj.get_df(input_path)
 
     # TODO need ANOVA / bonferonni correction
+    pass
 
 
 def main(input_paths, plot_dir, output_file, show_quartiles=False):

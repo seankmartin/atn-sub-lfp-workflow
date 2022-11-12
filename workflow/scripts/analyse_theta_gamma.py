@@ -9,6 +9,7 @@ from skm_pyutils.table import df_from_file
 
 def main(input_, output_dir, config_path):
     # config = smr.config_from_file(config_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
     datatable = df_from_file(input_)
     loader = smr.loader("nwb")
     rc = smr.RecordingContainer.from_table(datatable, loader=loader)

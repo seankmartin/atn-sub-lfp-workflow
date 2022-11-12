@@ -308,14 +308,14 @@ def convert_trial_type(r, trial_type):
 def theta_delta(f, Cxy, config):
     theta_co = Cxy[np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))]
     delta_co = Cxy[np.nonzero((f >= config["delta_min"]) & (f <= config["delta_max"]))]
-    max_theta_coherence = np.nanmean(theta_co)
-    max_delta_coherence = np.nanmean(delta_co)
+    mean_theta_coherence = np.nanmean(theta_co)
+    mean_delta_coherence = np.nanmean(delta_co)
 
     theta_co_peak = Cxy[
-        np.nonzero((f >= config["theta_min"]) & (f <= (config["theta_max"]) + 0.5))
+        np.nonzero((f >= config["theta_min"]) & (f <= (config["theta_max"] + 0.5)))
     ]
     peak_theta_coherence = np.nanmax(theta_co_peak)
-    return max_theta_coherence, max_delta_coherence, peak_theta_coherence
+    return mean_theta_coherence, mean_delta_coherence, peak_theta_coherence
 
 
 def extract_decoding_vals(config, i, j, k, f, Cxy, new_lfp):

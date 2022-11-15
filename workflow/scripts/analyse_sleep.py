@@ -47,14 +47,19 @@ def main(
 
     for r in tqdm(rc.load_iter()):
         try:
-            if not ensure_sleeping(r):
-                module_logger.warning(f"Too much movement in {r.source_file} for sleep")
-                continue
             if "awake" in r.source_file:
                 module_logger.warning(f"Not processing awake sleep")
                 continue
+            if not ensure_sleeping(r):
+                module_logger.warning(f"Too much movement in {r.source_file} for sleep")
+                continue
             module_logger.info(f"Processing {r.source_file} for spindles and ripples")
-            ratio_resting, resting_groups = find_resting(r, config)
+            ratio_resting, resting_groups, resting_intervals = find_resting(r, config)
+            if len(resting_groups) == 0:
+                module_logger.warning(
+                    f"Not processing {r.source_file} as no resting blocks found"
+                )
+                continue
             if do_spindles:
                 if r.source_file not in [a[0] for a in all_spindles]:
                     spindles = spindle_control(r, resting_groups, config)
@@ -79,10 +84,12 @@ def main(
                             r.attrs["duration"],
                         )
                     )
+
         except Exception as e:
             print(f"ERROR: sleep execution failed with {e}")
             traceback.print_exc()
             break
+
     if do_spindles:
         save_spindles(out_dir, all_spindles)
 
@@ -205,22 +212,33 @@ def find_resting(r, config):
     timestamps = nwbfile.processing["behavior"]["running_speed"].timestamps[:]
     speed_rate = np.mean(np.diff(timestamps))
     brain_regions = list(nwbfile.electrodes.to_dataframe()["location"])
-    if "SUB" in brain_regions:
-        name = "SUB_avg"
-    elif "CA1" in brain_regions:
-        name = "CA1_avg"
-    else:
-        name = "RSC_avg"
+    num_sub, num_ca1 = 0, 0
+    for br in brain_regions:
+        if br == "SUB":
+            num_sub += 1
+        elif br == "CA1":
+            num_ca1 += 1
+    name = "SUB_avg" if num_sub >= num_ca1 else "CA1_avg"
     sub_signal = nwbfile.processing["average_lfp"][name].data[:]
     sub_rate = nwbfile.processing["average_lfp"][name].rate
 
-    resting_intervals = mark_rest(speed, sub_signal, sub_rate, speed_rate, **config)
-    duration = timestamps[-1]
+    resting_intervals, intervaled = mark_rest(
+        speed, sub_signal, sub_rate, speed_rate, **config
+    )
+    if (len(resting_intervals) > 0) and (
+        resting_intervals[-1][-1] > r.attrs["duration"]
+    ):
+        resting_intervals[-1][-1] = r.attrs["duration"]
+    duration = r.attrs["duration"]
+    if abs(timestamps[-1] - r.attrs["duration"]) > 0.2:
+        raise RuntimeError("Mismatched duration and data")
     resting_bits = sum((r[1] - r[0] for r in resting_intervals))
     ratio_resting = resting_bits / duration
     if ratio_resting > 1:
-        raise RuntimeError(f"Incorrect resting amount {ratio_resting}")
-    return ratio_resting, resting_intervals
+        raise RuntimeError(
+            f"Incorrect resting amount {ratio_resting}, duration was {duration}, resting was {resting_bits}, intervals {resting_intervals}"
+        )
+    return ratio_resting, resting_intervals, intervaled
 
 
 def convert_to_mne(r, events):

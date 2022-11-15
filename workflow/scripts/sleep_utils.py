@@ -51,10 +51,25 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     final_intervals = [
         val for val in new_intervals if (val[-1] - val[0]) > min_sleep_length
     ]
-
     module_logger.debug(f"Removed short intervals to {final_intervals}")
 
-    return final_intervals
+    final_intervals = cap_intervals(final_intervals, 200)
+    module_logger.debug(f"Capped intervals at 200: {final_intervals}")
+
+    return final_intervals, intervaled
+
+
+def cap_intervals(intervals, tol=200):
+    new_intervals = []
+    for interval in intervals:
+        start, end = interval
+        while (len(new_intervals) == 0) or (new_intervals[-1][-1] != end):
+            if (end - start) > (tol + 50):
+                new_intervals.append((start, start + tol))
+                start = start + tol
+            else:
+                new_intervals.append((start, end))
+    return new_intervals
 
 
 def combine_intervals(intervaled, tol=2):
@@ -159,7 +174,7 @@ def find_ranges(resting, srate):
             rest_end = i / srate
             resting_times.append((rest_start, rest_end))
     if in_rest:
-        resting_times.append((rest_start, ((len(resting_times) - 1) / srate)))
+        resting_times.append((rest_start, ((len(resting) - 1) / srate)))
     return resting_times
 
 

@@ -290,6 +290,9 @@ def detect_spindles(mne_data):
     sp_res = {}
     for brain_region in brain_regions:
         chans = mne.pick_channels_regexp(mne_data.info["ch_names"], f"^{brain_region}")
+        if len(chans) <= 2:
+            module_logger.info(f"Not analysing {brain_region} as too few channels")
+            continue
         mne_data_br = mne_data.copy().pick(chans)
         sp = yasa.spindles_detect(
             mne_data_br,
@@ -356,10 +359,11 @@ def extract_lfp_data_and_do_ripples(
     ripple_detectors,
     speed_long,
 ):
-    time = None
     final_dict = {}
+
     for ripple_detect_name, ripple_detect in ripple_detectors.items():
         for brain_region in brain_regions:
+            full_res = [], []
             if (brain_region == "RSC") and (not on_target):
                 continue
             brain_region_indices = [
@@ -368,31 +372,39 @@ def extract_lfp_data_and_do_ripples(
             indices_to_use = (
                 brain_region_indices[:2] if use_first_two else brain_region_indices
             )
-            lfp_data_sub = lfp_data[:, indices_to_use].T
+            if not use_first_two and (len(indices_to_use) <= 2):
+                module_logger.info(f"Not processing {brain_region} as too few channels")
+                continue
+            lfp_data_sub = lfp_data[:, indices_to_use]
             if np.sum(np.abs(lfp_data_sub)) <= 1.0:
                 if len(brain_region_indices) == 2:
                     logging.warning(f"{brain_region} has no data")
                     continue
                 indices_to_use = brain_region_indices[2:4]
-                lfp_data_sub = lfp_data[:, indices_to_use].T
-            filtered_lfps = filter_ripple_band(lfp_data_sub, lfp_rate).T
+                lfp_data_sub = lfp_data[:, indices_to_use]
+            for resting_interval in resting:
+                part_start = lfp_rate * resting_interval[0]
+                part_end = lfp_rate * resting_interval[1]
+                lfp_signal_part = lfp_data_sub[part_start:part_end]
+                filtered_lfps = filter_ripple_band(lfp_signal_part.T, lfp_rate).T
 
-            if downsampling_factor != 1:
-                filtered_lfps = decimate(
-                    filtered_lfps, downsampling_factor, zero_phase=True, axis=0
-                )
-            if time is None:
+                if downsampling_factor != 1:
+                    filtered_lfps = decimate(
+                        filtered_lfps, downsampling_factor, zero_phase=True, axis=0
+                    )
                 time = [i / new_rate for i in range(filtered_lfps.shape[0])]
 
-            res = ripples(
-                resting,
-                ripple_detect,
-                new_rate,
-                speed_long,
-                filtered_lfps,
-                time,
-            )
-            final_dict[f"{ripple_detect_name}_{brain_region}"] = res
+                res = ripples(
+                    resting,
+                    ripple_detect,
+                    new_rate,
+                    speed_long,
+                    filtered_lfps,
+                    time,
+                )
+                full_res[0].extend(res[0])
+                full_res[1].extend(res[1])
+            final_dict[f"{ripple_detect_name}_{brain_region}"] = full_res
     return final_dict
 
 
@@ -427,10 +439,10 @@ if __name__ == "__main__":
         using_snakemake = False
     else:
         using_snakemake = True
+    module_logger.setLevel(logging.DEBUG)
+    logging.getLogger("simuran.custom.sleep_utils").setLevel(logging.DEBUG)
     if using_snakemake:
         smr.set_only_log_to_file(snakemake.log[0])
-        module_logger.setLevel(logging.DEBUG)
-        logging.getLogger("simuran.custom.sleep_utils").setLevel(logging.DEBUG)
         main(
             snakemake.input[0],
             Path(snakemake.output[0]).parent,

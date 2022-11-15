@@ -14,6 +14,7 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     delta_min, delta_max = kwargs["delta_min"], kwargs["delta_max"]
     min_sleep_length = kwargs["min_sleep_length"]
     sleep_tol = kwargs["sleep_join_tol"]
+    max_interval_size = kwargs["sleep_max_interval_size"]
 
     lfp_samples_per_speed = int(lfp_rate * speed_rate)
     moving = np.zeros(int(len(speed) * lfp_samples_per_speed))
@@ -53,7 +54,7 @@ def mark_rest(speed, lfp, lfp_rate, speed_rate, tresh=2.5, window_sec=2, **kwarg
     ]
     module_logger.debug(f"Removed short intervals to {final_intervals}")
 
-    final_intervals = cap_intervals(final_intervals, 200)
+    final_intervals = cap_intervals(final_intervals, max_interval_size)
     module_logger.debug(f"Capped intervals at 200: {final_intervals}")
 
     return final_intervals, intervaled

@@ -1,7 +1,7 @@
 import logging
 import pickle
 import traceback
-from math import floor
+from math import floor, ceil
 from pathlib import Path
 
 import mne
@@ -84,6 +84,8 @@ def main(
                             r.attrs["duration"],
                         )
                     )
+                    # TODO temp
+                    break
 
         except Exception as e:
             print(f"ERROR: sleep execution failed with {e}")
@@ -359,53 +361,59 @@ def extract_lfp_data_and_do_ripples(
     ripple_detectors,
     speed_long,
 ):
-    final_dict = {}
-
-    for ripple_detect_name, ripple_detect in ripple_detectors.items():
-        for brain_region in brain_regions:
-            full_res = [], []
-            if (brain_region == "RSC") and (not on_target):
-                continue
-            brain_region_indices = [
-                i for i in range(len(brain_regions)) if brain_regions[i] == brain_region
-            ]
-            indices_to_use = (
-                brain_region_indices[:2] if use_first_two else brain_region_indices
-            )
-            if not use_first_two and (len(indices_to_use) <= 2):
-                module_logger.info(f"Not processing {brain_region} as too few channels")
-                continue
-            lfp_data_sub = lfp_data[:, indices_to_use]
-            if np.sum(np.abs(lfp_data_sub)) <= 1.0:
+    logging.debug("Starting ripple detection")
+    full_res = {}
+    br_set = set(brain_regions)
+    for brain_region in br_set:
+        if (brain_region == "RSC") and (not on_target):
+            continue
+        brain_region_indices = [
+            i for i in range(len(brain_regions)) if brain_regions[i] == brain_region
+        ]
+        indices_to_use = (
+            brain_region_indices[:2] if use_first_two else brain_region_indices
+        )
+        if not use_first_two and (len(indices_to_use) <= 2):
+            module_logger.info(f"Not processing {brain_region} as too few channels")
+            continue
+        for resting_interval in resting:
+            module_logger.debug(f"Obtaining LFP data")
+            part_start = ceil(lfp_rate * resting_interval[0])
+            part_end = floor(lfp_rate * resting_interval[1])
+            speed_start = ceil(new_rate * resting_interval[0])
+            speed_end = floor(new_rate * resting_interval[1])
+            lfp_data_sub = lfp_data[part_start:part_end, indices_to_use]
+            if use_first_two and (np.sum(np.abs(lfp_data_sub)) <= 1.0):
                 if len(brain_region_indices) == 2:
-                    logging.warning(f"{brain_region} has no data")
+                    module_logger.warning(f"{brain_region} has no data")
                     continue
                 indices_to_use = brain_region_indices[2:4]
-                lfp_data_sub = lfp_data[:, indices_to_use]
-            for resting_interval in resting:
-                part_start = lfp_rate * resting_interval[0]
-                part_end = lfp_rate * resting_interval[1]
-                lfp_signal_part = lfp_data_sub[part_start:part_end]
-                filtered_lfps = filter_ripple_band(lfp_signal_part.T, lfp_rate).T
+                lfp_data_sub = lfp_data[part_start:part_end, indices_to_use]
+            module_logger.debug(f"Filtering LFP {part_start}:{part_end}")
+            filtered_lfps = filter_ripple_band(lfp_data_sub.T, lfp_rate).T
 
-                if downsampling_factor != 1:
-                    filtered_lfps = decimate(
-                        filtered_lfps, downsampling_factor, zero_phase=True, axis=0
-                    )
-                time = [i / new_rate for i in range(filtered_lfps.shape[0])]
+            if downsampling_factor != 1:
+                filtered_lfps = decimate(
+                    filtered_lfps, downsampling_factor, zero_phase=True, axis=0
+                )
+            time = [i / new_rate for i in range(filtered_lfps.shape[0])]
 
+            for ripple_detect_name, ripple_detect in ripple_detectors.items():
+                full_res.setdefault(f"{ripple_detect_name}_{brain_region}", ([], []))
+                module_logger.debug(
+                    f"Beginning {ripple_detect_name} detection for {brain_region}"
+                )
                 res = ripples(
                     resting,
                     ripple_detect,
                     new_rate,
-                    speed_long,
+                    speed_long[speed_start:speed_end],
                     filtered_lfps,
                     time,
                 )
-                full_res[0].extend(res[0])
-                full_res[1].extend(res[1])
-            final_dict[f"{ripple_detect_name}_{brain_region}"] = full_res
-    return final_dict
+                full_res[f"{ripple_detect_name}_{brain_region}"][0].extend(res[0])
+                full_res[f"{ripple_detect_name}_{brain_region}"][1].extend(res[1])
+    return full_res
 
 
 def ripples(resting, ripple_detect, lfp_rate, speed_long, filtered_lfps, time):

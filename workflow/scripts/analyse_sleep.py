@@ -379,7 +379,6 @@ def extract_lfp_data_and_do_ripples(
             part_start = ceil(lfp_rate * resting_interval[0])
             part_end = floor(lfp_rate * resting_interval[1])
             speed_start = ceil(new_rate * resting_interval[0])
-            speed_end = floor(new_rate * resting_interval[1])
             lfp_data_sub = lfp_data[part_start:part_end, indices_to_use]
             if use_first_two and (np.sum(np.abs(lfp_data_sub)) <= 1.0):
                 if len(brain_region_indices) == 2:
@@ -395,6 +394,7 @@ def extract_lfp_data_and_do_ripples(
                     filtered_lfps, downsampling_factor, zero_phase=True, axis=0
                 )
             time = [i / new_rate for i in range(filtered_lfps.shape[0])]
+            speed_sub = speed_long[speed_start : speed_start + filtered_lfps.shape[0]]
 
             for ripple_detect_name, ripple_detect in ripple_detectors.items():
                 full_res.setdefault(f"{ripple_detect_name}_{brain_region}", ([], []))
@@ -405,7 +405,7 @@ def extract_lfp_data_and_do_ripples(
                     resting,
                     ripple_detect,
                     new_rate,
-                    speed_long[speed_start:speed_end],
+                    speed_sub,
                     filtered_lfps,
                     time,
                 )

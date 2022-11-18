@@ -1,3 +1,4 @@
+import itertools
 import logging
 from pathlib import Path
 
@@ -166,12 +167,14 @@ def plot_per_animal_psd(per_animal_df, output_path, max_frequency):
 
 
 def plot_control_vs_lesion_psd(per_animal_df, output_path, max_frequency):
+    fix_notch_freqs(per_animal_df, [50, 100])
     regions = sorted(list(set(per_animal_df["Brain Region"])))
     paths = []
     for region in regions:
         df = per_animal_df[per_animal_df["Brain Region"] == region]
         # Only use ipsilateral recordings
         df = df[df["RSC on target"]] if region == "RSC" else df
+
         fig, ax = plt.subplots()
         sns.lineplot(
             ax=ax,
@@ -187,6 +190,31 @@ def plot_control_vs_lesion_psd(per_animal_df, output_path, max_frequency):
         paths.append(f"{output_path}--{region}")
         fig = smr.SimuranFigure(fig, filename=f"{output_path}--{region}")
         fig.save()
+
+
+def fix_notch_freqs(df, freqs_to_fix):
+    fnames = sorted(list(set(df["Fname"])))
+    brain_regions = sorted(list(set(df["Brain Region"])))
+    for fname, br in itertools.product(fnames, brain_regions):
+        br_bit = df["Brain Region"] == br
+        fname_bit = df["Fname"] == fname
+        df_bit = df[fname_bit & br_bit]
+        for f in freqs_to_fix:
+            start_val = (
+                df_bit[df_bit["Frequency (Hz)"].between(f - 5, f - 4)]["Power (Db)"]
+                .iloc[0]
+                .data
+            )
+            end_val = (
+                df_bit[df_bit["Frequency (Hz)"].between(f + 4, f + 5)]["Power (Db)"]
+                .iloc[-1]
+                .data
+            )
+            freqs = df_bit["Frequency (Hz)"].between(f - 5, f + 5)
+            interp = np.linspace(
+                start_val, end_val, np.count_nonzero(freqs), endpoint=True
+            )
+            df.loc[freqs & br_bit & fname_bit, "Power (Db)"] = interp
 
 
 def main(df_path, config_path, out_dir):
@@ -207,27 +235,43 @@ def summary(df_path, config_path, out_dir, order=0):
     full_df = df_from_file(df_path)
 
     end_bit = "averaged_psds" if order == 0 else "averaged_signals"
-    path = out_dir / f"per_animal_psds--{end_bit}"
     smr.set_plot_style()
-    plot_per_animal_psd(full_df, path, max_frequency)
     path = out_dir / f"per_group_psds--{end_bit}"
     plot_control_vs_lesion_psd(full_df, path, max_frequency)
+    path = out_dir / f"per_animal_psds--{end_bit}"
+    plot_per_animal_psd(full_df, path, max_frequency)
 
 
 if __name__ == "__main__":
-    smr.set_only_log_to_file(snakemake.log[0])
+    try:
+        a = snakemake
+    except Exception:
+        use_snakemake = False
+    else:
+        use_snakemake = True
 
-    if snakemake.params.get("mode") == "summary":
-        for order in (0, 1):
-            summary(
-                snakemake.input[order],
+    if use_snakemake:
+        smr.set_only_log_to_file(snakemake.log[0])
+
+        if snakemake.params.get("mode") == "summary":
+            for order in (0, 1):
+                summary(
+                    snakemake.input[order],
+                    snakemake.config["simuran_config"],
+                    Path(snakemake.output[0]).parent.parent,
+                    order,
+                )
+        else:
+            main(
+                snakemake.input[0],
                 snakemake.config["simuran_config"],
-                Path(snakemake.output[0]).parent.parent,
-                order,
+                Path(snakemake.output[0]),
             )
     else:
-        main(
-            snakemake.input[0],
-            snakemake.config["simuran_config"],
-            Path(snakemake.output[0]),
+        here = Path(__file__).parent.parent.parent
+        summary(
+            here / "results" / "summary" / "averaged_signals_psd.csv",
+            here / "config" / "simuran_params.yml",
+            here / "results" / "plots" / "summary",
+            order=1,
         )

@@ -91,6 +91,7 @@ def power_spectra_summary(rc, out_dir, config):
         on_target = r.attrs["RSC on target"]
 
         clean_df = convert_df_to_averages(grab_psds(r.data)[0])
+        clean_df = clean_df.assign(Fname=r.source_file)
         clean_df = clean_df.assign(Rat=rat_name)
         clean_df = clean_df.assign(Group=group)
         clean_df = clean_df.assign(**{"RSC on target": on_target})

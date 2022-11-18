@@ -82,13 +82,13 @@ def convert_low_rate_to_mne(r):
 def check_decimation(signals):
     filtered_signals = mne.filter.filter_data(signals, 4800, 150, 250)
     fig, axes = plt.subplots(2 * len(signals))
-    x = [i / 4800 for i in range(0, 4800 * 20)]
+    x = [i / 4800 for i in range(0, 4800 * 1)]
     for i, s in enumerate(filtered_signals):
-        axes[i].plot(x, s[: 4800 * 20], c="k")
-    x = [i / 1600 for i in range(0, 1600 * 20)]
+        axes[i].plot(x, s[: 4800 * 1], c="k")
+    x = [i / 1600 for i in range(0, 1600 * 1)]
     filtered_lfps = decimate(filtered_signals, 3, zero_phase=True, axis=-1)
     for i, s in enumerate(filtered_lfps):
-        axes[2 + i].plot(x, s[: 1600 * 20], c="b")
+        axes[2 + i].plot(x, s[: 1600 * 1], c="b")
 
 
 loader = smr.loader_from_string("nwb")

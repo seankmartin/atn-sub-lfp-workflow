@@ -371,7 +371,7 @@ def extract_lfp_data_and_do_ripples(
         indices_to_use = (
             brain_region_indices[:2] if use_first_two else brain_region_indices
         )
-        if not use_first_two and (len(indices_to_use) <= 2):
+        if not use_first_two and (len(indices_to_use) <= 1):
             module_logger.info(f"Not processing {brain_region} as too few channels")
             continue
         for resting_interval in resting:
@@ -401,20 +401,16 @@ def extract_lfp_data_and_do_ripples(
                 module_logger.debug(
                     f"Beginning {ripple_detect_name} detection for {brain_region}"
                 )
+                thresh = 3.0 if ripple_detect_name == "Kay" else 4.0
                 res = ripples(
-                    resting,
-                    ripple_detect,
-                    new_rate,
-                    speed_sub,
-                    filtered_lfps,
-                    time,
+                    ripple_detect, new_rate, speed_sub, filtered_lfps, time, thresh
                 )
                 full_res[f"{ripple_detect_name}_{brain_region}"][0].extend(res[0])
                 full_res[f"{ripple_detect_name}_{brain_region}"][1].extend(res[1])
     return full_res
 
 
-def ripples(resting, ripple_detect, lfp_rate, speed_long, filtered_lfps, time):
+def ripples(ripple_detect, lfp_rate, speed_long, filtered_lfps, time, thresh):
     ripple_times = ripple_detect(
         time,
         filtered_lfps,
@@ -422,7 +418,7 @@ def ripples(resting, ripple_detect, lfp_rate, speed_long, filtered_lfps, time):
         lfp_rate,
         speed_threshold=2.5,
         minimum_duration=0.015,
-        zscore_threshold=3.0,
+        zscore_threshold=thresh,
         smoothing_sigma=0.004,
         close_ripple_threshold=0.05,
     )

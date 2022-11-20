@@ -155,7 +155,8 @@ def plot_per_animal_psd(per_animal_df, output_path, max_frequency):
             ax=ax,
             x="Frequency (Hz)",
             y="Power (Db)",
-            hue="Rat",
+            hue="Group",
+            style="Rat",
             data=df[df["Frequency (Hz)"] < max_frequency],
         )
         smr.despine()
@@ -167,7 +168,7 @@ def plot_per_animal_psd(per_animal_df, output_path, max_frequency):
 
 
 def plot_control_vs_lesion_psd(per_animal_df, output_path, max_frequency):
-    fix_notch_freqs(per_animal_df, [50, 100])
+    fix_notch_freqs(per_animal_df, [50, 60, 100])
     regions = sorted(list(set(per_animal_df["Brain Region"])))
     paths = []
     for region in regions:

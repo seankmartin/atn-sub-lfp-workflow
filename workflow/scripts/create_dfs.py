@@ -125,6 +125,7 @@ def power_spectra_summary(rc, out_dir, config):
 
         psd_df = create_psd_table(r.data)
         clean_df = psd_df[psd_df["Type"] == "Clean"]
+        clean_df = clean_df.assign(Fname=r.source_file)
         clean_df = clean_df.assign(Rat=rat_name)
         clean_df = clean_df.assign(Group=group)
         clean_df = clean_df.assign(**{"RSC on target": on_target})

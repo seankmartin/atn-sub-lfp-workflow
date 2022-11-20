@@ -146,3 +146,10 @@ rule plot_sleep:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/plot_sleep.py"
+
+    
+rule plot_assorted:
+    input:
+        "results/summary/signal_bandpowers.csv",
+    output:
+        "results/plots/summary/png/bandpower_SUB.png"

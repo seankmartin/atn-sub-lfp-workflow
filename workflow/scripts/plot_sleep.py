@@ -2,6 +2,8 @@ import pickle
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
 import simuran as smr
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
@@ -32,17 +34,58 @@ def plot_ripples(ripples_data, output_dir, config, df):
                     filename,
                     treatment,
                     brain_region,
+                    ratio_rest * duration,
                     60 * len(times) / (ratio_rest * duration),
                 ]
             )
-    df = list_to_df(l, headers=["Filename", "Condition", "Brain Region", "Ripples/min"])
+    df = list_to_df(
+        l,
+        headers=[
+            "Filename",
+            "Condition",
+            "Brain Region",
+            "Resting time",
+            "Ripples/min",
+        ],
+    )
+    df2 = create_long_style_df(df)
     df_to_file(df, output_dir.parent.parent / "sleep" / "ripples2.csv")
+    df_to_file(df2, output_dir.parent.parent / "sleep" / "ripples_jasp.csv")
     fig, ax = plt.subplots()
     smr.set_plot_style()
     sns.barplot(data=df, x="Condition", y="Ripples/min", hue="Brain Region", ax=ax)
     ax.set_title("Sharp wave ripples in sleep")
     smr_fig = smr.SimuranFigure(fig, output_dir / "ripples", done=True)
     smr_fig.save()
+
+
+def create_long_style_df(df):
+    br_headers = sorted(list(set(df["Brain Region"])))
+
+    data = {
+        "Filename": [],
+        "Condition": [],
+        "Resting time": [],
+    }
+
+    for br in br_headers:
+        data[br] = []
+
+    for i, row in df.iterrows():
+        if row["Filename"] not in data["Filename"]:
+            data["Filename"].append(row["Filename"])
+            data["Condition"].append(row["Condition"])
+            data["Resting time"].append(row["Resting time"])
+            for br in br_headers:
+                if len(data[br]) < len(data["Filename"]) - 1:
+                    data[br].append(np.nan)
+        data[row["Brain Region"]].append(row["Ripples/min"])
+
+    for br in br_headers:
+        if len(data[br]) < len(data["Filename"]):
+            data[br].append(np.nan)
+
+    return pd.DataFrame(data)
 
 
 def plot_spindles(spindles_data, ripples_data, output_dir, config, df):

@@ -61,7 +61,13 @@ def plot_all_fooof(info_for_fooof, out_dir, fmax=40):
 
 
 def plot_fooof_peaks(peaks_data, out_dir):
-    peaks_df = list_to_df(peaks_data, headers=["Peak frequency", "Group", "Region"])
+    peaks_df = list_to_df(peaks_data, headers=["Peak frequency", "Group2", "Region"])
+    change_name = lambda x: "ATNx" if x == "Lesion" else x
+    try:
+        peaks_df["Group"] = peaks_df["Group2"].apply(change_name)
+    except KeyError:
+        print(peaks_df)
+        exit(-1)
 
     for r in sorted(list(set(peaks_df["Region"]))):
         fig, ax = plt.subplots()
@@ -70,10 +76,12 @@ def plot_fooof_peaks(peaks_data, out_dir):
             data=data,
             x="Peak frequency",
             hue="Group",
+            hue_order=["ATNx", "Control"],
             multiple="stack",
             # element="step",
             ax=ax,
-            binwidth=1,
+            binwidth=2,
+            palette={"Control": "0.65", "ATNx": "r"},
         )
         smr.despine()
         ax.set_title(f"{r} Peak frequencies (Hz)")
@@ -94,9 +102,23 @@ def main(input_df_path, output_directory, config_path):
 
 
 if __name__ == "__main__":
-    smr.set_only_log_to_file(snakemake.log[0])
-    main(
-        snakemake.input[0],
-        Path(snakemake.output[0]).parent,
-        snakemake.config["simuran_config"],
-    )
+    try:
+        a = snakemake
+    except NameError:
+        use_snakemake = False
+    else:
+        use_snakemake = True
+    if use_snakemake:
+        smr.set_only_log_to_file(snakemake.log[0])
+        main(
+            snakemake.input[0],
+            Path(snakemake.output[0]).parent,
+            snakemake.config["simuran_config"],
+        )
+    else:
+        here = Path(__file__).parent.parent.parent
+        main(
+            here / "results" / "openfield_processed.csv",
+            here / "results" / "plots" / "summary",
+            here / "config" / "simuran_params.yml",
+        )

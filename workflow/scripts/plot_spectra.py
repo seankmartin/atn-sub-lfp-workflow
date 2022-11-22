@@ -185,6 +185,7 @@ def plot_control_vs_lesion_psd(per_animal_df, output_path, max_frequency):
             style="Group",
             data=df[df["Frequency (Hz)"] < max_frequency],
             estimator=np.median,
+            palette=["k", "r"],
         )
         ax.set_title(f"{region} LFP power (median)")
         smr.despine()

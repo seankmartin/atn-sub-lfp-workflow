@@ -62,7 +62,7 @@ def plot_all_fooof(info_for_fooof, out_dir, fmax=40):
 
 def plot_fooof_peaks(peaks_data, out_dir):
     peaks_df = list_to_df(peaks_data, headers=["Peak frequency", "Group2", "Region"])
-    change_name = lambda x: "ATNx" if x == "Lesion" else x
+    change_name = lambda x: "Lesion (ATNx)" if x == "Lesion" else "Control (ATN)"
     try:
         peaks_df["Group"] = peaks_df["Group2"].apply(change_name)
     except KeyError:

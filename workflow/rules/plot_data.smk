@@ -152,4 +152,4 @@ rule plot_assorted:
     input:
         "results/summary/signal_bandpowers.csv",
     output:
-        "results/plots/summary/png/bandpower_SUB.png"
+        "results/plots/summary/png/bandpower_SUB_Relative Bandpower.png"

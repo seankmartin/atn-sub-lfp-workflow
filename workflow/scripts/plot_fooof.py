@@ -61,7 +61,9 @@ def plot_all_fooof(info_for_fooof, out_dir, fmax=40):
 
 
 def plot_fooof_peaks(peaks_data, out_dir):
-    peaks_df = list_to_df(peaks_data, headers=["Peak frequency", "Group2", "Region"])
+    peaks_df = list_to_df(
+        peaks_data, headers=["Peak frequency (Hz)", "Group2", "Region"]
+    )
     change_name = lambda x: "Lesion (ATNx)" if x == "Lesion" else "Control (ATN)"
     try:
         peaks_df["Group"] = peaks_df["Group2"].apply(change_name)
@@ -74,18 +76,18 @@ def plot_fooof_peaks(peaks_data, out_dir):
         data = peaks_df[peaks_df["Region"] == r]
         sns.histplot(
             data=data,
-            x="Peak frequency",
+            x="Peak frequency (Hz)",
             hue="Group",
-            hue_order=["ATNx", "Control"],
+            hue_order=["Control (ATN)", "Lesion (ATNx)"],
             multiple="stack",
             # element="step",
             ax=ax,
             binwidth=2,
-            palette={"Control": "0.65", "ATNx": "r"},
+            # palette={"Control (ATN)": "0.65", "Lesion (ATNx)": "r"},
         )
         smr.despine()
-        ax.set_title(f"{r} Peak frequencies (Hz)")
-        ax.set_xlim(0.5, ceil(max(data["Peak frequency"])))
+        # ax.set_title(f"{r} Peak frequencies (Hz)")
+        ax.set_xlim(0.5, ceil(max(data["Peak frequency (Hz)"])))
         out_name = out_dir / f"{r}--fooof_combined"
         smr_fig = smr.SimuranFigure(fig, out_name)
         smr_fig.save()

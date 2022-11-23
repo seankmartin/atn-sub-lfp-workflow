@@ -110,7 +110,11 @@ def power_stats(input_path, overall_kwargs, get_obj):
 
         t1_kwargs = {
             **overall_kwargs,
-            **{"value": f"subicular relative {name} powers (unitless)"},
+            **{
+                "value": f"subicular relative {name} powers (unitless)",
+                "n_decimals": 4,
+                "np_decimals": 4,
+            },
         }
         res = mwu(
             control_df[f"SUB {name} Rel"],
@@ -122,7 +126,11 @@ def power_stats(input_path, overall_kwargs, get_obj):
 
         t2_kwargs = {
             **overall_kwargs,
-            **{"value": f"retrospenial relative {name} powers (unitless)"},
+            **{
+                "value": f"retrospenial relative {name} powers (unitless)",
+                "n_decimals": 4,
+                "np_decimals": 4,
+            },
         }
         res = mwu(
             control_df[control_df["RSC on target"]][f"RSC {name} Rel"],
@@ -199,7 +207,6 @@ def speed_stats(input_path, overall_kwargs, get_obj):
             },
         }
         speed_ctrl_df = speed_ctrl_df[speed_ctrl_df["region"] == region]
-        print(speed_ctrl_df)
         res = corr(
             speed_ctrl_df["speed"],
             speed_ctrl_df["power"],

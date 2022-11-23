@@ -453,10 +453,35 @@ def main(input_paths, plot_dir, output_file, show_quartiles=False):
 
 
 if __name__ == "__main__":
-    smr.set_only_log_to_file(snakemake.log[0])
-    main(
-        snakemake.input,
-        Path(snakemake.output[0]),
-        Path(snakemake.output[1]),
-        snakemake.params["show_quartiles"],
-    )
+    try:
+        a = snakemake
+    except NameError:
+        use_snakemake = False
+    else:
+        use_snakemake = True
+
+    if use_snakemake:
+        smr.set_only_log_to_file(snakemake.log[0])
+        main(
+            snakemake.input,
+            Path(snakemake.output[0]),
+            Path(snakemake.output[1]),
+            snakemake.params["show_quartiles"],
+        )
+    else:
+        here = Path(__file__).parent.parent.parent
+        main(
+            [
+                here / "results/summary/signal_bandpowers.csv",
+                here / "results/summary/coherence_stats.csv",
+                here / "results/summary/openfield_speed.csv",
+                here / "results/summary/openfield_peak_sfc.csv",
+                here / "results/tmaze/results.csv",
+                here / "results/summary/muscimol_peak_sfc.csv",
+                here / "results/sleep/spindles.csv",
+                here / "results/sleep/ripples.csv",
+            ],
+            here / "results" / "plots" / "stats",
+            here / "results" / "stats_output.txt",
+            True,
+        )

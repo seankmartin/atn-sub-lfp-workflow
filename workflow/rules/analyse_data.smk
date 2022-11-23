@@ -143,3 +143,16 @@ rule analyse_sleep:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/analyse_sleep.py"
+
+
+rule analyse_abs_power:
+    input:
+        "results/openfield_processed.csv",
+    output:
+        "results/summary/bandpowers_abs.csv"
+    log:
+        "logs/abs_power.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/analyse_absolute_power.py"

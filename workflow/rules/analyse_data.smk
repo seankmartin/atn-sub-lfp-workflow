@@ -75,7 +75,7 @@ rule hypothesis_tests:
     input:
         "results/summary/signal_bandpowers.csv",
         "results/summary/coherence_stats.csv",
-        "results/summary/openfield_speed.csv",
+        "results/summary/speed_theta_avg.csv",
         "results/summary/openfield_peak_sfc.csv",
         "results/tmaze/results.csv",
         "results/summary/muscimol_peak_sfc.csv",
@@ -156,3 +156,16 @@ rule analyse_abs_power:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/analyse_absolute_power.py"
+
+
+rule process_dfs:
+    input:
+        "results/summary/openfield_speed.csv",
+    output:
+        "results/summary/speed_theta_avg.csv"
+    log:
+        "logs/process_dfs.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/process_dfs.py"

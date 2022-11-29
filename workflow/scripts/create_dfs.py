@@ -209,9 +209,9 @@ def openfield_speed(rc, out_dir):
             speed_df = nwbfile.processing["speed_theta"][
                 "speed_lfp_table"
             ].to_dataframe()
-            speed_df.loc[:, "Group"] = recording.attrs["treatment"].capitalize()
             speed_df.loc[:, "RSC on target"] = recording.attrs["RSC on target"]
-            speed_df.loc[:, "Condition"] = speed_df.loc[:, "Group"]
+            speed_df.loc[:, "Condition"] = recording.attrs["treatment"].capitalize()
+            speed_df.loc[:, "ID"] = nwbfile.identifier
             dfs.append(speed_df)
         return pd.concat(dfs, ignore_index=True)
 

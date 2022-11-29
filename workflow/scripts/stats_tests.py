@@ -481,7 +481,7 @@ if __name__ == "__main__":
             [
                 here / "results/summary/signal_bandpowers.csv",
                 here / "results/summary/coherence_stats.csv",
-                here / "results/summary/openfield_speed.csv",
+                here / "results/summary/speed_theta_avg.csv",
                 here / "results/summary/openfield_peak_sfc.csv",
                 here / "results/tmaze/results.csv",
                 here / "results/summary/muscimol_peak_sfc.csv",

@@ -12,6 +12,7 @@ module_logger = logging.getLogger("simuran.custom.speed_vs_lfp")
 
 def plot_speed_vs_lfp(df, out_dir, max_speed):
     smr.set_plot_style()
+    df["Group"] = df["Condition"]
     df.replace("Control", "Control (ATN)", inplace=True)
     df.replace("Lesion", "Lesion  (ATNx)", inplace=True)
 
@@ -25,9 +26,9 @@ def plot_speed_vs_lfp(df, out_dir, max_speed):
             y="power",
             style="Group",
             hue="Group",
-            ci=95,
-            estimator=np.median,
+            errorbar=("ci", 95)
             ax=ax,
+            estimator=np.median,
         )
         smr.despine()
         ax.set_xlabel("Speed (cm / s)")
@@ -46,9 +47,28 @@ def main(input_df_path, out_dir, config_path):
 
 
 if __name__ == "__main__":
-    smr.set_only_log_to_file(snakemake.log[0])
-    main(
-        snakemake.input[0],
-        Path(snakemake.output[0]).parent.parent,
-        snakemake.config["simuran_config"],
-    )
+    try:
+        a = snakemake
+    except NameError:
+        use_snakemake = False
+    else:
+        use_snakemake = True
+    if use_snakemake:
+        smr.set_only_log_to_file(snakemake.log[0])
+        main(
+            snakemake.input[0],
+            Path(snakemake.output[0]).parent.parent,
+            snakemake.config["simuran_config"],
+        )
+    else:
+        here = Path(__file__).parent.parent.parent
+        main(
+            here / "results" / "summary" / "speed_theta_avg.csv",
+            here / "results" / "plots" / "summary",
+            here / "config" / "simuran_params.yml",
+        )
+        main(
+            here / "results" / "summary" / "openfield_speed.csv",
+            here / "results" / "plots" / "summary_alt",
+            here / "config" / "simuran_params.yml",
+        )

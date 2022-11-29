@@ -27,7 +27,10 @@ def main(inputs, output_dir, config_path):
 
 def openfield_spike_lfp(rc, output_dir, n_shuffles, config):
     theta_min, theta_max = config["theta_min"], config["theta_max"]
-    sta_df, sfc_df, peak_df = convert_spike_lfp(rc, n_shuffles, theta_min, theta_max)
+    delta_min, delta_max = config["delta_min"], config["delta_max"]
+    sta_df, sfc_df, peak_df = convert_spike_lfp(
+        rc, n_shuffles, theta_min, theta_max, delta_min, delta_max
+    )
     df_to_file(sta_df, output_dir / "openfield_sta.csv")
     df_to_file(sfc_df, output_dir / "openfield_sfc.csv")
     df_to_file(peak_df, output_dir / "openfield_peak_sfc.csv")
@@ -35,13 +38,18 @@ def openfield_spike_lfp(rc, output_dir, n_shuffles, config):
 
 def muscimol_spike_lfp(rc, output_dir, n_shuffles, config):
     theta_min, theta_max = config["theta_min"], config["theta_max"]
-    sta_df, sfc_df, peak_df = convert_spike_lfp(rc, n_shuffles, theta_min, theta_max)
+    delta_min, delta_max = config["delta_min"], config["delta_max"]
+    sta_df, sfc_df, peak_df = convert_spike_lfp(
+        rc, n_shuffles, theta_min, theta_max, delta_min, delta_max
+    )
     df_to_file(sta_df, output_dir / "muscimol_sta.csv")
     df_to_file(sfc_df, output_dir / "muscimol_sfc.csv")
     df_to_file(peak_df, output_dir / "muscimol_peak_sfc.csv")
 
 
-def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
+def convert_spike_lfp(
+    recording_container, n_shuffles, theta_min, theta_max, delta_min, delta_max
+):
     def add_spike_lfp_info(
         sta_list,
         sfc_list,
@@ -79,7 +87,13 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
         )
 
         theta_part = sfc[np.nonzero(np.logical_and(f >= theta_min, f <= theta_max))]
-        return np.nanmax(theta_part)
+        delta_part = sfc[np.nonzero(np.logical_and(f >= delta_min, f <= delta_max))]
+        return (
+            np.nanmax(theta_part),
+            np.nanmean(theta_part),
+            np.nanmax(delta_part),
+            np.nanmean(delta_part),
+        )
 
     def compute_spike_lfp(lfp, spike_train, nrep=500):
         g_data = lfp.plv(spike_train, mode="bs", fwin=[0, 120], nrep=nrep)
@@ -172,7 +186,12 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
                 avg_lfp = recording.data.processing["average_lfp"]
                 if f"{region}_avg" not in avg_lfp.data_interfaces:
                     continue
-                peak_theta_coh = add_spike_lfp_info(
+                (
+                    peak_theta_coh,
+                    avg_theta_coh,
+                    peak_delta_coh,
+                    avg_delta_coh,
+                ) = add_spike_lfp_info(
                     sta_list,
                     sfc_list,
                     recording,
@@ -184,7 +203,18 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
                     theta_min,
                     theta_max,
                 )
-                peak_vals.append([peak_theta_coh, treatment, region, on_target, type_])
+                peak_vals.append(
+                    [
+                        peak_theta_coh,
+                        avg_theta_coh,
+                        peak_delta_coh,
+                        avg_delta_coh,
+                        treatment,
+                        region,
+                        on_target,
+                        type_,
+                    ]
+                )
 
     headers = [
         "Region",
@@ -206,7 +236,16 @@ def convert_spike_lfp(recording_container, n_shuffles, theta_min, theta_max):
         "Shuffled SFC",
     ]
     sfc_df = list_to_df(sfc_list, headers=headers)
-    headers = ["Peak Theta SFC", "Group", "Region", "RSC on target", "Spatial"]
+    headers = [
+        "Peak Theta SFC",
+        "AVG Theta SFC",
+        "Peak Delta SFC",
+        "AVG Delta SFC",
+        "Group",
+        "Region",
+        "RSC on target",
+        "Spatial",
+    ]
     peak_df = list_to_df(peak_vals, headers=headers)
 
     if sta_df["Group"].str.startswith("Musc").any():

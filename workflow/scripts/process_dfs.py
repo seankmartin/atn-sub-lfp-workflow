@@ -5,10 +5,29 @@ from skm_pyutils.table import list_to_df, df_from_file, df_to_file
 import simuran as smr
 
 
-def main(input_df_path, output_dir, config_path):
+def main(input_df_path, open_spike_path, musc_spike_path, output_dir, config_path):
     input_df = df_from_file(input_df_path)
     cfg = smr.config_from_file(config_path)
     process_speed_theta(input_df, output_dir, cfg)
+    process_open_spike_lfp(open_spike_path, output_dir, cfg)
+    process_musc_spike_lfp(musc_spike_path, output_dir, cfg)
+
+
+def process_open_spike_lfp(spike_lfp_path, output_dir, config):
+    df = df_from_file(spike_lfp_path)
+
+    data_of_interest = (df["Region"] == "SUB") & (df["Spatial"] == "Non-Spatial")
+    df_to_file(df[data_of_interest], output_dir / "open_spike_lfp_ns.csv")
+
+    data_of_interest = (df["Region"] == "SUB") & (df["Group"] == "Control")
+    df_to_file(df[data_of_interest], output_dir / "open_spike_lfp_sub.csv")
+
+
+def process_musc_spike_lfp(spike_lfp_path, output_dir, config):
+    df = df_from_file(spike_lfp_path)
+
+    data_of_interest = df["Region"] == "SUB"
+    df_to_file(df[data_of_interest], output_dir / "musc_spike_lfp_sub.csv")
 
 
 def process_speed_theta(input_df, output_dir, config):
@@ -92,7 +111,7 @@ if __name__ == "__main__":
         use_snakemake = True
     if use_snakemake:
         main(
-            snakemake.input[0],
+            *snakemake.input,
             Path(snakemake.output[0]).parent,
             snakemake.config["simuran_config"],
         )

@@ -161,8 +161,13 @@ rule analyse_abs_power:
 rule process_dfs:
     input:
         "results/summary/openfield_speed.csv",
+        "results/summary/openfield_peak_sfc.csv",
+        "results/summary/muscimol_peak_sfc.csv"
     output:
-        "results/summary/speed_theta_avg.csv"
+        "results/summary/speed_theta_avg.csv",
+        "results/summary/open_spike_lfp_ns.csv",
+        "results/summary/open_spike_lfp_sub.csv",
+        "results/summary/musc_spike_lfp_sub.csv"
     log:
         "logs/process_dfs.log"
     conda:

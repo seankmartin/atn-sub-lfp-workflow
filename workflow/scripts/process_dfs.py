@@ -1,5 +1,6 @@
 from pathlib import Path
 import numpy as np
+import pandas as pd
 
 from skm_pyutils.table import list_to_df, df_from_file, df_to_file
 import simuran as smr
@@ -8,8 +9,8 @@ import simuran as smr
 def main(input_df_path, open_spike_path, musc_spike_path, output_dir, config_path):
     input_df = df_from_file(input_df_path)
     cfg = smr.config_from_file(config_path)
-    process_speed_theta(input_df, output_dir, cfg)
-    process_open_spike_lfp(open_spike_path, output_dir, cfg)
+    # process_speed_theta(input_df, output_dir, cfg)
+    # process_open_spike_lfp(open_spike_path, output_dir, cfg)
     process_musc_spike_lfp(musc_spike_path, output_dir, cfg)
 
 
@@ -27,7 +28,48 @@ def process_musc_spike_lfp(spike_lfp_path, output_dir, config):
     df = df_from_file(spike_lfp_path)
 
     data_of_interest = df["Region"] == "SUB"
+
+    # Spike matching
+    num_spike_rows = [
+        (5, 1),
+        (6, 4),
+        (2, 3),
+        (1, 2),
+        (1, 1),
+        (1, 2),
+        (1, 1),
+        (1, 2),
+        (1, 3),
+        (1, 2),
+        (1, 3),
+        (2, 2),
+        (1, 3),
+        (2, 1),
+    ]
+
+    idx_start = []
+    current_val = 0
+    for val in num_spike_rows:
+        idx_start.extend([current_val + (x * val[1]) for x in range(val[0])])
+        current_val = idx_start[-1] + val[1]
+
+    units = [(idx_start[0], idx_start[1])]
+    units.extend((idx_start[6] + i, idx_start[7] + i) for i in range(4))
+    units.extend((idx_start[11] + i, idx_start[13] + i) for i in range(2))
+    units.append((idx_start[18] + 1, idx_start[20] + 1))
+    units.append((idx_start[19], idx_start[20]))
+    units.append((idx_start[19] + 1, idx_start[20] + 2))
+
+    all_dfs = []
+    for unit in units:
+        row1 = df[data_of_interest].iloc[unit[0]]
+        row2 = df[data_of_interest].iloc[unit[1]]
+        merged = pd.concat([row1, row2], axis=0).to_frame().T
+        all_dfs.append(merged)
+    final = pd.concat(all_dfs)
+    final.columns = [*df.columns, *[x + "_musc" for x in df.columns]]
     df_to_file(df[data_of_interest], output_dir / "musc_spike_lfp_sub.csv")
+    df_to_file(final, output_dir / "musc_spike_lfp_sub_pairs.csv")
 
 
 def process_speed_theta(input_df, output_dir, config):
@@ -119,6 +161,8 @@ if __name__ == "__main__":
         here = Path(__file__).parent.parent.parent
         main(
             here / "results" / "summary" / "openfield_speed.csv",
+            here / "results" / "summary" / "openfield_peak_sfc.csv",
+            here / "results" / "summary" / "muscimol_peak_sfc.csv",
             here / "results" / "summary",
             here / "config" / "simuran_params.yml",
         )

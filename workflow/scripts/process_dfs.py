@@ -75,10 +75,10 @@ def process_musc_spike_lfp(spike_lfp_path, output_dir, config):
     # units compared at start and then later on
     units = [(idx_start[0], idx_start[4])]
     units.extend((idx_start[6] + i, idx_start[10] + i) for i in range(4))
-    units.extend((idx_start[12] + i, idx_start[15] + i) for i in range(2))
-    units.append((idx_start[18], idx_start[22]))
+    units.extend((idx_start[11] + i, idx_start[15] + i) for i in range(2))
     units.append((idx_start[18] + 1, idx_start[23] + 1))
-    units.append((idx_start[18] + 2, idx_start[22] + 1))
+    units.append((idx_start[19], idx_start[23]))
+    units.append((idx_start[19] + 1, idx_start[23] + 2))
 
     all_dfs = []
     for unit in units:
@@ -88,8 +88,7 @@ def process_musc_spike_lfp(spike_lfp_path, output_dir, config):
         all_dfs.append(merged)
     final = pd.concat(all_dfs)
     final.columns = [*df.columns, *[x + "_musc" for x in df.columns]]
-    df_to_file(df[data_of_interest], output_dir / "musc_spike_lfp_sub.csv")
-    df_to_file(final, output_dir / "musc_spike_lfp_sub_pairs_late.csv")
+    df_to_file(final, output_dir / "musc_spike_lfp_sub_pairs_later.csv")
 
 
 def process_speed_theta(input_df, output_dir, config):

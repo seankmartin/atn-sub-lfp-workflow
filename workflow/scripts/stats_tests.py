@@ -235,27 +235,42 @@ def speed_stats(input_path, overall_kwargs, get_obj):
         get_obj.process_str(res)
 
 
-def spike_lfp_stats(input_path, overall_kwargs, get_obj):
+def spike_lfp_stats(input_paths, overall_kwargs, get_obj):
     get_obj.pt("Spike LFP openfield")
-    df, control_df, lesion_df = get_obj.get_df(input_path)
-    control_nspatial = control_df[control_df["Spatial"] == "Non-Spatial"]
-    sub_control = control_nspatial[control_nspatial["Region"] == "SUB"]
-    sub_lesion = lesion_df[lesion_df["Region"] == "SUB"]
+    df = df_from_file(input_paths[0])
 
     t1_kwargs = {
         **overall_kwargs,
-        **{
-            "value": "subicular theta spike field coherence for non-spatially tuned cells (percent)"
-        },
+        **{"value": "subicular theta spike field coherence for spatial vs non"},
     }
 
     res = mwu(
-        sub_control["Peak Theta SFC"],
-        sub_lesion["Peak Theta SFC"],
+        df[df["Spatial"] == "Spatial"]["Peak Theta SFC"],
+        df[df["Spatial"] == "Non-Spatial"]["Peak Theta SFC"],
         t1_kwargs,
         do_plot=True,
     )
-    get_obj.process_fig(res, "sub_sfc.pdf")
+    get_obj.process_fig(res, "sub_theta_sfc.pdf")
+
+    t2_kwargs = {
+        **overall_kwargs,
+        **{"value": "subicular delta spiek field coherence for spatial vs non"},
+    }
+
+    res = mwu(
+        df[df["Spatial"] == "Spatial"]["Peak Delta SFC"],
+        df[df["Spatial"] == "Non-Spatial"]["Peak Delta SFC"],
+        t2_kwargs,
+        do_plot=True,
+    )
+    get_obj.process_fig(res, "sub_delta_sfc.pdf")
+
+    for ip in input_paths[1:]:
+        df = df_from_file(ip)
+        t_kwargs = {**overall_kwargs, **{"value": "muscimol vs control sub theta sfc"}}
+        res = wilcoxon(df["Peak Theta SFC"], df["Peak Theta SFC_musc"], t_kwargs)
+        t_kwargs = {**overall_kwargs, **{"value": "muscimol vs control sub delta sfc"}}
+        res = wilcoxon(df["Peak Delta SFC"], df["Peak Delta SFC_musc"], t_kwargs)
 
 
 def tmaze_stats(input_path, overall_kwargs, get_obj):
@@ -445,16 +460,16 @@ def main(input_paths, plot_dir, output_file, show_quartiles=False):
     speed_stats(input_paths[2], overall_kwargs_corr, get_obj)
 
     # 5. STA in openfield
-    spike_lfp_stats(input_paths[3], overall_kwargs_ttest, get_obj)
+    spike_lfp_stats(input_paths[3:6], overall_kwargs_ttest, get_obj)
 
     # 6. T-maze
-    tmaze_stats(input_paths[4], overall_kwargs_ttest, get_obj)
+    tmaze_stats(input_paths[6], overall_kwargs_ttest, get_obj)
 
     # 7. Muscimol stats
-    muscimol_stats(input_paths[5], overall_kwargs_musc, get_obj)
+    muscimol_stats(input_paths[7], overall_kwargs_musc, get_obj)
 
     # 8. Sleep ripples and spindles
-    sleep_stats(input_paths[6], input_paths[7], overall_kwargs_ttest, get_obj)
+    sleep_stats(input_paths[8], input_paths[9], overall_kwargs_ttest, get_obj)
 
     get_obj.to_file(output_file)
 
@@ -482,7 +497,7 @@ if __name__ == "__main__":
                 here / "results/summary/signal_bandpowers.csv",
                 here / "results/summary/coherence_stats.csv",
                 here / "results/summary/speed_theta_avg.csv",
-                here / "results/summary/openfield_peak_sfc.csv",
+                here / "results/summary/open_spike_lfp_sub.csv",
                 here / "results/tmaze/results.csv",
                 here / "results/summary/muscimol_peak_sfc.csv",
                 here / "results/sleep/spindles.csv",

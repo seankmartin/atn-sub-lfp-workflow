@@ -43,7 +43,7 @@ def plot_sta(sta_df, out_dir):
 
 def plot_sfc(sfc_df, out_dir):
     brain_regions = sorted(list(set(sfc_df["Region"])))
-    is_musc = any(sfc_df["Group"].str.startswith("musc"))
+    is_musc = any(sfc_df["Group"].str.startswith("Musc"))
     hue = "Treatment" if is_musc else "Spatial"
     style = "Treatment" if is_musc else "Group"
     name_iter = zip(["", "_shuffled"], ["SFC", "Shuffled SFC"])

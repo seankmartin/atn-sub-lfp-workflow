@@ -45,7 +45,7 @@ def plot_bandpower(input_df, output_dir, config):
         ["SUB", "RSC"], ["Relative Bandpower", "Bandpower x Frequency"]
     ):
         sub_df = new_df[new_df["Brain Region"] == br]
-        fig, ax = plt.subplots(figsize=(12, 8))
+        fig, ax = plt.subplots(figsize=(10, 8))
         sns.boxplot(
             data=sub_df,
             y=y,
@@ -72,6 +72,7 @@ def plot_bandpower(input_df, output_dir, config):
             size=4.5,
             legend=False,
         )
+        smr.despine()
         smr_fig = smr.SimuranFigure(fig, output_dir / f"bandpower_{br}_{y}")
         smr_fig.save()
 

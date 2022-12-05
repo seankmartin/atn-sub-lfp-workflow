@@ -77,6 +77,8 @@ rule hypothesis_tests:
         "results/summary/coherence_stats.csv",
         "results/summary/speed_theta_avg.csv",
         "results/summary/openfield_peak_sfc.csv",
+        "results/summary/musc_spike_lfp_sub_pairs.csv",
+        "results/summary/musc_spike_lfp_sub_pairs_later.csv",
         "results/tmaze/results.csv",
         "results/summary/muscimol_peak_sfc.csv",
         "results/sleep/spindles.csv",
@@ -167,7 +169,9 @@ rule process_dfs:
         "results/summary/speed_theta_avg.csv",
         "results/summary/open_spike_lfp_ns.csv",
         "results/summary/open_spike_lfp_sub.csv",
-        "results/summary/musc_spike_lfp_sub.csv"
+        "results/summary/musc_spike_lfp_sub.csv",
+        "results/summary/musc_spike_lfp_sub_pairs.csv",
+        "results/summary/musc_spike_lfp_sub_pairs_later.csv",
     log:
         "logs/process_dfs.log"
     conda:

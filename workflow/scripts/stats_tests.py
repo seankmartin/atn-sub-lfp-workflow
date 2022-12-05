@@ -237,7 +237,9 @@ def speed_stats(input_path, overall_kwargs, get_obj):
 
 def spike_lfp_stats(input_paths, overall_kwargs, get_obj):
     get_obj.pt("Spike LFP openfield")
-    df = df_from_file(input_paths[0])
+    df, control_df, lesion_df = get_obj.get_df(input_paths[0])
+    control_df = control_df[control_df["Region"] == "SUB"]
+    lesion_df = lesion_df[lesion_df["Region"] == "SUB"]
 
     t1_kwargs = {
         **overall_kwargs,
@@ -245,32 +247,32 @@ def spike_lfp_stats(input_paths, overall_kwargs, get_obj):
     }
 
     res = mwu(
-        df[df["Spatial"] == "Spatial"]["Peak Theta SFC"],
-        df[df["Spatial"] == "Non-Spatial"]["Peak Theta SFC"],
+        control_df[control_df["Spatial"] == "Spatial"]["AVG Theta SFC"],
+        control_df[control_df["Spatial"] == "Non-Spatial"]["AVG Theta SFC"],
         t1_kwargs,
         do_plot=True,
     )
-    get_obj.process_fig(res, "sub_theta_sfc.pdf")
+    get_obj.process_fig(res, "sub_theta_sfc_spatial_non.pdf")
 
     t2_kwargs = {
         **overall_kwargs,
-        **{"value": "subicular delta spiek field coherence for spatial vs non"},
+        **{
+            "value": "subicular spike field coherence for non-spatial CTRL vs non-spatial lesion"
+        },
     }
 
     res = mwu(
-        df[df["Spatial"] == "Spatial"]["Peak Delta SFC"],
-        df[df["Spatial"] == "Non-Spatial"]["Peak Delta SFC"],
+        control_df[control_df["Spatial"] == "Non-Spatial"]["AVG Theta SFC"],
+        lesion_df[lesion_df["Spatial"] == "Non-Spatial"]["AVG Theta SFC"],
         t2_kwargs,
         do_plot=True,
     )
-    get_obj.process_fig(res, "sub_delta_sfc.pdf")
+    get_obj.process_fig(res, "sub_delta_sfc_non_spatial_only.pdf")
 
     for ip in input_paths[1:]:
         df = df_from_file(ip)
         t_kwargs = {**overall_kwargs, **{"value": "muscimol vs control sub theta sfc"}}
-        res = wilcoxon(df["Peak Theta SFC"], df["Peak Theta SFC_musc"], t_kwargs)
-        t_kwargs = {**overall_kwargs, **{"value": "muscimol vs control sub delta sfc"}}
-        res = wilcoxon(df["Peak Delta SFC"], df["Peak Delta SFC_musc"], t_kwargs)
+        res = wilcoxon(df["AVG Theta SFC"], df["AVG Theta SFC_musc"], t_kwargs)
 
 
 def tmaze_stats(input_path, overall_kwargs, get_obj):

@@ -10,19 +10,20 @@ from skm_pyutils.table import df_from_file
 def plot_coherence(df, out_dir, max_frequency=40):
     smr.set_plot_style()
 
-    df = df[df["RSC on target"]]
     df.replace("Control", "Control (ATN)", inplace=True)
     df.replace("Lesion", "Lesion  (ATNx)", inplace=True)
+    df = df[df["RSC on target"]]
 
     fig, ax = plt.subplots()
     sns.lineplot(
-        data=df[df["Frequency (Hz)"] <= max_frequency],
+        data=df[df["Frequency (Hz)"] <= 30],
         x="Frequency (Hz)",
         y="Coherence",
         style="Group",
         hue="Group",
-        estimator=np.median,
-        ci=95,
+        # estimator="median",
+        estimator="mean",
+        errorbar=("ci", 95),
         ax=ax,
     )
 

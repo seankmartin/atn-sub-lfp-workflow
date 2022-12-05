@@ -14,8 +14,8 @@ def main(input_dir, config, out_dir):
 
 
 def plot_coherence_choice(coherence_df, out_dir):
-    coherence_df = coherence_df[coherence_df["RSC on target"]]
     coherence_df["Trial result"] = coherence_df["Trial"]
+    coherence_df = coherence_df[coherence_df["RSC on target"]]
     coherence_df_sub_bit = coherence_df[
         (coherence_df["Part"] == "choice") & (coherence_df["Trial"] != "Forced")
     ]
@@ -60,9 +60,18 @@ def plot_choice_power(power_df, out_dir):
 
 
 def plot_banded_coherence(out_dir, res_df):
-    res_df = res_df[res_df["part"] == "choice"]
     plot_bar_coherence(res_df, "Theta", out_dir)
     plot_bar_coherence(res_df, "Delta", out_dir)
+
+
+def plot_total_coherence(out_dir, res_df):
+    res_df = res_df[res_df["RSC on target"]]
+    smr.set_plot_style()
+    fig, ax = plt.subplots()
+    sns.boxplot(data=res_df, y="Full Theta Coherence", x="Group", ax=ax)
+    smr.despine()
+    fig = smr.SimuranFigure(fig=fig, name=out_dir / "total_coherence")
+    fig.save()
 
 
 def plot_grouped_power_coherence(out_dir, coherence_df, power_df):
@@ -115,18 +124,20 @@ def plot_group_coherence(group, coherence_df_sub, out_dir):
 
 def plot_bar_coherence(res_df, band: str, out_dir):
     res_df = res_df[res_df["RSC on target"]]
-    fig, ax = plt.subplots()
-    smr.set_plot_style()
-    sns.barplot(
-        data=res_df,
-        x="trial",
-        y=f"{band} Coherence",
-        hue="Group",
-        estimator=np.median,
-        ax=ax,
-    )
-    ax.set_xlabel("Trial result")
-    ax.set_ylabel(f"{band} coherence")
+    fig, axes = plt.subplots(1, 3, figsize=(16, 8))
+    for i, trial_part in enumerate(["Forced", "Correct", "Incorrect"]):
+        res_df_part = res_df[res_df["trial"] == trial_part]
+        smr.set_plot_style()
+        sns.boxplot(
+            data=res_df_part,
+            x="part",
+            y=f"{band} Coherence",
+            hue="Group",
+            ax=axes[i],
+        )
+        axes[i].set_ylim(0, 1.0)
+        axes[i].set_title(f"{trial_part}")
+        smr.despine()
     plt.tight_layout()
     fig = smr.SimuranFigure(fig=fig, name=out_dir / f"{band} coherence")
     fig.save()
@@ -134,6 +145,7 @@ def plot_bar_coherence(res_df, band: str, out_dir):
 
 def plot_coherence_results(res_df, coherence_df, power_df, out_dir):
     plot_banded_coherence(out_dir, res_df)
+    plot_total_coherence(out_dir, res_df)
     plot_grouped_power_coherence(out_dir, coherence_df, power_df)
     plot_choice_power(power_df, out_dir)
     plot_coherence_choice(coherence_df, out_dir)
@@ -151,9 +163,23 @@ def load_saved_results(input_dir):
 
 
 if __name__ == "__main__":
-    smr.set_only_log_to_file(snakemake.log[0])
-    main(
-        Path(snakemake.input[0]).parent,
-        snakemake.config["simuran_config"],
-        Path(snakemake.output[0]),
-    )
+    try:
+        a = snakemake
+    except NameError:
+        use_snakemake = False
+    else:
+        use_snakemake = True
+    if use_snakemake:
+        smr.set_only_log_to_file(snakemake.log[0])
+        main(
+            Path(snakemake.input[0]).parent,
+            snakemake.config["simuran_config"],
+            Path(snakemake.output[0]),
+        )
+    else:
+        here = Path(__file__).parent.parent.parent
+        main(
+            here / "results" / "tmaze",
+            here / "config" / "simuran_params.yml",
+            here / "results" / "plots" / "tmaze",
+        )

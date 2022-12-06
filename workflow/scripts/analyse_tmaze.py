@@ -392,6 +392,8 @@ def verify_start_end(fs, duration, lfp_portions):
 
         if end_time > int(ceil(duration * 250)):
             raise RuntimeError(f"End time {end_time} greater than duration {duration}")
+        if start_time < 0:
+            raise RuntimeError(f"Start time {start_time} less than 0")
 
         lfp_portions[k] = [start_time, end_time]
 

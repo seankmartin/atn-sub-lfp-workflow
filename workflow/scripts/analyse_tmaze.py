@@ -52,7 +52,7 @@ def compute_per_trial_coherence_power(
     results_list, coherence_list, pxx_list = [], [], []
 
     for i, trial_type in zip(range(1, 3), ("forced", "choice")):
-        lfp_portions, final_trial_type, group = setup_recording_info(
+        lfp_portions, final_trial_type, group, time_dict = setup_recording_info(
             r, fs, duration, i, trial_type, config
         )
         for k, bounds in lfp_portions.items():
@@ -63,6 +63,8 @@ def compute_per_trial_coherence_power(
                 *fn_params, coherence_list, res_list
             )
             extract_decoding_vals(config, i, j, k, f, Cxy, new_lfp)
+            res_list.extend(np.array(bounds) / fs)
+            res_list.extend(np.array(time_dict[k]) / fs)
             results_list.append(res_list)
 
         plot_results_intermittent(r, sub_lfp, rsc_lfp, f, Cxy, out_dir, fs)
@@ -150,7 +152,7 @@ def setup_recording_info(r, fs, duration, i, trial_type, config):
     )
     final_trial_type = convert_trial_type(r, trial_type)
     group = get_group(r)
-    return lfp_portions, final_trial_type, group
+    return lfp_portions, final_trial_type, group, time_dict
 
 
 def compute_power(fs, x, config):
@@ -271,6 +273,11 @@ def get_result_headers():
         "Peak Theta Coherence",
         "Group",
         "RSC on target",
+        "LFP t1",
+        "LFP t2",
+        "t1",
+        "t2",
+        "t3",
     ]
 
 
@@ -360,11 +367,10 @@ def bandpowers(config, res_dict, k, region, lfp):
 def extract_lfp_portions(max_lfp_lengths_seconds, fs, duration, time_dict):
     lfp_portions = {}
     for k, max_len in max_lfp_lengths_seconds.items():
-        start_time, end_time = extract_start_choice_end(
-            max_lfp_lengths_seconds, fs, time_dict, k, max_len
+        extract_start_choice_end(
+            max_lfp_lengths_seconds, fs, time_dict, k, max_len, lfp_portions
         )
-        end_time = verify_start_end(fs, duration, start_time, end_time)
-        lfp_portions[k] = [start_time, end_time]
+    verify_start_end(fs, duration, lfp_portions)
     return lfp_portions
 
 
@@ -377,39 +383,43 @@ def convert_signal_to_nc(bounds, signal, fs):
     return lfp
 
 
-def verify_start_end(fs, duration, start_time, end_time):
+def verify_start_end(fs, duration, lfp_portions):
     """Make sure have at least 1 second and not > duration."""
-    if (end_time - start_time) < fs:
-        end_time = ceil(start_time + fs)
+    for k, v in lfp_portions.items():
+        start_time, end_time = v
+        if (end_time - start_time) < fs:
+            end_time = ceil(start_time + fs)
 
-    if end_time > int(ceil(duration * 250)):
-        raise RuntimeError(f"End time {end_time} greater than duration {duration}")
+        if end_time > int(ceil(duration * 250)):
+            raise RuntimeError(f"End time {end_time} greater than duration {duration}")
 
-    return end_time
+        lfp_portions[k] = [start_time, end_time]
 
 
-def extract_start_choice_end(max_lfp_lengths_seconds, fs, time_dict, k, max_len):
+def extract_start_choice_end(
+    max_lfp_lengths_seconds, fs, time_dict, k, max_len, lfp_portions
+):
     """Find start time, choice time, and end time"""
     start_time = time_dict[k][0]
     choice_time = time_dict[k][1]
     end_time = time_dict[k][2]
 
     if k == "start":
+        max_ch = (lfp_portions["choice"][1] - lfp_portions["choice"][0]) / fs
         ct = max_lfp_lengths_seconds["choice"][0]
-        start_time, end_time = extract_first_times(
-            ct, fs, max_len, start_time, end_time
-        )
+        start_time, end_time = extract_first_times(ct, fs, max_ch, start_time, end_time)
     elif k == "choice":
         ct = max_lfp_lengths_seconds["choice"]
         start_time, end_time = extract_choice_times(
             ct, fs, start_time, choice_time, end_time
         )
     elif k == "end":
+        max_ch = (lfp_portions["choice"][1] - lfp_portions["choice"][0]) / fs
         ct = max_lfp_lengths_seconds["choice"][1]
-        start_time, end_time = extract_end_times(ct, fs, max_len, start_time, end_time)
+        start_time, end_time = extract_end_times(ct, fs, max_ch, start_time, end_time)
     else:
         raise RuntimeError(f"Unsupported key {k}")
-    return [floor(start_time), ceil(end_time)]
+    lfp_portions[k] = [floor(start_time), ceil(end_time)]
 
 
 def extract_first_times(ct, fs, max_len, start_time, end_time):

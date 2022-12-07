@@ -22,12 +22,13 @@ rc = smr.RecordingContainer.from_table(df, smr.loader("nwb"))
 
 ttimes = [
     {"choice": [1.0, 1.0], "start": 2.0, "end": 2.0},
+    {"choice": [1.5, 0.5], "start": 2.0, "end": 2.0},
     {"choice": [3.5, 0.5], "start": 4.0, "end": 4.0},
     {"choice": [2.0, 2.0], "start": 4.0, "end": 4.0},
     {"choice": [1.5, 1.5], "start": 3.0, "end": 3.0},
 ]
 
-names = ["tmaze_2s", "tmaze_4s", "tmaze_4s_mid", "tmaze_3s"]
+names = ["tmaze_2s", "tmaze_2s_uneven", "tmaze_4s", "tmaze_4s_mid", "tmaze_3s"]
 
 # %%
 for t_dict, name in zip(ttimes, names):

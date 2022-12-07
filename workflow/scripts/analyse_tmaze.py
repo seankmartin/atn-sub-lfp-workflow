@@ -391,9 +391,9 @@ def verify_start_end(fs, duration, lfp_portions):
             end_time = ceil(start_time + fs)
 
         if end_time > int(ceil(duration * 250)):
-            raise RuntimeError(f"End time {end_time} greater than duration {duration}")
+            end_time = int(floor(duration * 250))
         if start_time < 0:
-            raise RuntimeError(f"Start time {start_time} less than 0")
+            start_time = 0
 
         lfp_portions[k] = [start_time, end_time]
 
@@ -431,9 +431,8 @@ def extract_first_times(ct, fs, max_len, start_time, end_time):
     If the start bit is longer than max_len, take the last X
     seconds before the choice data
     """
-    end_time = max(end_time - int(floor(ct * fs)), start_time)
-    natural_start_time = end_time - (max_len * fs)
-    start_time = max(natural_start_time, start_time)
+    end_time = end_time - int(floor(ct * fs))
+    start_time = max(0, end_time - (max_len * fs))
     return start_time, end_time
 
 
@@ -447,8 +446,8 @@ def extract_choice_times(ct, fs, start_time, choice_time, end_time):
     left_push = int(floor(ct[0] * fs))
     right_push = int(ceil(ct[1] * fs))
 
-    start_time = max(choice_time - left_push, start_time)
-    end_time = min(choice_time + right_push, end_time)
+    start_time = choice_time - left_push
+    end_time = choice_time + right_push
     return start_time, end_time
 
 
@@ -459,9 +458,8 @@ def extract_end_times(ct, fs, max_len, start_time, end_time):
     For the end time, if the end is longer than max_len
     take the first X seconds after the choice data
     """
-    start_time = min(start_time + int(ceil(ct * fs)), end_time)
-    natural_end_time = start_time + (max_len * fs)
-    end_time = min(natural_end_time, end_time)
+    start_time = start_time + int(ceil(ct * fs))
+    end_time = start_time + (max_len * fs)
     return start_time, end_time
 
 

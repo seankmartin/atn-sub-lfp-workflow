@@ -33,6 +33,8 @@ def compute_and_save_coherence(out_dir, config, rc):
         result, coherence, power = compute_per_trial_coherence_power(
             r, i, config, fs, duration, sig_dict, out_dir, new_lfp
         )
+        if result is None:
+            continue
         results.extend(result)
         coherence_df_list.extend(coherence)
         power_list.extend(power)
@@ -49,6 +51,8 @@ def compute_per_trial_coherence_power(
     coherence_res = calculate_banded_coherence(
         sig_dict["SUB"], sig_dict["RSC"], fs, config
     )
+    if coherence_res is None:
+        return None, None, None
     results_list, coherence_list, pxx_list = [], [], []
 
     for i, trial_type in zip(range(1, 3), ("forced", "choice")):
@@ -56,18 +60,21 @@ def compute_per_trial_coherence_power(
             r, fs, duration, i, trial_type, config
         )
         for k, bounds in lfp_portions.items():
-            res_list = copy(list(coherence_res))
+            res_list = []
             fn_params = [r, config, fs, sig_dict, final_trial_type, group, k, bounds]
-            compute_power_per_trial(*fn_params, pxx_list, res_list)
-            sub_lfp, rsc_lfp, f, Cxy = compute_coherence_per_trial(
-                *fn_params, coherence_list, res_list
-            )
-            extract_decoding_vals(config, i, j, k, f, Cxy, new_lfp)
-            res_list.extend(np.array(bounds) / fs)
-            res_list.extend(np.array(time_dict[k]) / fs)
-            results_list.append(res_list)
+            res = compute_coherence_per_trial(*fn_params, coherence_list, res_list)
+            if res is not None:
+                sub_lfp, rsc_lfp, f, Cxy = res
+                res_list.extend(coherence_res)
+                extract_decoding_vals(config, i, j, k, f, Cxy, new_lfp)
+                compute_power_per_trial(*fn_params, pxx_list, res_list)
+                res_list.extend(np.array(bounds) / fs)
+                res_list.extend(np.array(time_dict[k]) / fs)
+                results_list.append(res_list)
 
-        plot_results_intermittent(r, sub_lfp, rsc_lfp, f, Cxy, out_dir, fs)
+        if res is not None:
+            sub_lfp, rsc_lfp, f, Cxy = res
+            plot_results_intermittent(r, sub_lfp, rsc_lfp, f, Cxy, out_dir, fs)
     return results_list, coherence_list, pxx_list
 
 
@@ -83,12 +90,16 @@ def compute_coherence_per_trial(
     coherence_list,
     res_list,
 ):
-    sub_lfp, rsc_lfp, f, Cxy = coherence_from_bounds(config, fs, sig_dict, bounds)
+    res = coherence_from_bounds(config, fs, sig_dict, bounds)
+    if res is None:
+        return
+    sub_lfp, rsc_lfp, f, Cxy = res
     coherence_list.extend(
         make_coherence_tuple(r, final_trial_type, group, k, f_, cxy_)
         for f_, cxy_ in zip(f, Cxy)
     )
-    res_list.extend(theta_delta(f, Cxy, config))
+    res_list.extend(list_results(r, final_trial_type, k))
+    res_list.extend(theta_beta(f, Cxy, config))
     res_list.append(group)
     res_list.append(r.attrs["RSC on target"])
     return sub_lfp, rsc_lfp, f, Cxy
@@ -109,8 +120,17 @@ def compute_power_per_trial(
     res_dict = {}
     for region, signal in sig_dict.items():
         lfp = convert_signal_to_nc(bounds, signal, fs)
-        bandpowers(config, res_dict, k, region, lfp)
-    res_list.extend(list_results(r, res_dict, final_trial_type, k))
+        if np.sum(np.abs(lfp._samples)) < 0.1:
+            res_dict[f"{region}-{k}_beta"] = np.nan
+            res_dict[f"{region}-{k}_theta"] = np.nan
+        else:
+            bandpowers(config, res_dict, k, region, lfp)
+    res_list += [
+        res_dict[f"SUB-{k}_beta"],
+        res_dict[f"SUB-{k}_theta"],
+        res_dict[f"RSC-{k}_beta"],
+        res_dict[f"RSC-{k}_theta"],
+    ]
     f_welch, Pxx = compute_power(fs, sig_dict["SUB"], config)
     pxx_list.extend(
         make_power_tuple(r, final_trial_type, group, k, p_val, f_val)
@@ -255,8 +275,6 @@ def get_coherence_headers():
 
 def get_result_headers():
     return [
-        "Full Theta Coherence",
-        "Full Delta Coherence",
         "location",
         "session",
         "animal",
@@ -264,15 +282,17 @@ def get_result_headers():
         "choice",
         "part",
         "trial",
-        "SUB Delta",
-        "SUB Theta",
-        "RSC Delta",
-        "RSC Theta",
         "Theta Coherence",
-        "Delta Coherence",
+        "Beta Coherence",
         "Peak Theta Coherence",
         "Group",
         "RSC on target",
+        "Full Theta Coherence",
+        "Full Belta Coherence",
+        "SUB Beta Power",
+        "SUB Theta Power",
+        "RSC Beta Power",
+        "RSC Theta Power",
         "LFP t1",
         "LFP t2",
         "t1",
@@ -281,7 +301,7 @@ def get_result_headers():
     ]
 
 
-def list_results(r, res_dict, final_trial_type, k):
+def list_results(r, final_trial_type, k):
     res_list = [
         r.source_file,
         r.attrs["session"],
@@ -290,12 +310,6 @@ def list_results(r, res_dict, final_trial_type, k):
         r.attrs["passed"],
         k,
         final_trial_type,
-    ]
-    res_list += [
-        res_dict[f"SUB-{k}_delta"],
-        res_dict[f"SUB-{k}_theta"],
-        res_dict[f"RSC-{k}_delta"],
-        res_dict[f"RSC-{k}_theta"],
     ]
 
     return res_list
@@ -312,17 +326,17 @@ def convert_trial_type(r, trial_type):
         return "ERROR IN ANALYSIS"
 
 
-def theta_delta(f, Cxy, config):
+def theta_beta(f, Cxy, config):
     theta_co = Cxy[np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))]
-    delta_co = Cxy[np.nonzero((f >= config["delta_min"]) & (f <= config["delta_max"]))]
+    beta_co = Cxy[np.nonzero((f >= config["beta_min"]) & (f <= config["beta_max"]))]
     mean_theta_coherence = np.nanmean(theta_co)
-    mean_delta_coherence = np.nanmean(delta_co)
+    mean_beta_coherence = np.nanmean(beta_co)
 
     theta_co_peak = Cxy[
         np.nonzero((f >= config["theta_min"]) & (f <= (config["theta_max"] + 0.5)))
     ]
     peak_theta_coherence = np.nanmax(theta_co_peak)
-    return mean_theta_coherence, mean_delta_coherence, peak_theta_coherence
+    return mean_theta_coherence, mean_beta_coherence, peak_theta_coherence
 
 
 def extract_decoding_vals(config, i, j, k, f, Cxy, new_lfp):
@@ -342,6 +356,8 @@ def coherence_from_bounds(config, fs, sig_dict, bounds):
     rsc_s = sig_dict["RSC"]
     x = np.array(sub_s[bounds[0] : bounds[1]])
     y = np.array(rsc_s[bounds[0] : bounds[1]])
+    if (np.sum(np.abs(y)) < 0.1) or (np.sum(np.abs(x)) < 0.1):
+        return None
 
     f, Cxy = coherence(x, y, fs, nperseg=config["tmaze_winsec"] * fs, nfft=256)
     f = f[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
@@ -350,8 +366,8 @@ def coherence_from_bounds(config, fs, sig_dict, bounds):
 
 
 def bandpowers(config, res_dict, k, region, lfp):
-    delta_power = lfp.bandpower(
-        [config["delta_min"], config["delta_max"]],
+    beta_power = lfp.bandpower(
+        [config["beta_min"], config["beta_max"]],
         window_sec=config["tmaze_winsec"],
         band_total=True,
     )
@@ -360,7 +376,7 @@ def bandpowers(config, res_dict, k, region, lfp):
         window_sec=config["tmaze_winsec"],
         band_total=True,
     )
-    res_dict[f"{region}-{k}_delta"] = delta_power["relative_power"]
+    res_dict[f"{region}-{k}_beta"] = beta_power["relative_power"]
     res_dict[f"{region}-{k}_theta"] = theta_power["relative_power"]
 
 
@@ -491,15 +507,17 @@ def extract_lfp_info(r):
 
 
 def calculate_banded_coherence(x, y, fs, config):
+    if (np.sum(np.abs(x)) < 0.1) or (np.sum(np.abs(y)) < 0.1):
+        return None
     f, Cxy = coherence(x, y, fs, nperseg=config["tmaze_winsec"] * fs)
     f = f[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
     Cxy = Cxy[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
 
     theta_co = Cxy[np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))]
-    delta_co = Cxy[np.nonzero((f >= config["delta_min"]) & (f <= config["delta_max"]))]
+    beta_co = Cxy[np.nonzero((f >= config["beta_min"]) & (f <= config["beta_max"]))]
     theta_coherence = np.nanmean(theta_co)
-    delta_coherence = np.nanmean(delta_co)
-    return theta_coherence, delta_coherence
+    beta_coherence = np.nanmean(beta_co)
+    return theta_coherence, beta_coherence
 
 
 if __name__ == "__main__":

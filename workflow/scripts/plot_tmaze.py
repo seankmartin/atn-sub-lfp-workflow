@@ -7,8 +7,7 @@ import simuran as smr
 from skm_pyutils.table import df_from_file
 
 
-def main(input_dir, config, out_dir):
-    config = smr.config_from_file(config)
+def main(input_dir, out_dir):
     coh_df, power_df, res_df = load_saved_results(input_dir)
     plot_coherence_results(res_df, coh_df, power_df, out_dir)
 
@@ -173,13 +172,11 @@ if __name__ == "__main__":
         smr.set_only_log_to_file(snakemake.log[0])
         main(
             Path(snakemake.input[0]).parent,
-            snakemake.config["simuran_config"],
             Path(snakemake.output[0]),
         )
     else:
         here = Path(__file__).parent.parent.parent
         main(
             here / "results" / "tmaze",
-            here / "config" / "simuran_params.yml",
             here / "results" / "plots" / "tmaze",
         )

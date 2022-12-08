@@ -48,33 +48,36 @@ def compute_and_save_coherence(out_dir, config, rc):
 def compute_per_trial_coherence_power(
     r, j, config, fs, duration, sig_dict, out_dir, new_lfp
 ):
-    coherence_res = calculate_banded_coherence(
-        sig_dict["SUB"], sig_dict["RSC"], fs, config
-    )
-    if coherence_res is None:
-        return None, None, None
     results_list, coherence_list, pxx_list = [], [], []
-
+    do_plot = random() < 0.01
     for i, trial_type in zip(range(1, 3), ("forced", "choice")):
         lfp_portions, final_trial_type, group, time_dict = setup_recording_info(
             r, fs, duration, i, trial_type, config
         )
+        coherence_res = calculate_banded_coherence(
+            sig_dict["SUB"], sig_dict["RSC"], fs, config, time_dict
+        )
+        if coherence_res is None:
+            return None, None, None
         for k, bounds in lfp_portions.items():
             res_list = []
             fn_params = [r, config, fs, sig_dict, final_trial_type, group, k, bounds]
             res = compute_coherence_per_trial(*fn_params, coherence_list, res_list)
             if res is not None:
                 sub_lfp, rsc_lfp, f, Cxy = res
-                res_list.extend(coherence_res)
+                res_list.extend(coherence_res[2:])
+                add_full_coh_to_list(*fn_params, *coherence_res[:2], coherence_list)
                 extract_decoding_vals(config, i, j, k, f, Cxy, new_lfp)
                 compute_power_per_trial(*fn_params, pxx_list, res_list)
                 res_list.extend(np.array(bounds) / fs)
                 res_list.extend(np.array(time_dict[k]) / fs)
                 results_list.append(res_list)
 
-        if res is not None:
-            sub_lfp, rsc_lfp, f, Cxy = res
-            plot_results_intermittent(r, sub_lfp, rsc_lfp, f, Cxy, out_dir, fs)
+            if res is not None and do_plot:
+                sub_lfp, rsc_lfp, f, Cxy = res
+                plot_results_intermittent(
+                    r, sub_lfp, rsc_lfp, f, Cxy, out_dir, fs, trial_type, k
+                )
     return results_list, coherence_list, pxx_list
 
 
@@ -103,6 +106,34 @@ def compute_coherence_per_trial(
     res_list.append(group)
     res_list.append(r.attrs["RSC on target"])
     return sub_lfp, rsc_lfp, f, Cxy
+
+
+def add_full_coh_to_list(
+    r,
+    config,
+    fs,
+    sig_dict,
+    final_trial_type,
+    group,
+    k,
+    bounds,
+    f,
+    Cxy,
+    coherence_list,
+):
+    for f_, cxy_ in zip(f, Cxy):
+        res = (
+            f_,
+            cxy_,
+            r.attrs["passed"],
+            group,
+            r.attrs["trial"],
+            r.attrs["session"],
+            "Full",
+            final_trial_type,
+            r.attrs["RSC on target"],
+        )
+        coherence_list.append(res)
 
 
 def compute_power_per_trial(
@@ -201,19 +232,20 @@ def compute_power(fs, x, config):
     return f_welch, Pxx
 
 
-def plot_results_intermittent(r, x, y, f, Cxy, out_dir, fs):
-    every_few_iters = random()
-    if every_few_iters < 0.05:
-        fig2, ax2 = plt.subplots(3, 1)
-        ax2[0].plot(f, Cxy, c="k")
-        ax2[1].plot([i / fs for i in range(len(x))], x, c="k")
-        ax2[2].plot([i / fs for i in range(len(y))], y, c="k")
-        fig2.savefig(
-            out_dir
-            / f'coherence_{r.attrs["rat"]}_{r.attrs["session"]}_{r.attrs["trial"]}.png'
-        )
+def plot_results_intermittent(r, x, y, f, Cxy, out_dir, fs, trial_type, k):
+    fig2, ax2 = plt.subplots(3, 1)
+    ax2[0].plot(f, Cxy, c="k")
+    ax2[1].plot([i / fs for i in range(len(x))], x, c="k")
+    ax2[2].plot([i / fs for i in range(len(y))], y, c="k")
+    out_name = (
+        out_dir
+        / f'coherence_{r.attrs["rat"]}_{r.attrs["session"]}_{r.attrs["trial"]}'
+        / f"{trial_type}_{k}.png"
+    )
+    out_name.parent.mkdir(exist_ok=True)
+    fig2.savefig(out_name)
 
-        plt.close(fig2)
+    plt.close(fig2)
 
 
 def get_group(r):
@@ -506,7 +538,9 @@ def extract_lfp_info(r):
     return sub_lfp, rsc_lfp, fs, duration
 
 
-def calculate_banded_coherence(x, y, fs, config):
+def calculate_banded_coherence(x_, y_, fs, config, time_dict):
+    bounds = (time_dict["start"][0], time_dict["end"][-1])
+    x, y = x_[bounds[0] : bounds[-1]], y_[bounds[0] : bounds[-1]]
     if (np.sum(np.abs(x)) < 0.1) or (np.sum(np.abs(y)) < 0.1):
         return None
     f, Cxy = coherence(x, y, fs, nperseg=config["tmaze_winsec"] * fs)
@@ -517,7 +551,7 @@ def calculate_banded_coherence(x, y, fs, config):
     beta_co = Cxy[np.nonzero((f >= config["beta_min"]) & (f <= config["beta_max"]))]
     theta_coherence = np.nanmean(theta_co)
     beta_coherence = np.nanmean(beta_co)
-    return theta_coherence, beta_coherence
+    return f, Cxy, theta_coherence, beta_coherence
 
 
 if __name__ == "__main__":

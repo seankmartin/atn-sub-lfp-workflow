@@ -60,7 +60,7 @@ def plot_choice_power(power_df, out_dir):
 
 def plot_banded_coherence(out_dir, res_df):
     plot_bar_coherence(res_df, "Theta", out_dir)
-    plot_bar_coherence(res_df, "Delta", out_dir)
+    plot_bar_coherence(res_df, "Beta", out_dir)
 
 
 def plot_total_coherence(out_dir, res_df):

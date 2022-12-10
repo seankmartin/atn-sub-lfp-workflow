@@ -28,7 +28,7 @@ def compute_and_save_coherence(out_dir, config, rc):
     new_lfp = np.zeros(shape=(len(rc), 2 * config["tmaze_lfp_len"]), dtype=np.float32)
     for i, r in enumerate(rc.load_iter()):
         module_logger.info(f"Analysing t_maze for {r.source_file}")
-        sub_lfp, rsc_lfp, fs, duration = extract_lfp_info(r)
+        sub_lfp, rsc_lfp, fs, duration = extract_lfp_info(r, config["tmaze_egf"])
         sig_dict = {"SUB": sub_lfp, "RSC": rsc_lfp}
         result, coherence, power = compute_per_trial_coherence_power(
             r, i, config, fs, duration, sig_dict, out_dir, new_lfp
@@ -49,7 +49,13 @@ def compute_per_trial_coherence_power(
     r, j, config, fs, duration, sig_dict, out_dir, new_lfp
 ):
     results_list, coherence_list, pxx_list = [], [], []
-    do_plot = random() < 0.01
+    do_plot = random() < 0.04
+    for i, trial_type in zip(range(1, 3), ("forced", "choice")):
+        lfp_portions, final_trial_type, group, time_dict = setup_recording_info(
+            r, fs, duration, i, trial_type, config
+        )
+        if lfp_portions is None:
+            return None, None, None
     for i, trial_type in zip(range(1, 3), ("forced", "choice")):
         lfp_portions, final_trial_type, group, time_dict = setup_recording_info(
             r, fs, duration, i, trial_type, config
@@ -201,19 +207,23 @@ def setup_recording_info(r, fs, duration, i, trial_type, config):
     lfp_portions = extract_lfp_portions(
         max_lfp_lengths_seconds, fs, duration, time_dict
     )
+    if lfp_portions is None:
+        return None, None, None, None
     final_trial_type = convert_trial_type(r, trial_type)
     group = get_group(r)
     return lfp_portions, final_trial_type, group, time_dict
 
 
 def compute_power(fs, x, config):
+    nfft = 256 if fs < 4000 else 4096
     f_welch, Pxx = welch(
         x,
         fs=fs,
-        nperseg=config["tmaze_winsec"] * fs,
+        nperseg=int(config["tmaze_winsec"] * fs),
         return_onesided=True,
         scaling="density",
         average="mean",
+        nfft=nfft,
     )
 
     f_welch = f_welch[
@@ -242,7 +252,7 @@ def plot_results_intermittent(r, x, y, f, Cxy, out_dir, fs, trial_type, k):
         / f'coherence_{r.attrs["rat"]}_{r.attrs["session"]}_{r.attrs["trial"]}'
         / f"{trial_type}_{k}.png"
     )
-    out_name.parent.mkdir(exist_ok=True)
+    out_name.parent.mkdir(exist_ok=True, parents=True)
     fig2.savefig(out_name)
 
     plt.close(fig2)
@@ -391,7 +401,9 @@ def coherence_from_bounds(config, fs, sig_dict, bounds):
     if (np.sum(np.abs(y)) < 0.1) or (np.sum(np.abs(x)) < 0.1):
         return None
 
-    f, Cxy = coherence(x, y, fs, nperseg=config["tmaze_winsec"] * fs, nfft=256)
+    nperseg = int(config["tmaze_winsec"] * fs)
+    nfft = 256 if fs < 4000 else 4096
+    f, Cxy = coherence(x, y, fs, nperseg=nperseg, nfft=nfft)
     f = f[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
     Cxy = Cxy[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
     return x, y, f, Cxy
@@ -418,7 +430,9 @@ def extract_lfp_portions(max_lfp_lengths_seconds, fs, duration, time_dict):
         extract_start_choice_end(
             max_lfp_lengths_seconds, fs, time_dict, k, max_len, lfp_portions
         )
-    verify_start_end(fs, duration, lfp_portions)
+    res = verify_start_end(fs, duration, lfp_portions, max_lfp_lengths_seconds)
+    if res == "too-short":
+        return None
     return lfp_portions
 
 
@@ -431,15 +445,15 @@ def convert_signal_to_nc(bounds, signal, fs):
     return lfp
 
 
-def verify_start_end(fs, duration, lfp_portions):
+def verify_start_end(fs, duration, lfp_portions, max_len):
     """Make sure have at least 1 second and not > duration."""
     for k, v in lfp_portions.items():
         start_time, end_time = v
         if (end_time - start_time) < fs:
             end_time = ceil(start_time + fs)
 
-        if end_time > int(ceil(duration * 250)):
-            end_time = int(floor(duration * 250))
+        if end_time > int(ceil(duration * fs)):
+            end_time = int(floor(duration * fs))
         if start_time < 0:
             start_time = 0
 
@@ -467,6 +481,7 @@ def extract_start_choice_end(
         max_ch = (lfp_portions["choice"][1] - lfp_portions["choice"][0]) / fs
         ct = max_lfp_lengths_seconds["choice"][1]
         start_time, end_time = extract_end_times(ct, fs, max_ch, start_time, end_time)
+
     else:
         raise RuntimeError(f"Unsupported key {k}")
     lfp_portions[k] = [floor(start_time), ceil(end_time)]
@@ -479,8 +494,8 @@ def extract_first_times(ct, fs, max_len, start_time, end_time):
     If the start bit is longer than max_len, take the last X
     seconds before the choice data
     """
-    end_time = end_time - int(floor(ct * fs))
-    start_time = max(0, end_time - (max_len * fs))
+    end_time = max(end_time - int(floor(ct * fs)), start_time)
+    start_time = max(start_time, end_time - (max_len * fs))
     return start_time, end_time
 
 
@@ -506,8 +521,8 @@ def extract_end_times(ct, fs, max_len, start_time, end_time):
     For the end time, if the end is longer than max_len
     take the first X seconds after the choice data
     """
-    start_time = start_time + int(ceil(ct * fs))
-    end_time = start_time + (max_len * fs)
+    start_time = min(start_time + int(ceil(ct * fs)), end_time)
+    end_time = min(start_time + (max_len * fs), end_time)
     return start_time, end_time
 
 
@@ -530,10 +545,19 @@ def extract_times_for_lfp(r, fs, duration, i):
     }
 
 
-def extract_lfp_info(r):
-    sub_lfp = r.data.processing["average_lfp"]["SUB_avg"].data[:]
-    rsc_lfp = r.data.processing["average_lfp"]["RSC_avg"].data[:]
-    fs = r.data.processing["average_lfp"]["SUB_avg"].rate
+def extract_lfp_info(r, use_egf):
+    if use_egf:
+        lfp_egf = r.data.processing["high_rate_ecephys"]["LFP"]["ElectricalSeries"]
+        fs = lfp_egf.rate
+        brain_regions = list(r.data.electrodes.to_dataframe()["location"])
+        sub_idx = [i for i, x in enumerate(brain_regions) if x == "SUB"][0]
+        rsc_idx = [i for i, x in enumerate(brain_regions) if x == "RSC"][0]
+        sub_lfp = lfp_egf.data[:, sub_idx].flatten()
+        rsc_lfp = lfp_egf.data[:, rsc_idx].flatten()
+    else:
+        sub_lfp = r.data.processing["average_lfp"]["SUB_avg"].data[:]
+        rsc_lfp = r.data.processing["average_lfp"]["RSC_avg"].data[:]
+        fs = r.data.processing["average_lfp"]["SUB_avg"].rate
     duration = len(sub_lfp) / fs
     return sub_lfp, rsc_lfp, fs, duration
 
@@ -543,7 +567,9 @@ def calculate_banded_coherence(x_, y_, fs, config, time_dict):
     x, y = x_[bounds[0] : bounds[-1]], y_[bounds[0] : bounds[-1]]
     if (np.sum(np.abs(x)) < 0.1) or (np.sum(np.abs(y)) < 0.1):
         return None
-    f, Cxy = coherence(x, y, fs, nperseg=config["tmaze_winsec"] * fs)
+    nperseg = int(config["tmaze_winsec"] * fs)
+    nfft = 256 if fs < 4000 else 4096
+    f, Cxy = coherence(x, y, fs, nperseg=nperseg, nfft=nfft)
     f = f[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
     Cxy = Cxy[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
 
@@ -555,9 +581,24 @@ def calculate_banded_coherence(x_, y_, fs, config, time_dict):
 
 
 if __name__ == "__main__":
-    smr.set_only_log_to_file(snakemake.log[0])
-    main(
-        snakemake.input[0],
-        snakemake.config["simuran_config"],
-        Path(snakemake.output[0]).parent,
-    )
+    try:
+        a = snakemake
+    except NameError:
+        use_snakemake = False
+    else:
+        use_snakemake = True
+
+    if use_snakemake:
+        smr.set_only_log_to_file(snakemake.log[0])
+        main(
+            snakemake.input[0],
+            snakemake.config["simuran_config"],
+            Path(snakemake.output[0]).parent,
+        )
+    else:
+        here = Path(__file__).parent.parent.parent
+        main(
+            here / "results" / "tmaze_times_processed.csv",
+            here / "config" / "simuran_params.yml",
+            here / "results" / "tmaze",
+        )

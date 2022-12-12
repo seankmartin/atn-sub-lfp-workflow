@@ -11,13 +11,13 @@ filter_kwargs:
   copy: True
 theta_min: 6
 theta_max: 12
-delta_min: 1.5
+delta_min: 1.0
 delta_max: 4
 low_gamma_min: 40
 low_gamma_max: 80
 high_gamma_min: 80
 high_gamma_max: 120
-beta_min: 23
+beta_min: 15
 beta_max: 30
 psd_scale: decibels
 image_format: png
@@ -37,16 +37,17 @@ max_speed: 40
 num_spike_shuffles: 50
 tmaze_minf: 2.0
 tmaze_maxf: 40.0
-tmaze_winsec: 0.5
+tmaze_winsec: 0.25
 max_lfp_lengths:
-  start: 20
-  choice: [3.5, 0.5]
-  end: 10
-tmaze_lfp_len: 6
-spindles_use_avg: True
-use_first_two_for_ripples: True
-lfp_ripple_rate: 1600
+  choice: [0.9, 0.1]
+  start: 1.0
+  end: 1.0
+tmaze_egf: False
+spindles_use_avg: False
+use_first_two_for_ripples: False
+lfp_ripple_rate: 4800
 min_sleep_length: 60
-only_kay_detect: True
+only_kay_detect: False
 except_nwb_errors: True
-sleep_join_tol: 2.0
+sleep_join_tol: 0.0
+sleep_max_interval_size: 300

@@ -15,7 +15,7 @@ from neurochat.nc_data import NData
 from scipy.signal import welch
 
 # %%
-filepath = r"E:\Repos\atn-sub-lfp-workflow\results\nwbfiles\CSubRet4--recording--big sq_1wall_2wall--27112017--S1_big sq--27112017_CSR4_bigsq_1_1.nwb"
+filepath = r"D:\atn-sub-lfp-workflow\results\nwbfiles\CSubRet4--recording--big sq_1wall_2wall--27112017--S1_big sq--27112017_CSR4_bigsq_1_1.nwb"
 
 loader = smr.loader_from_string("nwb")
 recording = smr.Recording(source_file=filepath, loader=loader)
@@ -27,7 +27,6 @@ def nwb_analysis(nwbfile):
     behavior = nwbfile.processing["behavior"]
     position = behavior["Position"]["SpatialSeries"].data[:].T
     running_speed = behavior["running_speed"].data[:]
-    print(position.shape)
     spikes_data = nwbfile.processing["spikes"]["times"].to_dataframe()
     waveforms = nwbfile.processing["spikes"]["waveforms"].to_dataframe()
     rate = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries"].rate
@@ -42,7 +41,7 @@ def nwb_analysis(nwbfile):
             num_spikes = row[1]
             times_data = row[2][:num_spikes]
             break
-    plotting(lfp_data[0], rate, position, running_speed, times_data, data)
+    plotting(lfp_data[2], rate, position, running_speed, times_data, data)
 
 
 def plotting(lfp, rate, position, speed, unit_times, unit_wave):
@@ -55,7 +54,6 @@ def plotting(lfp, rate, position, speed, unit_times, unit_wave):
     plt.hist(speed)
     plt.show()
     plt.close()
-    plt.hist(unit_times)
     plt.hist(unit_times)
     plt.show()
     plt.close()
@@ -79,7 +77,6 @@ def nc_analysis(filepaths):
     speed = ndata.spatial.get_speed()
     unit_times = ndata.spike._timestamp
     unit_waves = np.array([v for v in ndata.spike._waveform.values()])[0]
-    print(unit_waves)
     plotting(lfp_data, lfp_rate, position_data, speed, unit_times, unit_waves)
 
 
@@ -92,7 +89,7 @@ dir_ = Path(
     r"H:\SubRet_recordings_imaging\CSubRet4\recording\big sq_1wall_2wall\27112017\S1_big sq"
 )
 name = "27112017_CSR4_bigsq_1_1"
-fpaths = [dir_ / f"{name}.eeg", dir_ / f"{name}_4.txt", dir_ / f"{name}.4"]
+fpaths = [dir_ / f"{name}.eeg3", dir_ / f"{name}_4.txt", dir_ / f"{name}.4"]
 fpaths = [str(f) for f in fpaths]
 nc_analysis(fpaths)
 plt.show()

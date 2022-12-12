@@ -57,15 +57,25 @@ def compute_per_trial_coherence_power(
         )
         if lfp_portions is None:
             return None, None, None
+        coherence_res = calculate_banded_coherence(
+            sig_dict["SUB"], sig_dict["RSC"], fs, config, time_dict, r.source_file
+        )
+        if coherence_res is None:
+            return None, None, None
+        for k, bounds in lfp_portions.items():
+            res_list = []
+            fn_params = [r, config, fs, sig_dict, final_trial_type, group, k, bounds]
+            res = compute_coherence_per_trial(*fn_params, coherence_list, res_list)
+            if res is None:
+                return None, None, None
+    results_list, coherence_list, pxx_list = [], [], []
     for i, trial_type in zip(range(1, 3), ("forced", "choice")):
         lfp_portions, final_trial_type, group, time_dict = setup_recording_info(
             r, fs, duration, i, trial_type, config
         )
         coherence_res = calculate_banded_coherence(
-            sig_dict["SUB"], sig_dict["RSC"], fs, config, time_dict
+            sig_dict["SUB"], sig_dict["RSC"], fs, config, time_dict, r.source_file
         )
-        if coherence_res is None:
-            return None, None, None
         for k, bounds in lfp_portions.items():
             res_list = []
             fn_params = [r, config, fs, sig_dict, final_trial_type, group, k, bounds]
@@ -206,7 +216,7 @@ def setup_recording_info(r, fs, duration, i, trial_type, config):
     max_lfp_lengths_seconds = config.get("max_lfp_lengths")
     time_dict = extract_times_for_lfp(r, fs, duration, i)
     lfp_portions = extract_lfp_portions(
-        max_lfp_lengths_seconds, fs, duration, time_dict
+        max_lfp_lengths_seconds, fs, duration, time_dict, r.source_file
     )
     if lfp_portions is None:
         return None, None, None, None
@@ -399,7 +409,7 @@ def coherence_from_bounds(config, fs, sig_dict, bounds):
     rsc_s = sig_dict["RSC"]
     x = np.array(sub_s[bounds[0] : bounds[1]])
     y = np.array(rsc_s[bounds[0] : bounds[1]])
-    if (np.sum(np.abs(y)) < 0.1) or (np.sum(np.abs(x)) < 0.1):
+    if (np.sum(np.abs(y)) < 0.02) or (np.sum(np.abs(x)) < 0.02):
         return None
 
     nperseg = int(config["tmaze_winsec"] * fs)
@@ -425,13 +435,13 @@ def bandpowers(config, res_dict, k, region, lfp):
     res_dict[f"{region}-{k}_theta"] = theta_power["relative_power"]
 
 
-def extract_lfp_portions(max_lfp_lengths_seconds, fs, duration, time_dict):
+def extract_lfp_portions(max_lfp_lengths_seconds, fs, duration, time_dict, name):
     lfp_portions = {}
     for k, max_len in max_lfp_lengths_seconds.items():
         extract_start_choice_end(
             max_lfp_lengths_seconds, fs, time_dict, k, max_len, lfp_portions
         )
-    res = verify_start_end(fs, duration, lfp_portions, max_lfp_lengths_seconds)
+    res = verify_start_end(fs, duration, lfp_portions, name)
     if res == "too-short":
         return None
     return lfp_portions
@@ -446,15 +456,15 @@ def convert_signal_to_nc(bounds, signal, fs):
     return lfp
 
 
-def verify_start_end(fs, duration, lfp_portions, max_len):
+def verify_start_end(fs, duration, lfp_portions, name):
     """Make sure have at least 1 second and not > duration."""
     for k, v in lfp_portions.items():
         start_time, end_time = v
-        if (end_time - start_time) < fs:
-            if k == "start":
-                start_time = ceil(end_time - fs)
-            else:
-                end_time = ceil(start_time + fs)
+        if (end_time - start_time) < fs // 2:
+            module_logger.warning(
+                f"Skipping {name} due to short interval of {end_time - start_time} in {k}"
+            )
+            return "too-short"
 
         if end_time > int(ceil(duration * fs)):
             end_time = int(floor(duration * fs))
@@ -566,10 +576,11 @@ def extract_lfp_info(r, use_egf):
     return sub_lfp, rsc_lfp, fs, duration
 
 
-def calculate_banded_coherence(x_, y_, fs, config, time_dict):
+def calculate_banded_coherence(x_, y_, fs, config, time_dict, name):
     bounds = (time_dict["start"][0], time_dict["end"][-1])
     x, y = x_[bounds[0] : bounds[-1]], y_[bounds[0] : bounds[-1]]
-    if (np.sum(np.abs(x)) < 0.1) or (np.sum(np.abs(y)) < 0.1):
+    if (np.sum(np.abs(x)) < 0.02) or (np.sum(np.abs(y)) < 0.02):
+        module_logger.warning(f"Skipping coherence in {name} due to zero-signal")
         return None
     nperseg = int(config["tmaze_winsec"] * fs)
     nfft = 256 if fs < 4000 else 4096

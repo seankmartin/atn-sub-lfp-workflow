@@ -25,7 +25,8 @@ def main(tmaze_times_filepath, config_filepath, out_dir):
 def compute_and_save_coherence(out_dir, config, rc):
     results, coherence_df_list, power_list = [], [], []
     groups, choices = [], []
-    new_lfp = np.zeros(shape=(len(rc), 2 * config["tmaze_lfp_len"]), dtype=np.float32)
+    tmaze_len = 10 if config["tmaze_egf"] else 12
+    new_lfp = np.zeros(shape=(len(rc), tmaze_len), dtype=np.float32)
     for i, r in enumerate(rc.load_iter()):
         module_logger.info(f"Analysing t_maze for {r.source_file}")
         sub_lfp, rsc_lfp, fs, duration = extract_lfp_info(r, config["tmaze_egf"])
@@ -450,7 +451,10 @@ def verify_start_end(fs, duration, lfp_portions, max_len):
     for k, v in lfp_portions.items():
         start_time, end_time = v
         if (end_time - start_time) < fs:
-            end_time = ceil(start_time + fs)
+            if k == "start":
+                start_time = ceil(end_time - fs)
+            else:
+                end_time = ceil(start_time + fs)
 
         if end_time > int(ceil(duration * fs)):
             end_time = int(floor(duration * fs))

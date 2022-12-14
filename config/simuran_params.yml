@@ -39,7 +39,7 @@ tmaze_minf: 2.0
 tmaze_maxf: 40.0
 tmaze_winsec: 0.25
 max_lfp_lengths:
-  choice: [0.9, 0.1]
+  choice: [0.8, 0.2]
   start: 1.0
   end: 1.0
 tmaze_egf: False

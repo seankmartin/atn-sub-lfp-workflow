@@ -12,11 +12,11 @@ def plot_coherence(df, out_dir, max_frequency=40):
 
     df.replace("Control", "Control (ATN)", inplace=True)
     df.replace("Lesion", "Lesion  (ATNx)", inplace=True)
-    df = df[df["RSC on target"]]
+    df_sub = df[df["RSC on target"]]
 
     fig, ax = plt.subplots()
     sns.lineplot(
-        data=df[df["Frequency (Hz)"] <= 30],
+        data=df_sub[df_sub["Frequency (Hz)"] <= 30],
         x="Frequency (Hz)",
         y="Coherence",
         style="Group",
@@ -29,7 +29,27 @@ def plot_coherence(df, out_dir, max_frequency=40):
 
     plt.ylim(0, 1)
     smr.despine()
-    filename = out_dir / "coherence"
+    filename = out_dir / "coherence_on_target"
+    fig = smr.SimuranFigure(fig, filename)
+    fig.save()
+
+    df_sub = df[~df["RSC on target"]]
+    fig, ax = plt.subplots()
+    sns.lineplot(
+        data=df_sub[df_sub["Frequency (Hz)"] <= 30],
+        x="Frequency (Hz)",
+        y="Coherence",
+        style="Group",
+        hue="Group",
+        # estimator="median",
+        estimator="mean",
+        errorbar=("ci", 95),
+        ax=ax,
+    )
+
+    plt.ylim(0, 1)
+    smr.despine()
+    filename = out_dir / "coherence_off_target"
     fig = smr.SimuranFigure(fig, filename)
     fig.save()
 

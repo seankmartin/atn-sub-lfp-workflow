@@ -57,7 +57,7 @@ rule plot_coherence:
     input: 
         "results/summary/openfield_coherence.csv"
     output:
-        report("results/plots/summary/png/coherence.png", category="Summary")
+        report("results/plots/summary/png/coherence_on_target.png", category="Summary")
     log:
         "logs/plot_coherence.log"
     conda:

@@ -460,11 +460,11 @@ def verify_start_end(fs, duration, lfp_portions, name):
     """Make sure have at least 1 second and not > duration."""
     for k, v in lfp_portions.items():
         start_time, end_time = v
-        if (end_time - start_time) < fs // 2:
-            module_logger.warning(
-                f"Skipping {name} due to short interval of {end_time - start_time} in {k}"
-            )
-            return "too-short"
+        if (end_time - start_time) < fs:
+            if k == "start":
+                start_time = ceil(end_time - fs)
+            else:
+                end_time = ceil(start_time + fs)
 
         if end_time > int(ceil(duration * fs)):
             end_time = int(floor(duration * fs))

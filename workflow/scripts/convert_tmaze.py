@@ -116,6 +116,10 @@ if __name__ == "__main__":
     try:
         a = snakemake.log[0]
     except Exception:
+        use_snakemake = False
+    else:
+        use_snakemake = True
+    if not use_snakemake:
         here = Path(__file__).parent.parent.parent
         convert_tmaze_data(
             here / "results/subret_recordings.csv",

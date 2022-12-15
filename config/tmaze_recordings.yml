@@ -11,6 +11,9 @@ rat:
     LSR3,
     LSR4,
     LSR5,
+    LRS1,
+    CRS1,
+    CRS2,
   ]
 habituation_screening: [0]
 maze: [tmaze]

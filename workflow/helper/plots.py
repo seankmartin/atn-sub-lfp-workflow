@@ -38,7 +38,7 @@ def plot_pos_over_time(x, y, rate=2, skip_rate=27, save=False):
         global do_skip
         if do_skip:
             # skip 27 seconds ahead
-            frame += skip_rate * 35
+            frame += skip_rate * 40
         scatter.set_data(x[0:frame], y[0:frame])
 
         other_data_x = []

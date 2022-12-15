@@ -173,31 +173,44 @@ if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
 
     parser = argparse.ArgumentParser(description="t-maze cli")
-    parser.add_argument("trial_id", type=str, help="trial id as animal_tX")
+    parser.add_argument(
+        "--trial_id",
+        type=str,
+        help="trial id as animal_tX",
+        required=False,
+        default=None,
+    )
     parsed = parser.parse_args()
     name_to_get = parsed.trial_id
-
-    td = t_maze_dict()
-    to_analyse = td[name_to_get]
-    main_t_maze_dir = to_analyse["t_maze_dir"]
-    main_base_dir = to_analyse["base_dir"]
-    main_mapping_location = to_analyse["mapping_location"]
-    main_animal = to_analyse["animal"]
-    main_date = to_analyse["date"]
-    main_session_no = to_analyse["session_no"]
 
     # Determined locations for loading and saving
     main_output_location = os.path.join(here, "..", "sheets")
     os.makedirs(main_output_location, exist_ok=True)
     xls_location = os.path.join(main_output_location, "tmaze-times.xlsx")
 
-    main(
-        main_t_maze_dir,
-        main_output_location,
-        main_base_dir,
-        main_mapping_location,
-        xls_location,
-        animal=main_animal,
-        date=main_date,
-        session_no=main_session_no,
-    )
+    td = t_maze_dict()
+    if name_to_get is None:
+        name_to_get = list(td.keys())
+    else:
+        name_to_get = [name_to_get]
+
+    for name in name_to_get:
+        print(f"Analysing {name}")
+        to_analyse = td[name]
+        main_t_maze_dir = to_analyse["t_maze_dir"]
+        main_base_dir = to_analyse["base_dir"]
+        main_mapping_location = to_analyse["mapping_location"]
+        main_animal = to_analyse["animal"]
+        main_date = to_analyse["date"]
+        main_session_no = to_analyse["session_no"]
+
+        main(
+            main_t_maze_dir,
+            main_output_location,
+            main_base_dir,
+            main_mapping_location,
+            xls_location,
+            animal=main_animal,
+            date=main_date,
+            session_no=main_session_no,
+        )

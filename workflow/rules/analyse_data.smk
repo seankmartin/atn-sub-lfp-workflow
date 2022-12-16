@@ -56,6 +56,7 @@ rule analyse_spike_lfp:
 rule create_dfs:
     input:
         "results/openfield_processed.csv",
+        "results/every_processed_nwb.csv"
     output:
         "results/summary/averaged_signals_psd.csv",
         "results/summary/averaged_psds_psd.csv",

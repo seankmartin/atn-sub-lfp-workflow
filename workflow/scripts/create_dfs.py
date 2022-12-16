@@ -4,19 +4,48 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import simuran as smr
-from skm_pyutils.table import df_from_file, df_to_file, list_to_df
+from skm_pyutils.table import df_from_file, df_to_file, list_to_df, filter_table
 
 from common import numpy_to_nc
 
 
+def rat_name_dict():
+    d = {}
+    d["rat"] = [
+        "CSR1",
+        "CSR2_sham",
+        "CSR3_sham",
+        "CSR4",
+        "CSR5_sham",
+        "CSR6",
+        "LSR1",
+        "LSR2",
+        "LSR3",
+        "LSR4",
+        "LSR5",
+        "LSR6",
+        "LSR7",
+        "LRS1",
+        "CRS1",
+        "CRS2",
+    ]
+    d["maze"] = ["small_sq", "big_sq"]
+    return d
+
+
 def main(input_, output_dir, config_path):
     config = smr.config_from_file(config_path)
-    datatable = df_from_file(input_)
     loader = smr.loader("nwb")
-    rc = smr.RecordingContainer.from_table(datatable, loader=loader)
+
+    rc = smr.RecordingContainer.from_table(df_from_file(input_[0]), loader=loader)
     power_spectra_summary(rc, output_dir, config)
-    openfield_coherence(rc, output_dir, config)
     openfield_speed(rc, output_dir)
+
+    df = df_from_file(input_[1])
+    df = filter_table(df, rat_name_dict(), and_=True)
+    print(df)
+    rc = smr.RecordingContainer.from_table(df, loader=loader)
+    openfield_coherence(rc, output_dir, config)
 
 
 def power_spectra_summary(rc, out_dir, config):
@@ -151,9 +180,12 @@ def openfield_coherence(rc, out_dir, config):
         for recording in recording_container.load_iter():
             on_target = recording.attrs["RSC on target"]
             nwbfile = recording.data
-            coherence_df = nwbfile.processing["lfp_coherence"][
-                "coherence_table"
-            ].to_dataframe()
+            try:
+                coherence_df = nwbfile.processing["lfp_coherence"][
+                    "coherence_table"
+                ].to_dataframe()
+            except KeyError:
+                continue
             region = coherence_df["label"].values[0]
             group = recording.attrs["treatment"]
             this_bit = [
@@ -220,9 +252,24 @@ def openfield_speed(rc, out_dir):
 
 
 if __name__ == "__main__":
-    smr.set_only_log_to_file(snakemake.log[0])
-    main(
-        snakemake.input[0],
-        Path(snakemake.output[0]).parent,
-        snakemake.config["simuran_config"],
-    )
+    try:
+        a = snakemake
+    except NameError:
+        use_snakemake = False
+    else:
+        use_snakemake = True
+
+    if use_snakemake:
+        smr.set_only_log_to_file(snakemake.log[0])
+        main(
+            snakemake.input,
+            Path(snakemake.output[0]).parent,
+            snakemake.config["simuran_config"],
+        )
+    else:
+        here = Path(__file__).parent.parent.parent
+        main(
+            ["results/openfield_processed.csv", "results/every_processed_nwb.csv"],
+            here / "results" / "summary",
+            here / "config" / "simuran_params.yml",
+        )

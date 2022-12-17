@@ -3,7 +3,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import simuran as smr
 from simuran.bridges.mne_bridge import plot_signals
-from skm_pyutils.table import df_from_file
+from skm_pyutils.table import df_from_file, filter_table
 
 
 def plot_all_signals(recording, output_path):
@@ -49,12 +49,38 @@ def plot_signals_rc(recording_container, out_dir):
         plot_all_signals(recording, output_path)
 
 
-def main(input_df_path, out_dir, config_path):
+def main(input_df_path, out_dir, config_path, filter_):
     config = smr.ParamHandler(source_file=config_path)
     datatable = df_from_file(input_df_path)
+    if filter_:
+        datatable = filter_table(datatable, rat_name_dict())
     loader = smr.loader("nwb")
     rc = smr.RecordingContainer.from_table(datatable, loader=loader)
     plot_signals_rc(rc, out_dir)
+
+
+def rat_name_dict():
+    d = {}
+    d["rat"] = [
+        "CSR1",
+        "CSR2_sham",
+        "CSR3_sham",
+        "CSR4",
+        "CSR5_sham",
+        "CSR6",
+        "LSR1",
+        "LSR2",
+        "LSR3",
+        "LSR4",
+        "LSR5",
+        "LSR6",
+        "LSR7",
+        "LRS1",
+        "CRS1",
+        "CRS2",
+    ]
+    d["maze"] = ["small_sq", "big_sq"]
+    return d
 
 
 if __name__ == "__main__":
@@ -63,4 +89,5 @@ if __name__ == "__main__":
         snakemake.input[0],
         Path(snakemake.output[0]),
         snakemake.config["simuran_config"],
+        snakemake.params["filter_"],
     )

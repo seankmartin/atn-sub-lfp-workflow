@@ -85,8 +85,24 @@ rule plot_lfp:
         "results/openfield_processed.csv"
     output:
         directory("results/plots/signals/")
+    params:
+        filter_=False
     log:
         "logs/plot_lfp.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/plot_signals.py"
+
+rule plot_coherence_lfp:
+    input:
+        "results/every_processed_nwb.csv"
+    output:
+        directory("results/plots/coherence_signals/")
+    log:
+        "logs/plot_lfp_coherence.log"
+    params:
+        filter_=True
     conda:
         "../../envs/nwb_simuran.yml"
     script:

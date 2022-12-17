@@ -25,7 +25,6 @@ def rat_name_dict():
         "LSR5",
         "LSR6",
         "LSR7",
-        "LRS1",
         "CRS1",
         "CRS2",
     ]

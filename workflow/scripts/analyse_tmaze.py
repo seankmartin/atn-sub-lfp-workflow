@@ -9,14 +9,37 @@ import numpy as np
 import simuran as smr
 from neurochat.nc_lfp import NLfp
 from scipy.signal import coherence, welch
-from skm_pyutils.table import df_from_file, df_to_file, list_to_df
+from skm_pyutils.table import df_from_file, df_to_file, list_to_df, filter_table
 
 module_logger = logging.getLogger("simuran.custom.tmaze_analyse")
+
+
+def rat_dict():
+    d = {}
+    d["rat"] = [
+        "CSR1",
+        "CSR2_sham",
+        "CSR3_sham",
+        "CSR4",
+        "CSR5_sham",
+        "CSR6",
+        "LSR1",
+        "LSR2",
+        "LSR3",
+        "LSR4",
+        "LSR5",
+        "LSR6",
+        "LSR7",
+        "CRS1",
+        "CRS2",
+    ]
+    return d
 
 
 def main(tmaze_times_filepath, config_filepath, out_dir):
     config = smr.config_from_file(config_filepath)
     datatable = df_from_file(tmaze_times_filepath)
+    datatable = filter_table(datatable, rat_dict())
     rc = smr.RecordingContainer.from_table(datatable, smr.loader("nwb"))
 
     compute_and_save_coherence(out_dir, config, rc)

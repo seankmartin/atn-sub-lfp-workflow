@@ -25,15 +25,14 @@ def plot_coherence_all(coherence_df, out_dir):
         y="Coherence",
         style="Trial result",
         hue="Group",
-        # errorbar=("ci", 95),
+        errorbar=("ci", 95),
         estimator="mean",
     )
     smr.despine()
     fig = smr.SimuranFigure(fig=fig, name=out_dir / "coherence_ci_all_on_target")
-    fig.save()
-    to_take = coherence_df["Part"] == "Full"
+    to_take = (coherence_df["Part"] == "Full") & (coherence_df["RSC on target"])
     coherence_df_bit = coherence_df[to_take]
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12, 8))
     sns.lineplot(
         ax=ax,
         data=coherence_df_bit,
@@ -41,58 +40,40 @@ def plot_coherence_all(coherence_df, out_dir):
         y="Coherence",
         style="Trial result",
         hue="Group",
-        # errorbar=("ci", 95),
-        estimator="mean",
+        errorbar=("ci", 95),
+        estimator="median",
     )
     smr.despine()
-    fig = smr.SimuranFigure(fig=fig, name=out_dir / "coherence_ci_all_all")
-    fig.save()
+    fig = smr.SimuranFigure(fig=fig, name=out_dir / "coherence_ci_all_on_target_median")
 
 
 def plot_coherence_choice(coherence_df, out_dir):
     coherence_df["Trial result"] = coherence_df["Trial"]
-    coherence_df_sub_bit = coherence_df[
-        (coherence_df["Part"] == "choice") & (coherence_df["Trial"] != "Forced")
-    ]
-    smr.set_plot_style()
-    fig, axes = plt.subplots(2, figsize=(8, 12))
-    for i, grp in enumerate(["Control", "Lesion (ATNx)"]):
-        sns.lineplot(
-            ax=axes[i],
-            data=coherence_df_sub_bit[coherence_df_sub_bit["Group"] == grp],
-            x="Frequency (Hz)",
-            y="Coherence",
-            style="Trial result",
-            hue="Trial result",
-            errorbar=("ci", 95),
-            estimator="mean",
-        )
-        axes[i].set_ylim(0.1, 0.6)
-    smr.despine()
-    fig = smr.SimuranFigure(fig=fig, name=out_dir / "choice_coherence_ci_all")
-    fig.save()
-
     coherence_df = coherence_df[coherence_df["RSC on target"]]
     coherence_df_sub_bit = coherence_df[
         (coherence_df["Part"] == "choice") & (coherence_df["Trial"] != "Forced")
     ]
     smr.set_plot_style()
-    fig, axes = plt.subplots(2, figsize=(8, 12))
-    for i, grp in enumerate(["Control", "Lesion (ATNx)"]):
+    for i, grp in enumerate(["Correct", "Incorrect"]):
+        fig, axes = plt.subplots()
         sns.lineplot(
-            ax=axes[i],
-            data=coherence_df_sub_bit[coherence_df_sub_bit["Group"] == grp],
+            ax=axes,
+            data=coherence_df_sub_bit[coherence_df_sub_bit["Trial result"] == grp],
             x="Frequency (Hz)",
             y="Coherence",
-            style="Trial result",
-            hue="Trial result",
+            style="Group",
+            hue="Group",
             errorbar=("ci", 95),
-            estimator="mean",
+            n_boot=5000,
+            estimator="median",
+            hue_order=["Control", "Lesion (ATNx)"],
         )
-        axes[i].set_ylim(0.1, 0.6)
-    smr.despine()
-    fig = smr.SimuranFigure(fig=fig, name=out_dir / "choice_coherence_ci_on_target")
-    fig.save()
+        axes.set_ylim(0.0, 1.0)
+        smr.despine()
+        fig = smr.SimuranFigure(
+            fig=fig, name=out_dir / f"choice_coherence_ci_on_target_{grp}"
+        )
+        fig.save()
 
 
 def plot_choice_power(power_df, out_dir):
@@ -126,7 +107,7 @@ def plot_total_coherence(out_dir, res_df):
     res_df["Trial result"] = res_df["trial"]
     res_df = res_df[(res_df["part"] == "choice")]
     smr.set_plot_style()
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(10, 8))
     sns.boxplot(
         data=res_df,
         y="Full Theta Coherence",
@@ -158,36 +139,45 @@ def plot_total_coherence(out_dir, res_df):
     fig.save()
     res_df = res_df[(res_df["RSC on target"]) & (res_df["part"] == "choice")]
     smr.set_plot_style()
-    fig, ax = plt.subplots()
-    sns.boxplot(
-        data=res_df,
-        y="Full Theta Coherence",
-        hue="Group",
-        order=["Forced", "Correct", "Incorrect"],
-        x="Trial result",
-        ax=ax,
-        palette="pastel",
-        showfliers=False,
-        width=0.9,
+    sns.set_context(
+        "paper",
+        font_scale=1.8,
+        rc={"lines.linewidth": 3.2},
     )
-    sns.stripplot(
-        y="Full Theta Coherence",
-        hue="Group",
-        order=["Forced", "Correct", "Incorrect"],
-        ax=ax,
-        data=res_df,
-        x="Trial result",
-        palette=["0.4", "0.75"],
-        alpha=0.95,
-        dodge=True,
-        edgecolor="k",
-        linewidth=1,
-        size=4.5,
-        legend=False,
-    )
-    smr.despine()
-    fig = smr.SimuranFigure(fig=fig, name=out_dir / "total_coherence_on_target")
-    fig.save()
+    for band in ("Theta", "Beta"):
+        fig, ax = plt.subplots(figsize=(10, 8))
+        sns.boxplot(
+            data=res_df,
+            y=f"Full {band} Coherence",
+            hue="Group",
+            order=["Forced", "Correct", "Incorrect"],
+            x="Trial result",
+            ax=ax,
+            palette="pastel",
+            showfliers=False,
+            width=0.9,
+        )
+        sns.stripplot(
+            y=f"Full {band} Coherence",
+            hue="Group",
+            order=["Forced", "Correct", "Incorrect"],
+            ax=ax,
+            data=res_df,
+            x="Trial result",
+            palette=["0.4", "0.75"],
+            alpha=0.95,
+            dodge=True,
+            edgecolor="k",
+            linewidth=1,
+            size=4.5,
+            legend=False,
+        )
+        ax.set_ylim(0, 1.2)
+        smr.despine()
+        fig = smr.SimuranFigure(
+            fig=fig, name=out_dir / f"total_{band}_coherence_on_target"
+        )
+        fig.save()
 
 
 def plot_grouped_coherence(

@@ -364,7 +364,7 @@ def get_result_headers():
         "Group",
         "RSC on target",
         "Full Theta Coherence",
-        "Full Belta Coherence",
+        "Full Beta Coherence",
         "SUB Beta Power",
         "SUB Theta Power",
         "RSC Beta Power",

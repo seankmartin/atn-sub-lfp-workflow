@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import simuran as smr
-from skm_pyutils.table import df_from_file, df_to_file, list_to_df
+from skm_pyutils.table import df_from_file, df_to_file, list_to_df, filter_table
 
 
 def main(ripples_pkl, spindles_pkl, metadata_file, output_dir, config_path):
@@ -24,10 +24,15 @@ def plot_ripples(ripples_data, output_dir, config, df):
     l = []
     for full_data in ripples_data:
         filename, all_data, ratio_rest, resting_groups, duration = full_data
+        if ("CanCSRCa2" in filename) or ("CanCSRetCa2" in filename):
+            continue
         for brain_region, data in all_data.items():
             times, times_nrest = data
             metadata = df[df["nwb_file"] == filename]
-            treatment = metadata["treatment"].values[0]
+            try:
+                treatment = metadata["treatment"].values[0]
+            except IndexError:
+                continue
             duration = metadata["duration"].values[0]
             l.append(
                 [
@@ -53,7 +58,41 @@ def plot_ripples(ripples_data, output_dir, config, df):
     df_to_file(df2, output_dir.parent.parent / "sleep" / "ripples_jasp.csv")
     fig, ax = plt.subplots()
     smr.set_plot_style()
-    sns.barplot(data=df, x="Condition", y="Ripples/min", hue="Brain Region", ax=ax)
+
+    def map_to_br(value):
+        if value == "Kay_CA1":
+            return "CA1"
+        if value == "Kay_SUB":
+            return "SUB"
+
+    df["Brain Region"] = df["Brain Region"].apply(map_to_br)
+    df = filter_table(df, {"Brain Region": ["SUB", "CA1"]})
+    sns.boxplot(
+        data=df,
+        x="Condition",
+        order=["Control", "Lesion", "CanControl", "Muscimol"],
+        y="Ripples/min",
+        hue="Brain Region",
+        ax=ax,
+        palette="pastel",
+        showfliers=False,
+        width=0.9,
+    )
+    sns.stripplot(
+        x="Condition",
+        y="Ripples/min",
+        hue="Brain Region",
+        order=["Control", "Lesion", "CanControl", "Muscimol"],
+        ax=ax,
+        data=df,
+        palette=["0.4", "0.75"],
+        alpha=0.95,
+        dodge=True,
+        edgecolor="k",
+        linewidth=1,
+        size=4.5,
+        legend=False,
+    )
     ax.set_title("Sharp wave ripples in sleep")
     smr_fig = smr.SimuranFigure(fig, output_dir / "ripples", done=True)
     smr_fig.save()
@@ -92,7 +131,14 @@ def plot_spindles(spindles_data, ripples_data, output_dir, config, df):
     l = []
     for spindles in spindles_data:
         filename, sp_dict, ratio_rest, resting_group, duration = spindles
+        if ("CanCSRCa2" in filename) or ("CanCSRetCa2" in filename):
+            continue
+
         metadata = df[df["nwb_file"] == filename]
+        try:
+            treatment = metadata["treatment"].values[0]
+        except IndexError:
+            continue
         treatment = metadata["treatment"].values[0]
         duration = metadata["duration"].values[0]
         for br, sp in sp_dict.items():
@@ -106,7 +152,7 @@ def plot_spindles(spindles_data, ripples_data, output_dir, config, df):
     df_to_file(df, output_dir.parent.parent / "sleep" / "spindles2.csv")
     fig, ax = plt.subplots()
     smr.set_plot_style()
-    sns.barplot(data=df, x="Condition", y="Spindles/min", hue="Brain Region", ax=ax)
+    sns.boxplot(data=df, x="Condition", y="Spindles/min", hue="Brain Region", ax=ax)
     ax.set_title("Spindles in sleep")
     smr_fig = smr.SimuranFigure(fig, output_dir / "spindles", done=True)
     smr_fig.save()

@@ -42,7 +42,6 @@ def main(input_, output_dir, config_path):
 
     df = df_from_file(input_[1])
     df = filter_table(df, rat_name_dict(), and_=True)
-    print(df)
     rc = smr.RecordingContainer.from_table(df, loader=loader)
     openfield_coherence(rc, output_dir, config)
 

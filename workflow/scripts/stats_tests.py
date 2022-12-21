@@ -6,13 +6,12 @@ See jasp folder for JASP tests (though the data in these tests may be old).
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from turtle import speed
 from typing import Union
 
 import matplotlib.pyplot as plt
 import simuran as smr
 from skm_pyutils.stats import corr, mwu, wilcoxon
-from skm_pyutils.table import df_from_file
+from skm_pyutils.table import df_from_file, df_to_file
 
 here = os.path.dirname(os.path.abspath(__file__))
 
@@ -99,6 +98,12 @@ class PathAndDataGetter(object):
         str_ = "-" * n_dashes + title + "-" * n_dashes
         print(start + str_)
         self.full_str = f"{self.full_str}\n{str_}"
+
+    def save_df(self, df, filename):
+        out_dir = self.plot_dir.parent.parent / "sheets"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_name = out_dir / filename
+        df_to_file(df, out_name)
 
 
 def power_stats(input_path, overall_kwargs, get_obj):
@@ -279,15 +284,26 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     get_obj.pt("Tmaze stats")
     df, control_df, lesion_df = get_obj.get_df(input_path)
 
+    bit_to_get = (
+        (control_df["part"] == "choice")
+        & (control_df["trial"] == "Correct")
+        & (control_df["RSC on target"])
+    )
+    control_choice = control_df[bit_to_get]
+
+    bit_to_get = (
+        (lesion_df["part"] == "choice")
+        & (lesion_df["trial"] == "Correct")
+        & (lesion_df["RSC on target"])
+    )
+    lesion_choice = lesion_df[bit_to_get]
+
+    bit_to_get = (
+        (df["part"] == "choice") & (df["trial"] == "Correct") & (df["RSC on target"])
+    )
+    get_obj.save_df(df[bit_to_get], "tmaze_coherence_correct.csv")
+
     for band in ("Theta", "Beta"):
-        bit_to_get = (control_df["part"] == "choice") & (
-            control_df["trial"] == "Correct"
-        )
-        control_choice = control_df[bit_to_get]
-
-        bit_to_get = (lesion_df["part"] == "choice") & (lesion_df["trial"] == "Correct")
-        lesion_choice = lesion_df[bit_to_get]
-
         t1_kwargs = {
             **overall_kwargs,
             **{
@@ -296,23 +312,34 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
         }
 
         res = mwu(
-            control_choice[control_choice["RSC on target"]][f"Full {band} Coherence"],
-            lesion_choice[lesion_choice["RSC on target"]][f"Full {band} Coherence"],
+            control_choice[f"Full {band} Coherence"],
+            lesion_choice[f"Full {band} Coherence"],
             t1_kwargs,
             do_plot=True,
         )
         get_obj.process_fig(res, f"t-maze_coherence_correct_{band}.pdf")
 
-        bit_to_get = (control_df["part"] == "choice") & (
-            control_df["trial"] == "Incorrect"
-        )
-        control_choice = control_df[bit_to_get]
+    bit_to_get = (
+        (control_df["part"] == "choice")
+        & (control_df["trial"] == "Incorrect")
+        & (control_df["RSC on target"])
+    )
+    control_choice = control_df[bit_to_get]
 
-        bit_to_get = (lesion_df["part"] == "choice") & (
-            lesion_df["trial"] == "Incorrect"
-        )
-        lesion_choice = lesion_df[bit_to_get]
+    bit_to_get = (
+        (lesion_df["part"] == "choice")
+        & (lesion_df["trial"] == "Incorrect")
+        & (lesion_df["RSC on target"])
+    )
+    lesion_choice = lesion_df[bit_to_get]
 
+    bit_to_get = (
+        (df["part"] == "choice") & (df["trial"] == "Incorrect") & (df["RSC on target"])
+    )
+
+    get_obj.save_df(df[bit_to_get], "tmaze_coherence_incorrect.csv")
+
+    for band in ("Theta", "Beta"):
         t2_kwargs = {
             **overall_kwargs,
             **{
@@ -321,60 +348,12 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
         }
 
         res = mwu(
-            control_choice[control_choice["RSC on target"]][f"Full {band} Coherence"],
-            lesion_choice[lesion_choice["RSC on target"]][f"Full {band} Coherence"],
+            control_choice[f"Full {band} Coherence"],
+            lesion_choice[f"Full {band} Coherence"],
             t2_kwargs,
             do_plot=True,
         )
         get_obj.process_fig(res, f"t-maze_coherence_incorrect_{band}.pdf")
-
-        bit_to_get = (control_df["part"] == "choice") & (
-            control_df["trial"] == "Correct"
-        )
-        control_choice1 = control_df[bit_to_get]
-
-        bit_to_get = (control_df["part"] == "choice") & (
-            control_df["trial"] == "Incorrect"
-        )
-        control_choice2 = control_df[bit_to_get]
-
-        t3_kwargs = {
-            "value": f"subicular to retronspenial LFP {band} coherence during choice trials in control",
-            "group1": "correct",
-            "group2": "incorrect",
-            "show_quartiles": overall_kwargs["show_quartiles"],
-        }
-
-        res = mwu(
-            control_choice1[control_choice1["RSC on target"]][f"Full {band} Coherence"],
-            control_choice2[control_choice2["RSC on target"]][f"Full {band} Coherence"],
-            t3_kwargs,
-            do_plot=True,
-        )
-        get_obj.process_fig(res, f"t-maze_coherence_ctrl_{band}.pdf")
-
-        bit_to_get = (lesion_df["part"] == "choice") & (lesion_df["trial"] == "Correct")
-        lesion_choice1 = lesion_df[bit_to_get]
-
-        bit_to_get = (lesion_df["part"] == "choice") & (
-            lesion_df["trial"] == "Incorrect"
-        )
-        lesion_choice2 = lesion_df[bit_to_get]
-
-        t4_kwargs = {
-            "value": f"subicular to retronspenial LFP {band} coherence during choice trials in ATNx",
-            "group1": "correct",
-            "group2": "incorrect",
-            "show_quartiles": overall_kwargs["show_quartiles"],
-        }
-
-        res = mwu(
-            lesion_choice1[lesion_choice1["RSC on target"]][f"Full {band} Coherence"],
-            lesion_choice2[lesion_choice2["RSC on target"]][f"Full {band} Coherence"],
-            t4_kwargs,
-            do_plot=True,
-        )
-        get_obj.process_fig(res, f"t-maze_coherence_lesion_{band}.pdf")
 
 
 def muscimol_stats(input_path, overall_kwargs, get_obj):

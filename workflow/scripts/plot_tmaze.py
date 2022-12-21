@@ -50,11 +50,9 @@ def plot_coherence_all(coherence_df, out_dir):
 def plot_coherence_choice(coherence_df, out_dir):
     coherence_df["Trial result"] = coherence_df["Trial"]
     coherence_df = coherence_df[coherence_df["RSC on target"]]
-    coherence_df_sub_bit = coherence_df[
-        (coherence_df["Part"] == "choice") & (coherence_df["Trial"] != "Forced")
-    ]
+    coherence_df_sub_bit = coherence_df[(coherence_df["Part"] == "Full")]
     smr.set_plot_style()
-    for i, grp in enumerate(["Correct", "Incorrect"]):
+    for i, grp in enumerate(["Forced", "Correct", "Incorrect"]):
         fig, axes = plt.subplots()
         sns.lineplot(
             ax=axes,

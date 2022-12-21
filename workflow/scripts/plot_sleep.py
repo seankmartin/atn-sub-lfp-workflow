@@ -67,14 +67,18 @@ def plot_ripples(ripples_data, output_dir, config, df):
 
     df["Brain Region"] = df["Brain Region"].apply(map_to_br)
     df = filter_table(
-        df, {"Brain Region": ["SUB", "CA1"], "Condition": ["CanControl", "Muscimol"]}
+        df,
+        {
+            "Brain Region": ["SUB", "CA1"],
+            # "Condition": ["CanControl", "Muscimol"],
+        },
     )
     sns.boxplot(
         data=df,
         hue="Condition",
-        # hue_order=["Control", "Lesion", "CanControl", "Muscimol"],
+        hue_order=["Control", "Lesion", "CanControl", "Muscimol"],
+        # hue_order=["CanControl", "Muscimol"],
         order=["SUB", "CA1"],
-        hue_order=["CanControl", "Muscimol"],
         y="Ripples/min",
         x="Brain Region",
         ax=ax,
@@ -86,9 +90,9 @@ def plot_ripples(ripples_data, output_dir, config, df):
         hue="Condition",
         y="Ripples/min",
         x="Brain Region",
-        # order=["Control", "Lesion", "CanControl", "Muscimol"],
+        hue_order=["Control", "Lesion", "CanControl", "Muscimol"],
+        # hue_order=["CanControl", "Muscimol"],
         order=["SUB", "CA1"],
-        hue_order=["CanControl", "Muscimol"],
         ax=ax,
         data=df,
         palette=["0.4", "0.75"],

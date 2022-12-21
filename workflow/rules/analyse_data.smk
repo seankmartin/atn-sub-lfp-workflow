@@ -82,8 +82,8 @@ rule hypothesis_tests:
         "results/summary/musc_spike_lfp_sub_pairs_later.csv",
         "results/tmaze/results.csv",
         "results/summary/muscimol_peak_sfc.csv",
-        "results/sleep/spindles.csv",
-        "results/sleep/ripples.csv"
+        "results/sleep/spindles2.csv",
+        "results/sleep/ripples2.csv"
     output:
         directory("results/plots/stats"),
         "results/stats_output.txt"

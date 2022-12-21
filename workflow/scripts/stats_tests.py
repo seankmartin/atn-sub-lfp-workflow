@@ -278,115 +278,103 @@ def spike_lfp_stats(input_paths, overall_kwargs, get_obj):
 def tmaze_stats(input_path, overall_kwargs, get_obj):
     get_obj.pt("Tmaze stats")
     df, control_df, lesion_df = get_obj.get_df(input_path)
-    bit_to_get = (control_df["part"] == "choice") & (control_df["trial"] == "Correct")
-    control_choice = control_df[bit_to_get]
 
-    bit_to_get = (lesion_df["part"] == "choice") & (lesion_df["trial"] == "Correct")
-    lesion_choice = lesion_df[bit_to_get]
+    for band in ("Theta", "Beta"):
+        bit_to_get = (control_df["part"] == "choice") & (
+            control_df["trial"] == "Correct"
+        )
+        control_choice = control_df[bit_to_get]
 
-    t1_kwargs = {
-        **overall_kwargs,
-        **{
-            "value": "subicular to retronspenial LFP theta coherence in choice parts during correct trials"
-        },
-    }
+        bit_to_get = (lesion_df["part"] == "choice") & (lesion_df["trial"] == "Correct")
+        lesion_choice = lesion_df[bit_to_get]
 
-    res = mwu(
-        control_choice[control_choice["RSC on target"]]["Theta Coherence"],
-        lesion_choice[lesion_choice["RSC on target"]]["Theta Coherence"],
-        t1_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "t-maze_coherence_correct.pdf")
+        t1_kwargs = {
+            **overall_kwargs,
+            **{
+                "value": f"subicular to retronspenial LFP {band} coherence in choice parts during correct trials"
+            },
+        }
 
-    t1a_kwargs = {
-        **overall_kwargs,
-        **{"value": "subicular LFP theta power in choice parts during correct trials"},
-    }
+        res = mwu(
+            control_choice[control_choice["RSC on target"]][f"Full {band} Coherence"],
+            lesion_choice[lesion_choice["RSC on target"]][f"Full {band} Coherence"],
+            t1_kwargs,
+            do_plot=True,
+        )
+        get_obj.process_fig(res, f"t-maze_coherence_correct_{band}.pdf")
 
-    res = mwu(
-        control_choice["SUB Theta"],
-        lesion_choice["SUB Theta"],
-        t1a_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "t-maze_subpower_correct.pdf")
+        bit_to_get = (control_df["part"] == "choice") & (
+            control_df["trial"] == "Incorrect"
+        )
+        control_choice = control_df[bit_to_get]
 
-    bit_to_get = (control_df["part"] == "choice") & (control_df["trial"] == "Incorrect")
-    control_choice = control_df[bit_to_get]
+        bit_to_get = (lesion_df["part"] == "choice") & (
+            lesion_df["trial"] == "Incorrect"
+        )
+        lesion_choice = lesion_df[bit_to_get]
 
-    bit_to_get = (lesion_df["part"] == "choice") & (lesion_df["trial"] == "Incorrect")
-    lesion_choice = lesion_df[bit_to_get]
+        t2_kwargs = {
+            **overall_kwargs,
+            **{
+                "value": f"subicular to retronspenial LFP {band} coherence during incorrect trials"
+            },
+        }
 
-    t2_kwargs = {
-        **overall_kwargs,
-        **{
-            "value": "subicular to retronspenial LFP theta coherence during incorrect trials"
-        },
-    }
+        res = mwu(
+            control_choice[control_choice["RSC on target"]][f"Full {band} Coherence"],
+            lesion_choice[lesion_choice["RSC on target"]][f"Full {band} Coherence"],
+            t2_kwargs,
+            do_plot=True,
+        )
+        get_obj.process_fig(res, f"t-maze_coherence_incorrect_{band}.pdf")
 
-    res = mwu(
-        control_choice[control_choice["RSC on target"]]["Theta Coherence"],
-        lesion_choice[lesion_choice["RSC on target"]]["Theta Coherence"],
-        t2_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "t-maze_coherence_incorrect.pdf")
+        bit_to_get = (control_df["part"] == "choice") & (
+            control_df["trial"] == "Correct"
+        )
+        control_choice1 = control_df[bit_to_get]
 
-    t2a_kwargs = {
-        **overall_kwargs,
-        **{"value": "subicular LFP theta power during incorrect trials"},
-    }
+        bit_to_get = (control_df["part"] == "choice") & (
+            control_df["trial"] == "Incorrect"
+        )
+        control_choice2 = control_df[bit_to_get]
 
-    res = mwu(
-        control_choice["SUB Theta"],
-        lesion_choice["SUB Theta"],
-        t2a_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "t-maze_subpower_incorrect.pdf")
+        t3_kwargs = {
+            "value": f"subicular to retronspenial LFP {band} coherence during choice trials in control",
+            "group1": "correct",
+            "group2": "incorrect",
+            "show_quartiles": overall_kwargs["show_quartiles"],
+        }
 
-    bit_to_get = (control_df["part"] == "choice") & (control_df["trial"] == "Correct")
-    control_choice1 = control_df[bit_to_get]
+        res = mwu(
+            control_choice1[control_choice1["RSC on target"]][f"Full {band} Coherence"],
+            control_choice2[control_choice2["RSC on target"]][f"Full {band} Coherence"],
+            t3_kwargs,
+            do_plot=True,
+        )
+        get_obj.process_fig(res, f"t-maze_coherence_ctrl_{band}.pdf")
 
-    bit_to_get = (control_df["part"] == "choice") & (control_df["trial"] == "Incorrect")
-    control_choice2 = control_df[bit_to_get]
+        bit_to_get = (lesion_df["part"] == "choice") & (lesion_df["trial"] == "Correct")
+        lesion_choice1 = lesion_df[bit_to_get]
 
-    t3_kwargs = {
-        "value": "subicular to retronspenial LFP theta coherence during choice trials in control",
-        "group1": "correct",
-        "group2": "incorrect",
-        "show_quartiles": overall_kwargs["show_quartiles"],
-    }
+        bit_to_get = (lesion_df["part"] == "choice") & (
+            lesion_df["trial"] == "Incorrect"
+        )
+        lesion_choice2 = lesion_df[bit_to_get]
 
-    res = mwu(
-        control_choice1[control_choice1["RSC on target"]]["Theta Coherence"],
-        control_choice2[control_choice2["RSC on target"]]["Theta Coherence"],
-        t3_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "t-maze_coherence_ctrl.pdf")
+        t4_kwargs = {
+            "value": f"subicular to retronspenial LFP {band} coherence during choice trials in ATNx",
+            "group1": "correct",
+            "group2": "incorrect",
+            "show_quartiles": overall_kwargs["show_quartiles"],
+        }
 
-    bit_to_get = (lesion_df["part"] == "choice") & (lesion_df["trial"] == "Correct")
-    lesion_choice1 = lesion_df[bit_to_get]
-
-    bit_to_get = (lesion_df["part"] == "choice") & (lesion_df["trial"] == "Incorrect")
-    lesion_choice2 = lesion_df[bit_to_get]
-
-    t4_kwargs = {
-        "value": "subicular to retronspenial LFP theta coherence during choice trials in ATNx",
-        "group1": "correct",
-        "group2": "incorrect",
-        "show_quartiles": overall_kwargs["show_quartiles"],
-    }
-
-    res = mwu(
-        lesion_choice1[lesion_choice1["RSC on target"]]["Theta Coherence"],
-        lesion_choice2[lesion_choice2["RSC on target"]]["Theta Coherence"],
-        t4_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "t-maze_coherence_lesion.pdf")
+        res = mwu(
+            lesion_choice1[lesion_choice1["RSC on target"]][f"Full {band} Coherence"],
+            lesion_choice2[lesion_choice2["RSC on target"]][f"Full {band} Coherence"],
+            t4_kwargs,
+            do_plot=True,
+        )
+        get_obj.process_fig(res, f"t-maze_coherence_lesion_{band}.pdf")
 
 
 def muscimol_stats(input_path, overall_kwargs, get_obj):
@@ -427,11 +415,41 @@ def muscimol_stats(input_path, overall_kwargs, get_obj):
 
 
 def sleep_stats(spindles_path, ripples_path, overall_kwargs, get_obj):
-    # get_obj.pt("Sleep")
-    # df, control_df, lesion_df = get_obj.get_df(input_path)
+    get_obj.pt("Sleep")
+    df = df_from_file(ripples_path)
 
-    # TODO need ANOVA / bonferonni correction
-    pass
+    t_kwargs = {**overall_kwargs, **{"value": "control/muscimol ripples in SUB"}}
+    mwu(
+        df[(df["Condition"] == "CanControl") & (df["Brain Region"] == "Kay_SUB")][
+            "Ripples/min"
+        ],
+        df[(df["Condition"] == "Muscimol") & (df["Brain Region"] == "Kay_SUB")][
+            "Ripples/min"
+        ],
+        t_kwargs,
+    )
+
+    t_kwargs = {**overall_kwargs, **{"value": "control/muscimol ripples in CA1"}}
+    mwu(
+        df[(df["Condition"] == "CanControl") & (df["Brain Region"] == "Kay_CA1")][
+            "Ripples/min"
+        ],
+        df[(df["Condition"] == "Muscimol") & (df["Brain Region"] == "Kay_CA1")][
+            "Ripples/min"
+        ],
+        t_kwargs,
+    )
+
+    t_kwargs = {**overall_kwargs, **{"value": "control/lesion ripples in SUB"}}
+    mwu(
+        df[(df["Condition"] == "Control") & (df["Brain Region"] == "Kay_SUB")][
+            "Ripples/min"
+        ],
+        df[(df["Condition"] == "Lesion") & (df["Brain Region"] == "Kay_SUB")][
+            "Ripples/min"
+        ],
+        t_kwargs,
+    )
 
 
 def main(input_paths, plot_dir, output_file, show_quartiles=False):
@@ -499,11 +517,13 @@ if __name__ == "__main__":
                 here / "results/summary/signal_bandpowers.csv",
                 here / "results/summary/coherence_stats.csv",
                 here / "results/summary/speed_theta_avg.csv",
-                here / "results/summary/open_spike_lfp_sub.csv",
+                here / "results/summary/openfield_peak_sfc.csv",
+                here / "results/summary/musc_spike_lfp_sub_pairs.csv",
+                here / "results/summary/musc_spike_lfp_sub_pairs_later.csv",
                 here / "results/tmaze/results.csv",
                 here / "results/summary/muscimol_peak_sfc.csv",
-                here / "results/sleep/spindles.csv",
-                here / "results/sleep/ripples.csv",
+                here / "results/sleep/spindles2.csv",
+                here / "results/sleep/ripples2.csv",
             ],
             here / "results" / "plots" / "stats",
             here / "results" / "stats_output.txt",

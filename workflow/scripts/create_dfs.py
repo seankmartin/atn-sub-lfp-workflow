@@ -171,6 +171,8 @@ def openfield_coherence(rc, out_dir, config):
     theta_min, theta_max = config["theta_min"], config["theta_max"]
     delta_min, delta_max = config["delta_min"], config["delta_max"]
     beta_min, beta_max = config["beta_min"], config["beta_max"]
+    low_gamma_min, low_gamma_max = config["low_gamma_min"], config["low_gamma_max"]
+    high_gamma_min, high_gamma_max = config["high_gamma_min"], config["high_gamma_max"]
 
     def create_coherence_df(recording_container):
         l = []
@@ -198,29 +200,41 @@ def openfield_coherence(rc, out_dir, config):
             theta_coherence = this_df[
                 (this_df["F"] >= theta_min) & (this_df["F"] <= theta_max)
             ]
-            peak_theta_coherence = max(theta_coherence["C"])
+            peak_theta_coherence = np.nanmean(theta_coherence["C"])
             delta_coherence = this_df[
                 (this_df["F"] >= delta_min) & (this_df["F"] <= delta_max)
             ]
-            peak_delta_coherence = max(delta_coherence["C"])
+            peak_delta_coherence = np.nanmean(delta_coherence["C"])
             beta_coherence = this_df[
                 (this_df["F"] >= beta_min) & (this_df["F"] <= beta_max)
             ]
-            peak_beta_coherence = max(beta_coherence["C"])
+            peak_beta_coherence = np.nanmean(beta_coherence["C"])
+            low_gamma_coherence = this_df[
+                (this_df["F"] >= low_gamma_min) & (this_df["F"] <= low_gamma_max)
+            ]
+            peak_low_gamma_coherence = np.nanmean(low_gamma_coherence["C"])
+            high_gamma_coherence = this_df[
+                (this_df["F"] >= high_gamma_min) & (this_df["F"] <= high_gamma_max)
+            ]
+            peak_high_gamma_coherence = np.nanmean(high_gamma_coherence["C"])
             peak_coherences.append(
                 [
-                    peak_theta_coherence,
                     peak_delta_coherence,
+                    peak_theta_coherence,
                     peak_beta_coherence,
+                    peak_low_gamma_coherence,
+                    peak_high_gamma_coherence,
                     group,
                     on_target,
                 ]
             )
         headers = ["Group", "Regions", "Frequency (Hz)", "Coherence", "RSC on target"]
         headers2 = [
-            "Peak Theta Coherence",
-            "Peak Delta Coherence",
-            "Peak Beta Coherence",
+            "Mean Delta Coherence",
+            "Mean Theta Coherence",
+            "Mean Beta Coherence",
+            "Mean Low Gamma Coherence",
+            "Mean High Gamma Coherence",
             "Condition",
             "RSC on target",
         ]

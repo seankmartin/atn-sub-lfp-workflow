@@ -153,41 +153,18 @@ def coherence_stats(input_path, overall_kwargs, get_obj):
     control_df = control_df[control_df["RSC on target"]]
     lesion_df = lesion_df[lesion_df["RSC on target"]]
 
-    t1_kwargs = {
-        **overall_kwargs,
-        **{"value": "theta coherence (unitless)"},
-    }
-    res = mwu(
-        control_df["Peak Theta Coherence"],
-        lesion_df["Peak Theta Coherence"],
-        t1_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "theta_coherence_openfield.pdf")
-
-    t2_kwargs = {
-        **overall_kwargs,
-        **{"value": "delta coherence (unitless)"},
-    }
-    res = mwu(
-        control_df["Peak Delta Coherence"],
-        lesion_df["Peak Delta Coherence"],
-        t2_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "delta_coherence_openfield.pdf")
-
-    t2_kwargs = {
-        **overall_kwargs,
-        **{"value": "beta coherence (unitless)"},
-    }
-    res = mwu(
-        control_df["Peak Beta Coherence"],
-        lesion_df["Peak Beta Coherence"],
-        t2_kwargs,
-        do_plot=True,
-    )
-    get_obj.process_fig(res, "beta_coherence_openfield.pdf")
+    for band in ["Delta", "Theta", "Beta", "Low Gamma", "High Gamma"]:
+        t1_kwargs = {
+            **overall_kwargs,
+            **{"value": f"{band} coherence (unitless)"},
+        }
+        res = mwu(
+            control_df[f"Mean {band} Coherence"],
+            lesion_df[f"Mean {band} Coherence"],
+            t1_kwargs,
+            do_plot=True,
+        )
+        get_obj.process_fig(res, f"{band}_coherence_openfield.pdf")
 
 
 def speed_stats(input_path, overall_kwargs, get_obj):
@@ -339,7 +316,7 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
 
     get_obj.save_df(df[bit_to_get], "tmaze_coherence_incorrect.csv")
 
-    for band in ("Theta", "Beta"):
+    for band in ("Delta", "Theta", "Beta", "Low Gamma", "High Gamma"):
         t2_kwargs = {
             **overall_kwargs,
             **{

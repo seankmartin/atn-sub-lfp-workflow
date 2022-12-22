@@ -16,13 +16,13 @@ def plot_coherence(df, out_dir, max_frequency=40):
 
     fig, ax = plt.subplots()
     sns.lineplot(
-        data=df_sub[df_sub["Frequency (Hz)"] <= 40],
+        data=df_sub[df_sub["Frequency (Hz)"] <= 120],
         x="Frequency (Hz)",
         y="Coherence",
         style="Group",
         hue="Group",
-        estimator="median",
-        # estimator="mean",
+        # estimator="median",
+        estimator="mean",
         errorbar=("ci", 95),
         n_boot=10000,
         ax=ax,
@@ -37,7 +37,7 @@ def plot_coherence(df, out_dir, max_frequency=40):
     df_sub = df[~df["RSC on target"]]
     fig, ax = plt.subplots()
     sns.lineplot(
-        data=df_sub[df_sub["Frequency (Hz)"] <= 30],
+        data=df_sub[df_sub["Frequency (Hz)"] <= 120],
         x="Frequency (Hz)",
         y="Coherence",
         style="Group",

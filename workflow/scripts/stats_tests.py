@@ -303,7 +303,7 @@ def tmaze_stats(input_path, overall_kwargs, get_obj):
     )
     get_obj.save_df(df[bit_to_get], "tmaze_coherence_correct.csv")
 
-    for band in ("Theta", "Beta"):
+    for band in ("Delta", "Theta", "Beta", "Low Gamma", "High Gamma"):
         t1_kwargs = {
             **overall_kwargs,
             **{

@@ -363,8 +363,11 @@ def get_result_headers():
         "Peak Theta Coherence",
         "Group",
         "RSC on target",
+        "Full Delta Coherence",
         "Full Theta Coherence",
         "Full Beta Coherence",
+        "Full Low Gamma Coherence",
+        "Full High Gamma Coherence",
         "SUB Beta Power",
         "SUB Theta Power",
         "RSC Beta Power",
@@ -611,11 +614,29 @@ def calculate_banded_coherence(x_, y_, fs, config, time_dict, name):
     f = f[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
     Cxy = Cxy[np.nonzero((f >= config["tmaze_minf"]) & (f <= config["tmaze_maxf"]))]
 
+    delta_co = Cxy[np.nonzero((f >= config["delta_min"]) & (f <= config["delta_max"]))]
     theta_co = Cxy[np.nonzero((f >= config["theta_min"]) & (f <= config["theta_max"]))]
     beta_co = Cxy[np.nonzero((f >= config["beta_min"]) & (f <= config["beta_max"]))]
+    low_gamma_co = Cxy[
+        np.nonzero((f >= config["low_gamma_min"]) & (f <= config["low_gamma_max"]))
+    ]
+    high_gamma_co = Cxy[
+        np.nonzero((f >= config["high_gamma_min"]) & (f <= config["high_gamma_max"]))
+    ]
+    delta_co = np.nanmean(delta_co)
     theta_coherence = np.nanmean(theta_co)
     beta_coherence = np.nanmean(beta_co)
-    return f, Cxy, theta_coherence, beta_coherence
+    low_gamma_co = np.nanmean(low_gamma_co)
+    high_gamma_co = np.nanmean(high_gamma_co)
+    return (
+        f,
+        Cxy,
+        delta_co,
+        theta_coherence,
+        beta_coherence,
+        low_gamma_co,
+        high_gamma_co,
+    )
 
 
 if __name__ == "__main__":

@@ -1,17 +1,19 @@
 # Snakemake workflow: ATNx
 
 [![Snakemake](https://img.shields.io/badge/snakemake-≥6.3.0-brightgreen.svg)](https://snakemake.github.io)
-[![GitHub actions status](https://github.com/seankmartin/atn-sub-lfp-workflow/workflows/Tests/badge.svg?branch=main)](https://github.com/seankmartin/atn-sub-lfp-workflow/actions?query=branch%3Amain+workflow%3ATests)
 
 A Snakemake workflow for an ATN lesion experiment.
 
-## Requirements
+## Installation
 
-See `envs/condaenv.yml`. Requires pynwb > 2 and simuran. TODO add fixed simuran to requirements.
+See `envs/nwb_simuran.yml` for a conda environment, or install pip requirements as `pip install -r requirements.txt`.
 
 ## Usage
 
-The usage of this workflow is described in the [Snakemake Workflow Catalog](https://snakemake.github.io/snakemake-workflow-catalog/?usage=<owner>%2F<repo>).
+This project can be used to transform raw Axona data into processed NWB files, as well as work with those processed NWB files to perform analysis related to the ATN lesion experiment and LFP signals.
+
+The usage of this workflow is described in the [Snakemake Workflow Catalog](https://snakemake.github.io/snakemake-workflow-catalog/?usage=seankmartin/atn-sub-lfp-workflow).
+See the [README in config](config/README.md) for more information on possible parameters.
 
 If you use this workflow in a paper, don't forget to give credits to the authors by citing the URL of this (original) repository and its DOI (see above).
 

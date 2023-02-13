@@ -1,5 +1,5 @@
 report: "report/overview.rst"
-configfile: "config/snakemake_config.yml"
+configfile: "config/config.yml"
 
 
 include: "rules/process_data.smk"

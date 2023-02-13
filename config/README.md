@@ -1,10 +1,10 @@
 # Configuration
 
-The main config for path setup is snakemake_config.yml, and simuran_params.yml for analyis parameters. You should change the data_directory and ca1_directory parameters in snakemake_config.yml to the paths containing the downloaded SUB and CA1 data. The other config files are unlikely to require modification.
+The main config for path setup is config.yml, and simuran_params.yml for analyis parameters. If you have the raw Axona data, you should change the data_directory and ca1_directory parameters in config.yml to the paths containing the downloaded SUB and CA1 data. Otherwise, create a folder called results in the parent directory to this file, and place the information downloaded from our open data publication there. The other config files are unlikely to require modification.
 
 ## Main config files
 
-### snakemake_config.yml
+### config.yml
 
 This file contains the following variables, in particular, 1 and 2 likely need to be modified:
 

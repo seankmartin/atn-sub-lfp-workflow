@@ -10,7 +10,7 @@ See `envs/nwb_simuran.yml` for a conda environment, or install pip requirements 
 
 ## Usage
 
-This project can be used to transform raw Axona data into processed NWB files, as well as work with those processed NWB files to perform analysis related to the ATN lesion experiment and LFP signals.
+This project can be used to transform raw Axona data into processed NWB files, as well as work with those processed NWB files to perform analysis related to the ATN lesion experiment and LFP signals. See the [graph](dag.txt.pdf) for an overview of the workflow.
 
 The usage of this workflow is described in the [Snakemake Workflow Catalog](https://snakemake.github.io/snakemake-workflow-catalog/?usage=seankmartin/atn-sub-lfp-workflow).
 See the [README in config](config/README.md) for more information on possible parameters.

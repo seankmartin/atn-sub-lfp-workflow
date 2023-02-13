@@ -17,6 +17,10 @@ See the [README in config](config/README.md) for more information on possible pa
 
 If you use this workflow in a paper, don't forget to give credits to the authors by citing the URL of this (original) repository and its DOI (see above).
 
+### Running the workflow
+
+Run `snakemake -c1 --list` to see the list of available commands to run. You can run them all using `snakemake -c1 all`, or run them individually. Alternatively, to run with multiple cores, use `snakemake --cores all` in place of `-c1`. Again, the [graph](dag.txt.pdf) gives an overview of the dependencies of each command.
+
 ## NWB file layout
 
 General metadata is available about acquisition information and experimenter information.

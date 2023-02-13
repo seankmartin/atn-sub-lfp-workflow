@@ -2,6 +2,10 @@
 
 The main config for path setup is config.yaml, and simuran_params.yml for analyis parameters. If you have the raw Axona data, you should change the data_directory and ca1_directory parameters in config.yaml to the paths containing the downloaded SUB and CA1 data. Otherwise, create a folder called results in the parent directory to this file, and place the information downloaded from our open data publication there. The other config files are unlikely to require modification.
 
+## Possible Error
+
+If you get an error, try updating `workflow/Snakefile` to have `path=workflow/Snakefile` instead of `path=workflow\Snakefile`.
+
 ## Main config files
 
 ### config.yaml

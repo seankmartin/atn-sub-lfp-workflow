@@ -1,5 +1,5 @@
 report: "report/overview.rst"
-configfile: "config/config.yml"
+configfile: "config/config.yaml"
 
 
 include: "rules/process_data.smk"

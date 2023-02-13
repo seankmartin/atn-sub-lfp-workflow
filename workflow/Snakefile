@@ -12,7 +12,7 @@ rule all:
             "results/plots/spectra/",
             "results/plots/summary/png/per_animal_psds--averaged_psds--SUB.png",
             "results/plots/summary/png/SUB--fooof_combined.png",
-            "results/plots/summary/png/coherence.png",
+            "results/plots/summary/png/coherence_on_target.png",
             "results/plots/signals/",
             "results/plots/summary/png/SUB--speed_theta.png",
             "results/plots/signals/",

@@ -1,10 +1,12 @@
 # Configuration
 
-## The following config files are available, and likely need to be modified
+The main config for path setup is snakemake_config.yml, and simuran_params.yml for analyis parameters. You should change the data_directory and ca1_directory parameters in snakemake_config.yml to the paths containing the downloaded SUB and CA1 data. The other config files are unlikely to require modification.
+
+## Main config files
 
 ### snakemake_config.yml
 
-This file contains the following variables, in particular, 1 and 2 liekly need to be modified:
+This file contains the following variables, in particular, 1 and 2 likely need to be modified:
 
 1. data_directory: The directory where the SUB data is stored.
 2. ca1_directory: The directory where the CA1 data is stored.
@@ -57,7 +59,7 @@ This file contains individual parameters for each analysis, such as the band to 
 35. sleep_join_tol: The allowed time of movement between sleep epochs to join them, in seconds (0.0).
 36. sleep_max_interval_size: The maximum allowed time for a sleep epoch to be, before splitting for efficiency, in seconds (300).
 
-## The additional config files are (unlikely to require modification)
+## Additional config files
 
 ### tmaze_recordings.yml
 

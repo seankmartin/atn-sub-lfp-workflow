@@ -23,5 +23,6 @@ rule all:
             "results/plots/sleep/",
             "results/plots/theta_gamma/",
             "results/ca1_analysis/",
-            "results/stats_output.txt"
+            "results/stats_output.txt",
+            "results/plots/summary/png/bandpower_SUB_Relative Bandpower.png"
             ]

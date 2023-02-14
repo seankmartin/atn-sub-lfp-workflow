@@ -164,8 +164,14 @@ rule plot_sleep:
         "../scripts/plot_sleep.py"
 
     
-rule plot_assorted:
+rule plot_signal_bandpowers:
     input:
         "results/summary/signal_bandpowers.csv",
     output:
         "results/plots/summary/png/bandpower_SUB_Relative Bandpower.png"
+    log:
+        "logs/plot_bandpowers.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/plot_assorted.py"

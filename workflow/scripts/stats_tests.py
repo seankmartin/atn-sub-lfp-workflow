@@ -173,8 +173,8 @@ def speed_stats(input_path, overall_kwargs, get_obj):
 
     for region, name in zip(["SUB", "RSC"], ["subicular", "retrospenial"]):
         if region == "RSC":
-            speed_ctrl_df = speed_ctrl[speed_ctrl["RSC on target"]]
-            speed_lesion_df = speed_lesion[speed_lesion["RSC on target"]]
+            speed_ctrl_df = speed_ctrl.loc[speed_ctrl["RSC on target"]]
+            speed_lesion_df = speed_lesion.loc[speed_lesion["RSC on target"]]
         else:
             speed_ctrl_df = speed_ctrl
             speed_lesion_df = speed_lesion
@@ -189,9 +189,10 @@ def speed_stats(input_path, overall_kwargs, get_obj):
             },
         }
         speed_ctrl_df = speed_ctrl_df[speed_ctrl_df["region"] == region]
+        nan_values = speed_ctrl_df["power"].isna()
         res = corr(
-            speed_lesion_df.loc[~nan_values]["speed"],
-            speed_lesion_df.loc[~nan_values]["power"],
+            speed_ctrl_df.loc[~nan_values]["speed"],
+            speed_ctrl_df.loc[~nan_values]["power"],
             test_kwargs,
             do_plot=False,
         )

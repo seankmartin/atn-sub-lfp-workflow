@@ -88,7 +88,7 @@ if __name__ == "__main__":
     if use_snakemake:
         main(
             snakemake.input[0],
-            Path(snakemake.output[0]).parent,
+            Path(snakemake.output[0]).parent.parent,
             snakemake.config["simuran_config"],
         )
     else:

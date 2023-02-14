@@ -1,10 +1,36 @@
 from pathlib import Path
+import itertools
 
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import simuran as smr
 from skm_pyutils.table import df_from_file
+
+
+def fix_notch_freqs(df, freqs_to_fix):
+    fnames = sorted(list(set(df["Fname"])))
+    for fname in fnames:
+        fname_bit = df["Fname"] == fname
+        df_bit = df[fname_bit]
+        if len(df_bit) == 0:
+            continue
+        for f in freqs_to_fix:
+            start_val = (
+                df_bit[df_bit["Frequency (Hz)"].between(f - 5, f - 4)]["Coherence"]
+                .iloc[0]
+                .data
+            )
+            end_val = (
+                df_bit[df_bit["Frequency (Hz)"].between(f + 4, f + 5)]["Coherence"]
+                .iloc[-1]
+                .data
+            )
+            freqs = df_bit["Frequency (Hz)"].between(f - 5, f + 5)
+            interp = np.linspace(
+                start_val, end_val, np.count_nonzero(freqs), endpoint=True
+            )
+            df.loc[freqs & fname_bit, "Coherence"] = interp
 
 
 def plot_coherence(df, out_dir, max_frequency=40):
@@ -58,6 +84,7 @@ def plot_coherence(df, out_dir, max_frequency=40):
 def main(input_df_path, out_dir, config_path):
     config = smr.config_from_file(config_path)
     coherence_df = df_from_file(input_df_path)
+    fix_notch_freqs(coherence_df, config["notch_freqs"])
     plot_coherence(coherence_df, out_dir, config["max_psd_freq"])
 
 

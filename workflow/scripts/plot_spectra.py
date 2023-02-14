@@ -167,8 +167,8 @@ def plot_per_animal_psd(per_animal_df, output_path, max_frequency):
     return paths
 
 
-def plot_control_vs_lesion_psd(per_animal_df, output_path, max_frequency):
-    fix_notch_freqs(per_animal_df, [50, 60, 100])
+def plot_control_vs_lesion_psd(per_animal_df, output_path, max_frequency, notch_freqs):
+    fix_notch_freqs(per_animal_df, notch_freqs)
     regions = sorted(list(set(per_animal_df["Brain Region"])))
     paths = []
     for region in regions:
@@ -236,12 +236,13 @@ def summary(df_path, config_path, out_dir, order=0):
     """Order 0, average PSDs, order 1, average signals"""
     config = smr.ParamHandler(source_file=config_path)
     max_frequency = config["max_psd_freq"]
+    notch_frequncies = config["notch_freqs"]
     full_df = df_from_file(df_path)
 
     end_bit = "averaged_psds" if order == 0 else "averaged_signals"
     smr.set_plot_style()
     path = out_dir / f"per_group_psds--{end_bit}"
-    plot_control_vs_lesion_psd(full_df, path, max_frequency)
+    plot_control_vs_lesion_psd(full_df, path, max_frequency, notch_frequncies)
     path = out_dir / f"per_animal_psds--{end_bit}"
     plot_per_animal_psd(full_df, path, max_frequency)
 

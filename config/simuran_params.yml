@@ -33,6 +33,7 @@ number_of_shuffles_sta: 5
 num_spike_shuffles: 50
 max_psd_freq: 120
 max_fooof_freq: 120
+notch_freqs: [50, 60, 100]
 speed_theta_samples_per_second: 5
 max_speed: 40
 tmaze_minf: 2.0

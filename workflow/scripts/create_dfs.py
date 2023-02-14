@@ -36,14 +36,14 @@ def main(input_, output_dir, config_path):
     config = smr.config_from_file(config_path)
     loader = smr.loader("nwb")
 
-    rc = smr.RecordingContainer.from_table(df_from_file(input_[0]), loader=loader)
-    power_spectra_summary(rc, output_dir, config)
-    openfield_speed(rc, output_dir)
+    # rc = smr.RecordingContainer.from_table(df_from_file(input_[0]), loader=loader)
 
     df = df_from_file(input_[1])
     df = filter_table(df, rat_name_dict(), and_=True)
     rc = smr.RecordingContainer.from_table(df, loader=loader)
     openfield_coherence(rc, output_dir, config)
+    power_spectra_summary(rc, output_dir, config)
+    openfield_speed(rc, output_dir)
 
 
 def power_spectra_summary(rc, out_dir, config):
@@ -70,8 +70,8 @@ def power_spectra_summary(rc, out_dir, config):
         return lesion if name.lower().startswith("l") else ctrl
 
     def split_psds(psd_table, electrodes_table):
-        normal_psds = psd_table[:-2][electrodes_table["clean"] == "Normal"]
-        outlier_psds = psd_table[:-2][electrodes_table["clean"] == "Outlier"]
+        normal_psds = psd_table.iloc[:-2].loc[electrodes_table["clean"] == "Normal"]
+        outlier_psds = psd_table.iloc[:-2].loc[electrodes_table["clean"] == "Outlier"]
 
         return normal_psds, outlier_psds
 
@@ -80,15 +80,18 @@ def power_spectra_summary(rc, out_dir, config):
         outlier_psds_in_region = outlier_psds[outlier_psds["region"] == region]
         average_psd_for_clean = np.mean(clean_psds_in_region["power"], axis=0)
         average_psd_for_outlier = np.mean(outlier_psds_in_region["power"], axis=0)
-        l.extend(
-            [x, y, "Clean", region]
-            for (x, y) in zip(average_psd_for_clean, normal_psds.iloc[0]["frequency"])
-        )
+        if len(clean_psds_in_region) != 0:
+            l.extend(
+                [x, y, "Clean", region]
+                for (x, y) in zip(
+                    average_psd_for_clean, normal_psds.iloc[0]["frequency"]
+                )
+            )
         if len(outlier_psds_in_region) != 0:
             l.extend(
                 [x, y, "Outlier", region]
                 for (x, y) in zip(
-                    average_psd_for_outlier, normal_psds.iloc[0]["frequency"]
+                    average_psd_for_outlier, outlier_psds.iloc[0]["frequency"]
                 )
             )
 
@@ -189,14 +192,14 @@ def openfield_coherence(rc, out_dir, config):
             region = coherence_df["label"].values[0]
             group = recording.attrs["treatment"]
             this_bit = [
-                [group, region, f_val, c_val, on_target]
+                [group, region, f_val, c_val, on_target, recording.source_file]
                 for f_val, c_val in zip(
                     coherence_df["frequency"].values[0],
                     coherence_df["coherence"].values[0],
                 )
             ]
-            this_df = list_to_df(this_bit, headers=["G", "R", "F", "C", "T"])
             l.extend(this_bit)
+            this_df = list_to_df(this_bit, headers=["G", "R", "F", "C", "T", "S"])
             theta_coherence = this_df[
                 (this_df["F"] >= theta_min) & (this_df["F"] <= theta_max)
             ]
@@ -228,7 +231,14 @@ def openfield_coherence(rc, out_dir, config):
                     on_target,
                 ]
             )
-        headers = ["Group", "Regions", "Frequency (Hz)", "Coherence", "RSC on target"]
+        headers = [
+            "Group",
+            "Regions",
+            "Frequency (Hz)",
+            "Coherence",
+            "RSC on target",
+            "Fname",
+        ]
         headers2 = [
             "Mean Delta Coherence",
             "Mean Theta Coherence",

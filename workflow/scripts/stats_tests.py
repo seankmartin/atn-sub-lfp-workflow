@@ -190,8 +190,8 @@ def speed_stats(input_path, overall_kwargs, get_obj):
         }
         speed_ctrl_df = speed_ctrl_df[speed_ctrl_df["region"] == region]
         res = corr(
-            speed_ctrl_df["speed"],
-            speed_ctrl_df["power"],
+            speed_lesion_df.loc[~nan_values]["speed"],
+            speed_lesion_df.loc[~nan_values]["power"],
             test_kwargs,
             do_plot=False,
         )
@@ -207,10 +207,11 @@ def speed_stats(input_path, overall_kwargs, get_obj):
                 "offset": 0,
             },
         }
-        speed_lesion_df = speed_lesion_df[speed_lesion_df["region"] == "SUB"]
+        speed_lesion_df = speed_lesion_df[speed_lesion_df["region"] == region]
+        nan_values = speed_lesion_df["power"].isna()
         res = corr(
-            speed_lesion_df["speed"],
-            speed_lesion_df["power"],
+            speed_lesion_df.loc[~nan_values]["speed"],
+            speed_lesion_df.loc[~nan_values]["power"],
             test_kwargs,
             do_plot=False,
         )

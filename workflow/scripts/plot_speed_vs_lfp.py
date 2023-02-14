@@ -26,7 +26,7 @@ def plot_speed_vs_lfp(df, out_dir, max_speed):
             y="power",
             style="Group",
             hue="Group",
-            errorbar=("ci", 95)
+            errorbar=("ci", 95),
             ax=ax,
             estimator=np.median,
         )

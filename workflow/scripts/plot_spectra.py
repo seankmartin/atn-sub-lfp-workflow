@@ -201,6 +201,8 @@ def fix_notch_freqs(df, freqs_to_fix):
         br_bit = df["Brain Region"] == br
         fname_bit = df["Fname"] == fname
         df_bit = df[fname_bit & br_bit]
+        if len(df_bit) == 0:
+            continue
         for f in freqs_to_fix:
             start_val = (
                 df_bit[df_bit["Frequency (Hz)"].between(f - 5, f - 4)]["Power (Db)"]

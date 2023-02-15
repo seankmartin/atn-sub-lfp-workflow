@@ -41,7 +41,7 @@ rule plot_spectra_summary:
 
 rule plot_fooof:
     input:
-        "results/openfield_processed.csv"
+        "results/every_processed_nwb.csv"
     output:
         expand("results/plots/summary/{region}--{group}--fooof.pdf", region=REGIONS, group=GROUPS),
         report(

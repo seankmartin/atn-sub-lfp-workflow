@@ -6,7 +6,31 @@ import numpy as np
 import seaborn as sns
 import simuran as smr
 from fooof import FOOOFGroup
-from skm_pyutils.table import df_from_file, list_to_df
+from skm_pyutils.table import df_from_file, list_to_df, filter_table
+
+
+def rat_name_dict():
+    d = {}
+    d["rat"] = [
+        "CSR1",
+        "CSR2_sham",
+        "CSR3_sham",
+        "CSR4",
+        "CSR5_sham",
+        "CSR6",
+        "LSR1",
+        "LSR2",
+        "LSR3",
+        "LSR4",
+        "LSR5",
+        "LSR6",
+        "LSR7",
+        "CRS1",
+        "CRS2",
+    ]
+    d["maze"] = ["small_sq", "big_sq"]
+    return d
+
 
 smr.set_plot_style()
 
@@ -28,6 +52,12 @@ def grab_fooof_info_from_container(recording_container):
             max_psd = psd_row["max_psd"].values[0]
             power = np.array(psd_row["power"].values[0]).astype(np.float64)
             volts_scale = np.power(10.0, (power / 10.0)) * max_psd
+            if np.isnan(power).any():
+                print("Found a nan")
+                continue
+            if np.sum(np.abs(power)) == 0:
+                print("Found a zero signal")
+                continue
             if region not in info_for_fooof[group]:
                 info_for_fooof[group][region] = {"frequency": None, "spectra": []}
             info_for_fooof[group][region]["spectra"].append(volts_scale)
@@ -96,7 +126,9 @@ def plot_fooof_peaks(peaks_data, out_dir):
 def main(input_df_path, output_directory, config_path):
     loader = smr.loader("nwb")
     cfg = smr.ParamHandler(source_file=config_path)
-    rc = smr.RecordingContainer.from_table(df_from_file(input_df_path), loader)
+    df = df_from_file(input_df_path)
+    df = filter_table(df, rat_name_dict(), and_=True)
+    rc = smr.RecordingContainer.from_table(df, loader)
 
     fooof_info = grab_fooof_info_from_container(rc)
     peaks_data = plot_all_fooof(fooof_info, output_directory, cfg["max_fooof_freq"])

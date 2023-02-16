@@ -374,43 +374,8 @@ def muscimol_stats(input_path, overall_kwargs, get_obj):
 
 def sleep_stats(spindles_path, ripples_path, overall_kwargs, get_obj):
     get_obj.pt("Sleep")
-    df = df_from_file(ripples_path)
-
-    t_kwargs = {**overall_kwargs, **{"value": "control/muscimol ripples in SUB"}}
-    res = mwu(
-        df[(df["Condition"] == "CanControl") & (df["Brain Region"] == "Kay_SUB")][
-            "Ripples/min"
-        ],
-        df[(df["Condition"] == "Muscimol") & (df["Brain Region"] == "Kay_SUB")][
-            "Ripples/min"
-        ],
-        t_kwargs,
-    )
-    get_obj.process_str(res)
-
-    t_kwargs = {**overall_kwargs, **{"value": "control/muscimol ripples in CA1"}}
-    res = mwu(
-        df[(df["Condition"] == "CanControl") & (df["Brain Region"] == "Kay_CA1")][
-            "Ripples/min"
-        ],
-        df[(df["Condition"] == "Muscimol") & (df["Brain Region"] == "Kay_CA1")][
-            "Ripples/min"
-        ],
-        t_kwargs,
-    )
-    get_obj.process_str(res)
-
-    t_kwargs = {**overall_kwargs, **{"value": "control/lesion ripples in SUB"}}
-    res = mwu(
-        df[(df["Condition"] == "Control") & (df["Brain Region"] == "Kay_SUB")][
-            "Ripples/min"
-        ],
-        df[(df["Condition"] == "Lesion") & (df["Brain Region"] == "Kay_SUB")][
-            "Ripples/min"
-        ],
-        t_kwargs,
-    )
-    get_obj.process_str(res)
+    print("Please see JASP for this analysis.")
+    get_obj.process_str({"output": "Please see JASP for this analysis."})
 
 
 def main(input_paths, plot_dir, output_file, show_quartiles=False):

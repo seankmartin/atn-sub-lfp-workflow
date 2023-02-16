@@ -142,14 +142,20 @@ def power_spectra_summary(rc, out_dir, config):
             for (l_band, h_band) in bands:
                 p = signal.bandpower([l_band, h_band], window_sec=4, unit="milli")
                 rel_power.append(p["relative_power"])
+                rel_power.append(p["bandpower"])
         rel_power.extend([group, on_target])
         headers = []
         for region in regions:
             headers.append(f"{region} Delta Rel")
+            headers.append(f"{region} Delta")
             headers.append(f"{region} Theta Rel")
+            headers.append(f"{region} Theta")
             headers.append(f"{region} Beta Rel")
+            headers.append(f"{region} Beta")
             headers.append(f"{region} Low Gamma Rel")
+            headers.append(f"{region} Low Gamma")
             headers.append(f"{region} High Gamma Rel")
+            headers.append(f"{region} High Gamma")
         headers.extend(["Condition", "RSC on target"])
         sum_dfs.append(list_to_df([rel_power], headers=headers))
 

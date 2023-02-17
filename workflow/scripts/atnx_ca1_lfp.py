@@ -165,9 +165,9 @@ def run_analysis(rc, input_dir, config):
 
 
 def load_rc(path_dir, out_dir):
-    from simuran.loaders.neurochat_loader import NCLoader
+    from simuran.loaders.neurochat_loader import NeurochatLoader
 
-    loader = NCLoader(system="Axona", pos_extension=".pos")
+    loader = NeurochatLoader(system="Axona", pos_extension=".pos")
     files_df = loader.index_files(path_dir)
     files_df["mapping"] = out_dir / "layout.yml"
     return simuran.RecordingContainer.from_table(files_df, loader)

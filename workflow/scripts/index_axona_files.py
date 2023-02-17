@@ -6,12 +6,12 @@ from pathlib import Path
 
 import numpy as np
 import simuran
-from simuran.loaders.neurochat_loader import NCLoader
+from simuran.loaders.neurochat_loader import NeurochatLoader
 from skm_pyutils.table import df_to_file
 
 
 def main(path_to_files: str, output_path: str) -> None:
-    loader = NCLoader(system="Axona", pos_extension=".pos")
+    loader = NeurochatLoader(system="Axona", pos_extension=".pos")
     df = loader.index_files(path_to_files)
     df = clean_data(df)
     df_to_file(df, output_path)

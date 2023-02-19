@@ -238,10 +238,23 @@ def spike_lfp_stats(input_paths, overall_kwargs, get_obj):
     )
     get_obj.process_fig(res, "sub_theta_sfc_spatial_non.pdf")
 
+    t1_kwargs = {
+        **overall_kwargs,
+        **{"value": "subicular delta spike field coherence for spatial vs non"},
+    }
+
+    res = mwu(
+        control_df[control_df["Spatial"] == "Spatial"]["AVG Delta SFC"],
+        control_df[control_df["Spatial"] == "Non-Spatial"]["AVG Delta SFC"],
+        t1_kwargs,
+        do_plot=True,
+    )
+    get_obj.process_fig(res, "sub_delta_sfc_spatial_non.pdf")
+
     t2_kwargs = {
         **overall_kwargs,
         **{
-            "value": "subicular spike field coherence for non-spatial CTRL vs non-spatial lesion"
+            "value": "subicular theta spike field coherence for non-spatial CTRL vs non-spatial lesion"
         },
     }
 
@@ -251,12 +264,29 @@ def spike_lfp_stats(input_paths, overall_kwargs, get_obj):
         t2_kwargs,
         do_plot=True,
     )
+    get_obj.process_fig(res, "sub_theta_sfc_non_spatial_only.pdf")
+
+    t2_kwargs = {
+        **overall_kwargs,
+        **{
+            "value": "subicular delta spike field coherence for non-spatial CTRL vs non-spatial lesion"
+        },
+    }
+
+    res = mwu(
+        control_df[control_df["Spatial"] == "Non-Spatial"]["AVG Delta SFC"],
+        lesion_df[lesion_df["Spatial"] == "Non-Spatial"]["AVG Delta SFC"],
+        t2_kwargs,
+        do_plot=True,
+    )
     get_obj.process_fig(res, "sub_delta_sfc_non_spatial_only.pdf")
 
     for ip in input_paths[1:]:
         df = df_from_file(ip)
         t_kwargs = {**overall_kwargs, **{"value": "muscimol vs control sub theta sfc"}}
         res = wilcoxon(df["AVG Theta SFC"], df["AVG Theta SFC_musc"], t_kwargs)
+        t_kwargs = {**overall_kwargs, **{"value": "muscimol vs control sub delta sfc"}}
+        res = wilcoxon(df["AVG Delta SFC"], df["AVG Delta SFC_musc"], t_kwargs)
 
 
 def tmaze_stats(input_path, overall_kwargs, get_obj):

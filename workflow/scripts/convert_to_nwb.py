@@ -16,6 +16,7 @@ from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from pynwb.ecephys import LFP, ElectricalSeries
 from pynwb.file import Subject
+from scipy.signal import decimate
 from skm_pyutils.table import df_from_file, df_to_file, filter_table, list_to_df
 
 
@@ -303,7 +304,7 @@ def add_waveforms_and_times_to_nwb(recording, nwbfile):
             name = f"{ext}_{chan}"
             num_spikes = len(times)
             df_list.append([name, num_spikes, np.array(times)])
-            df_list_waves.append([name, num_spikes, val.flatten()])
+            df_list_waves.append([name, num_spikes, val.flatten().astype(np.float32)])
     max_spikes = max(d[1] for d in df_list)
     for df_ in df_list:
         df_[2] = np.pad(df_[2], (0, max_spikes - df_[1]), mode="empty")
@@ -343,8 +344,8 @@ def add_lfp_data_to_nwb(recording, nwbfile, num_electrodes):
             lfp = NLfp()
             lfp.load(f, system="Axona")
             data.append(lfp.get_samples())
-        rate = float(lfp.get_sampling_rate())
-        lfp_data = np.transpose(np.array(data))
+        lfp_data = decimate(np.array(data).T, 3, axis=0).astype(np.float16)
+        rate = float(lfp.get_sampling_rate()) / 3
         module = nwbfile.create_processing_module(
             name="high_rate_ecephys",
             description="High sampling rate extracellular electrophysiology data",
@@ -355,7 +356,9 @@ def add_lfp_data_to_nwb(recording, nwbfile, num_electrodes):
     else:
         module_logger.warning(f"No egf files found for {recording.source_file}")
     lfp_data = np.transpose(np.array([s.samples for s in recording.data["signals"]]))
-    add_lfp_array_to_nwb(nwbfile, num_electrodes, lfp_data, rate=250.0)
+    add_lfp_array_to_nwb(
+        nwbfile, num_electrodes, lfp_data.astype(np.float32), rate=250.0
+    )
 
 
 def add_lfp_array_to_nwb(
@@ -370,7 +373,7 @@ def add_lfp_array_to_nwb(
         region=list(range(num_electrodes)), description="all electrodes"
     )
 
-    compressed_data = H5DataIO(data=lfp_data, compression="gzip", compression_opts=4)
+    compressed_data = H5DataIO(data=lfp_data, compression="gzip", compression_opts=9)
     lfp_electrical_series = ElectricalSeries(
         name="ElectricalSeries",
         data=compressed_data,

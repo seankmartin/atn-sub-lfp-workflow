@@ -12,8 +12,11 @@ import simuran
 from mne.filter import filter_data
 from mne.preprocessing import ICA, read_ica
 
-from lfp_utils import (average_signals, detect_outlying_signals,
-                       z_score_normalise_signals)
+from lfp_utils import (
+    average_signals,
+    detect_outlying_signals,
+    z_score_normalise_signals,
+)
 
 if TYPE_CHECKING:
     import numpy as np
@@ -100,7 +103,11 @@ class NWBSignalSeries(SignalSeries):
         """Filters with MNE - kwargs are passed to mne.filter.filter_data"""
         self.data = (
             filter_data(
-                self.data_as_volts(), self.sampling_rate, min_f, max_f, **filter_kwargs
+                self.data_as_volts().astype(np.float64),
+                self.sampling_rate,
+                min_f,
+                max_f,
+                **filter_kwargs,
             )
             / self.conversion
         )

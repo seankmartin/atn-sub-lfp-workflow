@@ -297,7 +297,7 @@ if __name__ == "__main__":
     else:
         here = Path(__file__).parent.parent.parent
         main(
-            ["results/openfield_processed.csv", "results/every_processed_nwb.csv"],
+            ["results/openfield_processed.csv", "results/index.csv"],
             here / "results" / "summary",
             here / "config" / "simuran_params.yml",
         )

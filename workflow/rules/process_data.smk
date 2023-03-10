@@ -60,10 +60,22 @@ rule convert_all_data:
     output:
         "results/other_converted.csv",
         "results/other_process.csv",
-        "results/every_processed_nwb.csv"
+        "results/index_temp.csv"
     log:
         "logs/convert_all_data.log"
     conda:
         "../../envs/nwb_simuran.yml"
     script:
         "../scripts/convert_remaining_data.py"
+
+rule remove_temp:
+    input:
+        "results/index_temp.csv"
+    output:
+        "results/index.csv"
+    log:
+        "logs/remove_temp.log"
+    conda:
+        "../../envs/nwb_simuran.yml"
+    script:
+        "../scripts/remove_temp.py"

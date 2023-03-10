@@ -457,7 +457,7 @@ if __name__ == "__main__":
         )
     else:
         here = Path(__file__).parent.parent.parent
-        input_path = here / "results" / "every_processed_nwb.csv"
+        input_path = here / "results" / "index.csv"
         out_dir = here / "results" / "sleep"
         config_path = here / "config" / "simuran_params.yml"
         do_spindles = True

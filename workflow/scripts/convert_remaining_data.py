@@ -76,7 +76,7 @@ if __name__ == "__main__":
         config_path = here / "config" / "simuran_params.yml"
         fname1 = here / "results" / "other_converted.csv"
         fname2 = here / "results" / "other_processed.csv"
-        fname3 = here / "results" / "every_processed_nwb.csv"
+        fname3 = here / "results" / "index.csv"
         fnames = [fname1, fname2, fname3]
         sleep_only = True
         main(input_path1, input_path2, config_path, fnames, sleep_only=sleep_only)

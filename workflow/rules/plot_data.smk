@@ -41,7 +41,7 @@ rule plot_spectra_summary:
 
 rule plot_fooof:
     input:
-        "results/every_processed_nwb.csv"
+        "results/index.csv"
     output:
         expand("results/plots/summary/{region}--{group}--fooof.pdf", region=REGIONS, group=GROUPS),
         report(
@@ -96,7 +96,7 @@ rule plot_lfp:
 
 rule plot_coherence_lfp:
     input:
-        "results/every_processed_nwb.csv"
+        "results/index.csv"
     output:
         directory("results/plots/coherence_signals/")
     log:
@@ -151,7 +151,7 @@ rule plot_sleep:
     input:
         "results/sleep/ripples.pkl",
         "results/sleep/spindles.pkl",
-        "results/every_processed_nwb.csv"
+        "results/index.csv"
     output:
         directory("results/plots/sleep"),
         "results/sleep/spindles2.csv",

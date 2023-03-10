@@ -189,7 +189,7 @@ if __name__ == "__main__":
         main(
             here / "results" / "sleep" / "ripples.pkl",
             here / "results" / "sleep" / "spindles.pkl",
-            here / "results" / "every_processed_nwb.csv",
+            here / "results" / "index.csv",
             here / "results" / "plots" / "sleep",
             here / "config" / "simuran_params.yml",
         )

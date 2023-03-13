@@ -19,9 +19,9 @@ rule all:
             "results/plots/spike_lfp/",
             "results/plots/spike_lfp_musc/",
             "results/plots/tmaze/",
-            "results/plots/tmaze_decoding/",
+            # "results/plots/tmaze_decoding/",
             "results/plots/sleep/",
-            "results/plots/theta_gamma/",
+            # "results/plots/theta_gamma/", removing this from all
             "results/ca1_analysis/",
             "results/stats_output.txt",
             "results/plots/summary/png/bandpower_SUB_Relative Bandpower.png"

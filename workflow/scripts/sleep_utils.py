@@ -180,4 +180,4 @@ def find_ranges(resting, srate):
 
 
 def filter_ripple_band(data, srate, **kwargs):
-    return mne.filter.filter_data(data, srate, 150, 250, **kwargs)
+    return mne.filter.filter_data(data.astype(np.float64), srate, 150, 250, **kwargs)

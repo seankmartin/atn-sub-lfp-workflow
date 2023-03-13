@@ -46,7 +46,7 @@ max_lfp_lengths:
 tmaze_egf: False
 spindles_use_avg: False
 use_first_two_for_ripples: False
-lfp_ripple_rate: 4800
+lfp_ripple_rate: 1600
 min_sleep_length: 60
 only_kay_detect: False
 except_nwb_errors: True

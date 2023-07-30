@@ -565,7 +565,7 @@ def create_nwbfile_with_metadata(recording, name, axona_table):
     matching_row = axona_table[axona_table["filename"] == part]
     datetime_ = matching_row["datetime"].values[0]
     session_start_time = datetime.datetime.strptime(
-        datetime_, "%d/%m/%Y %H:%M:%S"
+        datetime_, "%Y-%m-%d %H:%M:%S"
     ).replace(tzinfo=datetime.timezone.utc)
     nwbfile = NWBFile(
         session_description=f"Recording {name}",

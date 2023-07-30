@@ -1,5 +1,6 @@
 """Process openfield LFP into power spectra etc. saved to NWB"""
 
+import datetime
 import logging
 import os
 from pathlib import Path
@@ -124,7 +125,7 @@ def convert_to_nwb_and_save(rc, i, output_directory, rel_dir=None, overwrite=Fal
         module_logger.error(f"Could not load {rc[i].source_file} due to {e}")
         return None, e
     try:
-        nwbfile = convert_recording_to_nwb(r, rel_dir)
+        nwbfile = convert_recording_to_nwb(r, rc.table, rel_dir)
     except Exception as e:
         module_logger.error(f"Could not convert {rc[i].source_file} due to {e}")
         return None, e
@@ -173,9 +174,9 @@ def access_nwb(nwbfile):
     pass
 
 
-def convert_recording_to_nwb(recording, rel_dir=None):
+def convert_recording_to_nwb(recording, axona_table, rel_dir=None):
     name = recording.get_name_for_save(rel_dir=rel_dir)
-    nwbfile = create_nwbfile_with_metadata(recording, name)
+    nwbfile = create_nwbfile_with_metadata(recording, name, axona_table)
     piw_device, be_device = add_devices_to_nwb(nwbfile)
     num_electrodes = add_electrodes_to_nwb(recording, nwbfile, piw_device, be_device)
 
@@ -558,19 +559,28 @@ def add_devices_to_nwb(nwbfile):
     return piw_device, be_device
 
 
-def create_nwbfile_with_metadata(recording, name):
+def create_nwbfile_with_metadata(recording, name, axona_table):
+    parts = name.split("--")
+    part = parts[-1] + ".set"
+    matching_row = axona_table[axona_table["filename"] == part]
+    datetime_ = matching_row["datetime"].values[0]
+    session_start_time = datetime.datetime.strptime(
+        datetime_, "%d/%m/%Y %H:%M:%S"
+    ).replace(tzinfo=datetime.timezone.utc)
     nwbfile = NWBFile(
         session_description=f"Recording {name}",
         identifier=f"ATNx_SUB_LFP--{name}",
-        session_start_time=recording.datetime,
+        session_start_time=session_start_time,
         experiment_description="Relationship between ATN, SUB, RSC, and CA1",
-        experimenter="Bethany Frost",
+        experimenter="Frost, Bethany",
         lab="O'Mara lab",
         institution="TCD",
         related_publications="doi:10.1523/JNEUROSCI.2868-20.2021",
     )
     nwbfile.subject = Subject(
-        species="Lister Hooded rat",
+        species="Rattus norvegicus",
+        strain="Lister Hooded",
+        age="P30D/P120D",
         sex="M",
         subject_id=recording.attrs["rat"],
         weight=0.330,

@@ -8,14 +8,13 @@ import numpy as np
 import pandas as pd
 import scipy
 import simuran as smr
+from convert_to_nwb import add_lfp_array_to_nwb, export_nwbfile
+from frequency_analysis import calculate_psd
 from hdmf.common import DynamicTable
+from lfp_clean import LFPAverageCombiner, NWBSignalSeries
 from pynwb import TimeSeries
 from simuran.loaders.nwb_loader import NWBLoader
 from skm_pyutils.table import df_from_file, df_to_file, list_to_df
-
-from convert_to_nwb import add_lfp_array_to_nwb, export_nwbfile
-from frequency_analysis import calculate_psd
-from lfp_clean import LFPAverageCombiner, NWBSignalSeries
 
 here = Path(__file__).resolve().parent
 module_logger = logging.getLogger("simuran.custom.process_lfp")
@@ -191,7 +190,6 @@ def calculate_and_store_lfp_power(config, nwb_proc):
     results_df = list_to_df(
         results_list, headers=["label", "region", "frequency", "power", "max_psd"]
     )
-    results_df.index.name = "Index"
     hdmf_table = DynamicTable.from_dataframe(
         df=results_df, name="power_spectra", columns=describe_columns()
     )

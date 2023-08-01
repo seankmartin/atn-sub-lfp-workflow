@@ -219,11 +219,12 @@ def add_position_data_to_nwb(recording, nwbfile):
     )
     compass_obj = CompassDirection(spatial_series=hd_series)
 
+    match_length = min(len(recording.data["spatial"].speed), len(position_timestamps))
     speed_ts = TimeSeries(
         name="running_speed",
         description="Smoothed running speed calculated from position",
-        data=recording.data["spatial"].speed,
-        timestamps=position_timestamps,
+        data=recording.data["spatial"].speed[:match_length],
+        timestamps=position_timestamps[:match_length],
         unit="cm/s",
     )
 
